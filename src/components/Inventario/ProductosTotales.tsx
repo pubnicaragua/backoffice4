@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Table } from '../Common/Table';
 import { FilterModal } from '../Common/FilterModal';
-import { Filter, Plus, Search, AlertTriangle, Edit, Trash2, X, Bell, Package } from 'lucide-react';
+import { Filter, Plus, Search, AlertTriangle, Edit, Trash2, X, Bell, Package, Download, FileDown } from 'lucide-react';
 import { useSupabaseData } from '../../hooks/useSupabaseData';
 import { ReporteMermas } from './ReporteMermas';
 import { ActualizarInventario } from './ActualizarInventario';
@@ -133,6 +133,48 @@ export function ProductosTotales() {
     }
   };
 
+  const handleDownloadTemplate = () => {
+    console.log('📊 INVENTARIO: Generando plantilla Producto/Stock');
+    const headers = ['Producto', 'Stock'];
+    const csvContent = headers.join(',') + '\n';
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `plantilla_productos_stock_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    console.log('✅ INVENTARIO: Plantilla CSV descargada');
+  };
+
+  const handleDownloadReport = () => {
+    console.log('📊 INVENTARIO: Generando reporte completo CSV');
+    const headers = ['Producto', 'Stock', 'Categoria', 'SKU', 'Costo', 'Precio', 'Margen', 'Disponible'];
+    const csvContent = [
+      headers.join(','),
+      ...filteredData.map(row => [
+        row.producto,
+        row.stock,
+        row.categoria,
+        row.sku,
+        row.costo.replace(/[$.,]/g, ''),
+        row.precio.replace(/[$.,]/g, ''),
+        row.margen.replace('%', ''),
+        row.disponible
+      ].join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reporte_inventario_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    console.log('✅ INVENTARIO: Reporte CSV descargado');
+  };
+
   const processedData = filteredProductos.map(producto => ({
     id: producto.id,
     producto: producto.nombre,
@@ -218,6 +260,20 @@ export function ProductosTotales() {
               <span>Eliminar {selectedProducts.size}</span>
             </button>
           )}
+          <button 
+            onClick={() => handleDownloadReport}
+            className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            title="Descargar Reporte"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+          <button 
+            onClick={() => handleDownloadTemplate}
+            className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            title="Descargar Plantilla"
+          >
+            <FileDown className="w-4 h-4" />
+          </button>
           <button 
             onClick={() => {
               console.log('🔍 FILTROS: Abriendo panel de filtros'); 

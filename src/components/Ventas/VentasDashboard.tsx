@@ -112,10 +112,14 @@ export function VentasDashboard() {
   }, [filteredVentas, filters.fechaFin, productos, ventaItems, showAnterior]);
 
   const calculateMonthlyChartData = React.useCallback(() => {
+    console.log('📊 VENTAS: Calculando datos del gráfico', { filters });
+    
     // Si hay filtros de fecha específicos, crear datos por día
     if (filters.fechaInicio && filters.fechaFin) {
       const startDate = new Date(filters.fechaInicio);
       const endDate = new Date(filters.fechaFin);
+      
+      console.log('📅 VENTAS: Filtro de fechas específico', { startDate, endDate });
       const dayData = [];
       
       // Crear datos día por día
@@ -157,6 +161,7 @@ export function VentasDashboard() {
       
       // Si es el mismo mes, mostrar solo ese mes
       if (startDate.getMonth() === endDate.getMonth() && startDate.getFullYear() === endDate.getFullYear()) {
+        console.log('📅 VENTAS: Mismo mes detectado, mostrando solo ese mes');
         const monthName = months[startDate.getMonth()];
         const currentYear = startDate.getFullYear();
         const previousYear = currentYear - 1;
@@ -178,6 +183,7 @@ export function VentasDashboard() {
         });
         
         setMonthlyChartData([monthData]);
+        console.log('✅ VENTAS: Datos de un solo mes calculados', monthData);
         return;
       }
     }
@@ -209,6 +215,7 @@ export function VentasDashboard() {
     });
 
     setMonthlyChartData(Array.from(dataMap.values()));
+    console.log('✅ VENTAS: Datos mensuales calculados', Array.from(dataMap.values()).length, 'meses');
   }, [filteredVentas, filters.fechaFin]);
 
   React.useEffect(() => {
@@ -334,7 +341,7 @@ export function VentasDashboard() {
             <span className="text-[10px] mt-1">Actualizar</span>
           </button>
           <div className="text-center text-gray-500 mt-auto pt-2 border-t border-gray-100 w-full">
-            <div className="flex items-center justify-center space-x-1 py-1 text-gray-500 text-[10px]">
+            <div className="flex items-center justify-center space-x-1 py-1 text-blue-600 text-[10px]">
               <Clock className="w-3 h-3" />
               <span>Última: {new Date().toLocaleTimeString('es-CL', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })}</span>
             </div>

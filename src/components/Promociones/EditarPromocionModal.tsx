@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Modal } from '../Common/Modal';
-import { X } from 'lucide-react';
-import { useSupabaseUpdate, useSupabaseData } from '../../hooks/useSupabaseData'; // Ensure useSupabaseData is imported
-import { supabase } from '../../lib/supabase';
+import { X, Search } from 'lucide-react';
+import { useSupabaseUpdate, useSupabaseData } from '../../hooks/useSupabaseData';
 
 interface EditarPromocionModalProps {
   isOpen: boolean;
@@ -16,11 +15,12 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
     nombre: '',
     descripcion: '',
     sucursales: ['N°1'] as string[],
-    precio_unitario: '',
-    sku: '' // This SKU is for the promotion itself, not a product
+    precio_unitario: ''
   });
   const [productosPromocion, setProductosPromocion] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+
+  console.log('✏️ PROMOCIONES: Modal editar inicializado', promocion?.nombre);
 
   const { update, loading } = useSupabaseUpdate('promociones');
   const { data: productos } = useSupabaseData<any>('productos', '*');
@@ -28,29 +28,34 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
   // Update form when promocion changes
   React.useEffect(() => {
     if (promocion) {
+      console.log('📝 PROMOCIONES: Cargando datos de promoción', promocion);
+      
       setFormData({
         nombre: promocion.promocion?.nombre || promocion.nombre || '',
         descripcion: promocion.promocion?.descripcion || promocion.descripcion || '',
         sucursales: ['N°1'],
-        precio_unitario: promocion.promocion?.precio_prom?.toString() || '',
-        sku: promocion.promocion?.codigo || ''
-      }); // Initialize form data with existing promotion data
+        precio_unitario: promocion.promocion?.precio_prom?.toString() || promocion.precio?.toString() || ''
+      });
       
-      // Filter products that are part of this promotion (example logic)
+      // Filter products that are part of this promotion
       const productosRelacionados = (productos || []).filter(p => 
-        p.nombre.toLowerCase().includes(promocion.nombre?.toLowerCase() || '') ||
-        p.codigo === promocion.sku
+        p.nombre.toLowerCase().includes(promocion.nombre?.toLowerCase() || '')
       );
       setProductosPromocion(productosRelacionados);
+      
+      console.log('📊 PROMOCIONES: Productos relacionados cargados', productosRelacionados.length);
     }
   }, [promocion, productos]);
 
   const handleRemoverProducto = (index: number) => {
+    const producto = productosPromocion[index];
+    console.log('🗑️ PROMOCIONES: Removiendo producto', producto?.nombre);
     setProductosPromocion(prev => prev.filter((_, i) => i !== index));
-    console.log('🗑️ PROMOCIÓN: Producto removido del índice', index);
   };
 
   const handleAgregarProducto = () => {
+    console.log('🔍 PROMOCIONES: Buscando producto para agregar', searchTerm);
+    
     const filteredProductos = (productos || []).filter(producto =>
       producto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       producto.codigo.toLowerCase().includes(searchTerm.toLowerCase())
@@ -62,18 +67,19 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
       const yaExiste = productosPromocion.some(p => p.id === producto.id);
       if (!yaExiste) {
         setProductosPromocion(prev => [...prev, producto]);
-        console.log('➕ PROMOCIÓN: Producto agregado', producto.nombre);
+        console.log('✅ PROMOCIONES: Producto agregado', producto.nombre);
       } else {
+        console.log('❌ PROMOCIONES: Producto ya existe');
         alert('Este producto ya está en la promoción');
       }
       setSearchTerm('');
+    } else {
+      console.log('❌ PROMOCIONES: No se encontraron productos');
     }
   };
-  // Explanation for the user:
-  // The `promocion` prop contains the data of the promotion being edited.
-  // `productos` is a list of all available products from Supabase.
-  // `productosPromocion` is a filtered list of products that are associated with this specific promotion.
+
   const handleSucursalChange = (sucursal: string, checked: boolean) => {
+    console.log('🏢 PROMOCIONES: Cambiando sucursal', sucursal, checked);
     setFormData(prev => ({
       ...prev,
       sucursales: checked 
@@ -85,11 +91,15 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('✏️ PROMOCIÓN: Actualizando', promocion?.id);
+    console.log('💾 PROMOCIONES: Actualizando promoción', {
+      id: promocion?.id,
+      nombre: formData.nombre,
+      productos: productosPromocion.length
+    });
     
     const promocionId = promocion?.promocion?.id || promocion?.id;
     if (!promocionId) {
-      console.error('❌ PROMOCIÓN: ID no encontrado');
+      console.error('❌ PROMOCIONES: ID no encontrado');
       return;
     }
     
@@ -102,20 +112,22 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
     });
 
     if (success) {
-      console.log('✅ PROMOCIÓN: Actualizada exitosamente');
+      console.log('✅ PROMOCIONES: Promoción actualizada exitosamente');
       // Reset form
       setFormData({
         nombre: '',
         descripcion: '',
         sucursales: ['N°1'],
-        precio_unitario: '',
-        sku: ''
+        precio_unitario: ''
       });
+      setProductosPromocion([]);
       if (onSuccess) {
         onSuccess();
       } else {
         onClose();
       }
+    } else {
+      console.error('❌ PROMOCIONES: Error actualizando promoción');
     }
   };
 
@@ -124,116 +136,106 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
       <div className="flex space-x-6">
         {/* Formulario principal */}
         <div className="flex-1">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Nombre
-          </label>
-          <input
-            type="text"
-            value={formData.nombre}
-            onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
-            placeholder="Nombre de la promoción"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Descripción
-          </label>
-          <input
-            type="text"
-            value={formData.descripcion}
-            onChange={(e) => setFormData(prev => ({ ...prev, descripcion: e.target.value }))}
-            placeholder="Descripción"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Escoger sucursal
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            {['N°1', 'N°2', 'N°3', 'N°4'].map(sucursal => (
-              <label key={sucursal} className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={formData.sucursales.includes(sucursal)}
-                  onChange={(e) => handleSucursalChange(sucursal, e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <span className="text-sm text-gray-700">{sucursal}</span>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Nombre
               </label>
-            ))}
-          </div>
-        </div>
+              <input
+                type="text"
+                value={formData.nombre}
+                onChange={(e) => setFormData(prev => ({ ...prev, nombre: e.target.value }))}
+                placeholder="Nombre de la promoción"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
 
-        {/* Buscar y agregar productos */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Agregar producto
-          </label>
-          <div className="flex space-x-2">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar productos..."
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              type="button"
-              onClick={handleAgregarProducto}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-            >
-              Agregar
-            </button>
-          </div>
-        </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Descripción
+              </label>
+              <input
+                type="text"
+                value={formData.descripcion}
+                onChange={(e) => setFormData(prev => ({ ...prev, descripcion: e.target.value }))}
+                placeholder="Descripción"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
 
-        <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Precio
-            </label>
-            <input
-              type="text"
-              value={formData.precio_unitario}
-              onChange={(e) => setFormData(prev => ({ ...prev, precio_unitario: e.target.value }))}
-              placeholder="Precio"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-        </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Escoger sucursal
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {['N°1', 'N°2', 'N°3', 'N°4'].map(sucursal => (
+                  <label key={sucursal} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.sucursales.includes(sucursal)}
+                      onChange={(e) => handleSucursalChange(sucursal, e.target.checked)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">{sucursal}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            SKU
-          </label>
-          <input
-            type="text"
-            value={formData.sku}
-            onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
-            placeholder="SKU específico"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+            {/* Buscar y agregar productos */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Agregar producto
+              </label>
+              <div className="flex space-x-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Buscar productos..."
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAgregarProducto}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                >
+                  Agregar
+                </button>
+              </div>
+            </div>
 
-        <div className="flex justify-center space-x-3">
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? 'Guardando...' : 'Guardar promoción'}
-          </button>
-        </div>
-      </form>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Precio
+              </label>
+              <input
+                type="number"
+                value={formData.precio_unitario}
+                onChange={(e) => setFormData(prev => ({ ...prev, precio_unitario: e.target.value }))}
+                placeholder="Precio"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="flex justify-center space-x-3">
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                {loading ? 'Guardando...' : 'Guardar promoción'}
+              </button>
+            </div>
+          </form>
         </div>
       
-        {/* Resumen a la derecha */}
-        <div className="w-80 bg-gray-50 rounded-lg p-4 ml-6">
+        {/* Resumen a la derecha - IGUAL que en agregar */}
+        <div className="w-80 bg-gray-50 rounded-lg p-4">
           <h4 className="font-medium text-gray-900 mb-3">
             📋 Productos en promoción ({productosPromocion.length})
           </h4>

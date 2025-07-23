@@ -41,10 +41,8 @@ export function PromocionesTodas({ onShowModal }: PromocionesTodasProps) {
   const processedData = filteredPromociones.map(promocion => ({
     id: promocion.id,
     nombre: promocion.nombre,
-    numero_limite: promocion.numero_limite?.toString() || '50',
     descripcion: promocion.descripcion,
     sucursal: promocion.sucursales?.nombre || 'N°1',
-    costo: `Costo: ${Math.round(promocion.costo || 0)} $`,
     precio: Math.round(promocion.precio_prom || 0),
     disponible: promocion.disponible ? 'Disponible' : 'No disponible',
     promocion: promocion
@@ -57,43 +55,42 @@ export function PromocionesTodas({ onShowModal }: PromocionesTodasProps) {
   );
 
   const handleEditPromocion = (promocion) => {
+    console.log('✏️ PROMOCIONES: Editando promoción', promocion.nombre);
     setSelectedPromocion(promocion);
     setShowEditarModal(true);
   };
 
   const handleDeletePromocion = (promocion) => {
-    console.log('🗑️ PROMOCIÓN: Eliminando', promocion.nombre);
+    console.log('🗑️ PROMOCIONES: Eliminando promoción', promocion.nombre);
     setSelectedPromocion(promocion);
     setShowDeleteModal(true);
   };
 
   const confirmDelete = async () => {
     if (selectedPromocion) {
-      console.log('🗑️ PROMOCIÓN: Confirmando eliminación');
+      console.log('🗑️ PROMOCIONES: Confirmando eliminación');
       const success = await updatePromocion(selectedPromocion.id, { activo: false });
       if (success) {
-        console.log('✅ PROMOCIÓN: Eliminada exitosamente');
+        console.log('✅ PROMOCIONES: Eliminada exitosamente');
         setShowDeleteModal(false);
         setSelectedPromocion(null);
         refetch();
       } else {
-        console.error('❌ PROMOCIÓN: Error en eliminación');
+        console.error('❌ PROMOCIONES: Error en eliminación');
       }
     }
   };
 
   const handleDownloadReport = () => {
-    console.log('📥 PROMOCIÓN: Descargando reporte');
+    console.log('📥 PROMOCIONES: Descargando reporte');
     try {
-      const headers = ['Promocion', 'Numero limite', 'Descripcion', 'Sucursal', 'Costo', 'Precio', 'Disponible'];
+      const headers = ['Promocion', 'Descripcion', 'Sucursal', 'Precio', 'Disponible'];
       const csvContent = [
         headers.join('\t'),
         ...filteredData.map(p => [
           p.nombre,
-          p.numero_limite,
           p.descripcion,
           p.sucursal,
-          p.costo,
           p.precio,
           p.disponible
         ].join('\t'))
@@ -107,7 +104,7 @@ export function PromocionesTodas({ onShowModal }: PromocionesTodasProps) {
       a.download = `reporte_promociones_${new Date().toISOString().split('T')[0]}.xls`;
       a.click();
       URL.revokeObjectURL(url);
-      console.log('✅ PROMOCIÓN: Reporte descargado');
+      console.log('✅ PROMOCIONES: Reporte descargado');
     } catch (error) {
       console.error('Error downloading report:', error);
       alert('Error al descargar el reporte.');

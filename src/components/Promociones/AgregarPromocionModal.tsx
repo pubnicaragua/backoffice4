@@ -59,8 +59,11 @@ export function AgregarPromocionModal({ isOpen, onClose, onSuccess }: AgregarPro
 
   const handleAgregarOtroProducto = () => {
     if (formData.producto_seleccionado) {
+      console.log('➕ PROMOCIONES: Agregando producto a la lista', formData.producto_seleccionado.nombre);
+      
       // Validar que tenga precio de promoción
       if (!formData.precio_promocion) {
+        console.log('❌ PROMOCIONES: Precio de promoción requerido');
         alert('Por favor ingresa un precio de promoción');
         return;
       }
@@ -78,12 +81,17 @@ export function AgregarPromocionModal({ isOpen, onClose, onSuccess }: AgregarPro
       // Verificar que no esté duplicado
       const yaExiste = productosAgregados.some(p => p.sku === nuevoProducto.sku);
       if (yaExiste) {
+        console.log('❌ PROMOCIONES: Producto ya existe en la lista');
         alert('Este producto ya está agregado');
         return;
       }
       
       // Agregar como nuevo producto (acumulativo)
       setProductosAgregados(prev => [...prev, nuevoProducto]);
+      console.log('✅ PROMOCIONES: Producto agregado a la lista', {
+        total: productosAgregados.length + 1,
+        producto: nuevoProducto.nombre
+      });
       
       // Limpiar campos del producto pero mantener info de promoción
       setFormData(prev => ({
@@ -93,19 +101,22 @@ export function AgregarPromocionModal({ isOpen, onClose, onSuccess }: AgregarPro
         producto_seleccionado: null
       }));
       setSearchTerm('');
-      
-      console.log('🔄 PROMOCIÓN: Producto agregado a la lista', nuevoProducto);
     }
   };
 
   const handleRemoverProducto = (index: number) => {
+    const producto = productosAgregados[index];
+    console.log('🗑️ PROMOCIONES: Removiendo producto', producto?.nombre);
     setProductosAgregados(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('🎯 PROMOCIÓN: Guardando promoción completa');
+    console.log('💾 PROMOCIONES: Guardando promoción completa', {
+      productos: productosAgregados.length,
+      nombre: formData.nombre
+    });
     
     // Si hay productos en la lista, guardar todos
     const productosParaGuardar = productosAgregados.length > 0 
@@ -123,6 +134,7 @@ export function AgregarPromocionModal({ isOpen, onClose, onSuccess }: AgregarPro
     let allSuccess = true;
     
     for (const producto of productosParaGuardar) {
+      console.log('💾 PROMOCIONES: Guardando producto', producto.nombre);
       const success = await insert({
         nombre: producto.nombre,
         descripcion: producto.descripcion,
@@ -139,7 +151,7 @@ export function AgregarPromocionModal({ isOpen, onClose, onSuccess }: AgregarPro
     }
 
     if (allSuccess) {
-      console.log('✅ PROMOCIÓN: Todas las promociones guardadas');
+      console.log('✅ PROMOCIONES: Todas las promociones guardadas');
       setProductosAgregados([]);
       setFormData({
         nombre: '',
@@ -156,6 +168,8 @@ export function AgregarPromocionModal({ isOpen, onClose, onSuccess }: AgregarPro
       } else {
         onClose();
       }
+    } else {
+      console.error('❌ PROMOCIONES: Error guardando algunas promociones');
     }
   };
 
