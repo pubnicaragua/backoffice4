@@ -22,8 +22,7 @@ export function AgregarUsuarioModal({ isOpen, onClose }: AgregarUsuarioModalProp
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('👤 USUARIO: Iniciando creación de usuario');
-    console.log('📝 DATOS:', {
+    console.log('👤 COLABORADORES: Iniciando creación de usuario', {
       nombres: formData.nombres,
       rut: formData.rut,
       rol: formData.rol_usuario
@@ -40,7 +39,7 @@ export function AgregarUsuarioModal({ isOpen, onClose }: AgregarUsuarioModalProp
     });
 
     if (success) {
-      console.log('✅ USUARIO: Creado exitosamente');
+      console.log('✅ COLABORADORES: Usuario creado exitosamente');
       onClose();
       setFormData({
         nombres: '',
@@ -51,7 +50,7 @@ export function AgregarUsuarioModal({ isOpen, onClose }: AgregarUsuarioModalProp
         agregar_permiso: 'seleccionar'
       });
     } else {
-      console.error('❌ USUARIO: Error en creación');
+      console.error('❌ COLABORADORES: Error creando usuario');
     }
   };
 

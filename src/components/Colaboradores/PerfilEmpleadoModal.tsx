@@ -59,7 +59,7 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({ isOpen
               <div>
                 <h2 className="text-xl font-bold text-gray-900">{empleado?.nombres || 'Cargando...'} {empleado?.apellidos || ''}</h2>
                 <p className="text-sm text-blue-600 font-medium">Rol: {empleado?.roles?.nombre || empleado?.rol || 'Empleado'}</p>
-                <p className="text-xs text-gray-500">RUT: {empleado?.rut || 'Cargando...'}</p>
+                <p className="text-xs text-gray-500">RUT: {empleado?.rut || 'Sin RUT'}</p>
               </div>
             </div>
             <button className="px-6 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
@@ -75,9 +75,9 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({ isOpen
                 Datos personales
               </h3>
               <div className="space-y-3 text-sm">
-                <p><span className="font-medium">RUT:</span> {empleado.rut}</p>
-                <p><span className="font-medium">Fecha de nacimiento:</span> {empleado.fechaNacimiento}</p>
-                <p><span className="font-medium">Género:</span> {empleado.genero}</p>
+                <p><span className="font-medium">RUT:</span> {empleado?.rut || 'Sin RUT'}</p>
+                <p><span className="font-medium">Fecha de nacimiento:</span> {empleado?.fecha_nacimiento || 'Sin fecha'}</p>
+                <p><span className="font-medium">Género:</span> {empleado?.genero || 'No especificado'}</p>
               </div>
             </div>
 

@@ -26,8 +26,14 @@ export function AsignarTareaModal({ isOpen, onClose, selectedUser, onSuccess }: 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('💾 COLABORADORES: Asignando tarea', {
+      usuario: selectedUser?.nombres,
+      tarea: formData.nombre_tarea,
+      fecha: formData.fecha_asignacion
+    });
+    
     if (!selectedUser?.id || !formData.nombre_tarea || !formData.fecha_asignacion) {
-      console.log('❌ TAREA: Faltan datos requeridos');
+      console.log('❌ COLABORADORES: Faltan datos requeridos para asignar tarea');
       return;
     }
 
@@ -40,7 +46,10 @@ export function AsignarTareaModal({ isOpen, onClose, selectedUser, onSuccess }: 
     });
 
     if (success) {
+      console.log('✅ COLABORADORES: Tarea asignada exitosamente');
       onClose();
+    } else {
+      console.error('❌ COLABORADORES: Error asignando tarea');
     }
     if (onSuccess) {
       onSuccess();
