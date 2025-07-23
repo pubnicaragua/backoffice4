@@ -8,7 +8,8 @@ import {
   HelpCircle,
   X as XIcon, // Renamed to avoid conflict
   Loader2, // For loading states
-  Clock // For last update timestamp
+  Clock, // For last update timestamp
+  TrendingUp
 } from 'lucide-react';
 import { ResponsiveContainer, ComposedChart, CartesianGrid, XAxis, YAxis, Line, Tooltip, Legend } from 'recharts';
 import { useSupabaseData } from '../../hooks/useSupabaseData'; // Keep this for data fetching
@@ -21,7 +22,7 @@ interface KpiCardProps { // Renamed to KpiCardProps
   isPositive: boolean;
 }
 
-function MetricsCard({ title, value, change, isPositive }: MetricsCardProps) {
+function MetricsCard({ title, value, change, isPositive }: KpiCardProps) {
   return (
     <div className="bg-gray-50 p-4 rounded-2xl flex flex-col justify-between shadow-sm"> {/* Updated styling */}
       <div className="flex items-center justify-between">
@@ -101,7 +102,7 @@ export function VentasDashboard() {
       unidadesVendidas: totalUnidades || 0,
       numeroVentas: numeroVentas,
       ticketPromedio: ticketPromedio
-    };
+    });
   }, [filteredVentas, filters.fechaFin, productos, ventaItems]);
 
   const calculateMonthlyChartData = React.useCallback(() => {
@@ -225,7 +226,6 @@ export function VentasDashboard() {
   return (
     <div className="h-screen bg-white flex flex-col relative"> {/* Full height container */}
       {/* Header with action buttons */}
-      <div className="flex items-center justify-between">
       {/* Header */}
       <div className="flex items-center justify-between p-6 border-b border-gray-200">
         <div className="flex items-center gap-2">
