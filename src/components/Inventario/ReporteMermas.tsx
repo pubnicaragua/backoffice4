@@ -15,11 +15,13 @@ export function ReporteMermas({ isOpen, onClose, onMermaReported }: ReporteMerma
     tipo_merma: 'robo',
     cantidad_mermada: '',
     observaciones: '',
-    producto_seleccionado: ''
+    producto_seleccionado: '',
+    sucursal_seleccionada: ''
   });
 
   const { insert, loading } = useSupabaseInsert('mermas');
   const { data: productos } = useSupabaseData<any>('productos', '*');
+  const { data: sucursales } = useSupabaseData<any>('sucursales', '*');
 
   // Filtrar productos mientras escribe
   const filteredProductos = (productos || []).filter(producto =>
@@ -33,7 +35,7 @@ export function ReporteMermas({ isOpen, onClose, onMermaReported }: ReporteMerma
     const success = await insert({
       tipo: formData.tipo_merma,
       cantidad: parseFloat(formData.cantidad_mermada),
-      sucursal_id: '00000000-0000-0000-0000-000000000001',
+      sucursal_id: formData.sucursal_seleccionada || '00000000-0000-0000-0000-000000000001',
       producto_id: formData.producto_seleccionado || '00000000-0000-0000-0000-000000000001',
       observaciones: formData.observaciones
     });
@@ -54,7 +56,8 @@ export function ReporteMermas({ isOpen, onClose, onMermaReported }: ReporteMerma
         tipo_merma: 'robo',
         cantidad_mermada: '',
         observaciones: '',
-        producto_seleccionado: ''
+        producto_seleccionado: '',
+        sucursal_seleccionada: ''
       });
     }
   };
@@ -62,6 +65,25 @@ export function ReporteMermas({ isOpen, onClose, onMermaReported }: ReporteMerma
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Reporte de mermas" size="sm">
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="sucursal-merma-select" className="block text-sm font-medium text-gray-700 mb-1">
+            Sucursal
+          </label>
+          <select
+            id="sucursal-merma-select"
+            name="sucursal-merma-select"
+            value={formData.sucursal_seleccionada}
+            onChange={(e) => setFormData(prev => ({ ...prev, sucursal_seleccionada: e.target.value }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          >
+            <option value="">Seleccionar sucursal</option>
+            {sucursales.map(sucursal => (
+              <option key={sucursal.id} value={sucursal.id}>{sucursal.nombre}</option>
+            ))}
+          </select>
+        </div>
+
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input

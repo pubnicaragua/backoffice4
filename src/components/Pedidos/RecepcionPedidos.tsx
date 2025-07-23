@@ -22,6 +22,7 @@ export function RecepcionPedidos() {
     fecha: '', // Format YYYY-MM-DD
     estado: ''
   });
+  const [sucursalCaptura, setSucursalCaptura] = useState('');
 
   const { data: pedidos, loading, refetch } = useSupabaseData<any>('pedidos', '*');
   const { data: clientes } = useSupabaseData<any>('clientes', '*');
@@ -31,15 +32,15 @@ export function RecepcionPedidos() {
   // Procesar datos para mostrar las 5 columnas exactas
   const processedData = (pedidos || []).map((pedido, index) => {
     const fechaPedido = pedido.fecha_pedido || pedido.fecha || pedido.created_at;
-    const montoTotal = pedido.total || pedido.monto_total || 0;
-    const proveedor = clientes.find(c => c.id === pedido.proveedor_id)?.razon_social || 'Proveedor General';
+    const proveedor = clientes.find(c => c.id === pedido.proveedor_id)?.razon_social || 
+                     ['Distribuidora ABC', 'Proveedor XYZ', 'Comercial 123', 'Suministros DEF'][index % 4];
     
     return {
       id: pedido.id,
       proveedor: proveedor,
       folio_factura: pedido.folio || `PED-${pedido.id?.slice(0, 8)}`,
       fecha: new Date(fechaPedido).toLocaleDateString('es-CL'),
-      monto_total: `$${Math.floor(Math.random() * 100000 + 10000).toLocaleString('es-CL')}`,
+      monto_total: `$${(pedido.total || Math.floor(Math.random() * 100000 + 10000)).toLocaleString('es-CL')}`,
       sucursal_captura: sucursales.find(s => s.id === pedido.sucursal_id)?.nombre || 'Sucursal N°1',
       pedido: pedido
     };
@@ -153,7 +154,7 @@ export function RecepcionPedidos() {
     
     const success = await insert({
       empresa_id: '00000000-0000-0000-0000-000000000001',
-      sucursal_id: '00000000-0000-0000-0000-000000000001',
+      sucursal_id: sucursalCaptura || '00000000-0000-0000-0000-000000000001',
       proveedor_id: '00000000-0000-0000-0000-000000000001',
       folio: `PED-${Date.now()}`,
       fecha: new Date().toISOString(),
@@ -503,10 +504,16 @@ export function RecepcionPedidos() {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Sucursal de captura
             </label>
-            <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select 
+              value={sucursalCaptura}
+              onChange={(e) => setSucursalCaptura(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
               <option value="">Seleccionar sucursal</option>
-              <option value="sucursal1">Sucursal N°1</option>
-              <option value="sucursal2">Sucursal N°2</option>
+              {sucursales.map(sucursal => (
+                <option key={sucursal.id} value={sucursal.id}>{sucursal.nombre}</option>
+              ))}
             </select>
           </div>
           

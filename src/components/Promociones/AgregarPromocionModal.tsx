@@ -69,21 +69,13 @@ export function AgregarPromocionModal({ isOpen, onClose, onSuccess }: AgregarPro
         producto: formData.producto_seleccionado
       };
       
-      setProductosAgregados(prev => {
-        // Verificar si el producto ya existe
-        const exists = prev.find(p => p.sku === nuevoProducto.sku);
-        if (exists) {
-          // Actualizar producto existente
-          return prev.map(p => p.sku === nuevoProducto.sku ? nuevoProducto : p);
-        } else {
-          // Agregar nuevo producto
-          return [...prev, nuevoProducto];
-        }
-      });
+      // Siempre agregar como nuevo producto (acumulativo)
+      setProductosAgregados(prev => [...prev, nuevoProducto]);
       
       // Clear product-specific fields but keep promotion info
       setFormData(prev => ({
         ...prev,
+        precio_promocion: '', // Clear price for next product
         sku: '',
         producto_seleccionado: null
       }));
