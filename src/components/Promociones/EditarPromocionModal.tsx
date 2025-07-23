@@ -212,7 +212,6 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
             SKU
           </label>
           <input
-        </div>
             type="text"
             value={formData.sku}
             onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
@@ -231,6 +230,7 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
           </button>
         </div>
       </form>
+        </div>
       
         {/* Resumen a la derecha */}
         <div className="w-80 bg-gray-50 rounded-lg p-4 ml-6">
