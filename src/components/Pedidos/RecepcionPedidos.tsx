@@ -476,8 +476,6 @@ export function RecepcionPedidos() {
               </div>
             </div>
           )}
-            </p>
-          </div>
 
           {/* Productos extraídos del PDF */}
           {productos.length > 0 && (
