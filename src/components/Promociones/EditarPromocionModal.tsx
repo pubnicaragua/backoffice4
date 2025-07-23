@@ -20,6 +20,7 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
     sku: '' // This SKU is for the promotion itself, not a product
   });
   const [productosPromocion, setProductosPromocion] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const { update, loading } = useSupabaseUpdate('promociones');
   const { data: productos } = useSupabaseData<any>('productos', '*');
@@ -46,6 +47,19 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
 
   const handleRemoverProducto = (index: number) => {
     setProductosPromocion(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAgregarProducto = () => {
+    const filteredProductos = (productos || []).filter(producto =>
+      producto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      producto.codigo.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    
+    if (filteredProductos.length > 0) {
+      const producto = filteredProductos[0];
+      setProductosPromocion(prev => [...prev, producto]);
+      setSearchTerm('');
+    }
   };
   // Explanation for the user:
   // The `promocion` prop contains the data of the promotion being edited.
@@ -146,6 +160,29 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
           </div>
         </div>
 
+        {/* Buscar y agregar productos */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Agregar producto
+          </label>
+          <div className="flex space-x-2">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar productos..."
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              type="button"
+              onClick={handleAgregarProducto}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            >
+              Agregar
+            </button>
+          </div>
+        </div>
+
         <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Precio
@@ -158,41 +195,6 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
         </div>
-
-        {/* Resumen Ejecutivo */}
-        {productosPromocion.length > 0 && (
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-            <h4 className="font-medium text-blue-900 mb-3">📋 Resumen Ejecutivo de la Promoción</h4>
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm"><strong>Nombre:</strong> {formData.nombre}</p>
-                <p className="text-sm"><strong>Descripción:</strong> {formData.descripcion}</p>
-                <p className="text-sm"><strong>Precio promocional:</strong> ${parseFloat(formData.precio_unitario || '0').toLocaleString('es-CL')}</p>
-              </div>
-              
-              <div>
-                <p className="text-sm font-medium text-blue-800 mb-2">Productos en la promoción ({productosPromocion.length}):</p>
-                <div className="space-y-2 max-h-32 overflow-y-auto">
-                  {productosPromocion.map((producto, index) => (
-                    <div key={index} className="flex items-center justify-between bg-white p-2 rounded border">
-                      <div>
-                        <p className="text-xs font-medium">{producto.nombre}</p>
-                        <p className="text-xs text-gray-500">${producto.precio?.toLocaleString('es-CL')}</p>
-                      </div>
-                      <button
-                        onClick={() => handleRemoverProducto(index)}
-                        className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded"
-                        title="Eliminar producto"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -209,25 +211,6 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
 
         <div className="flex justify-center space-x-3">
           <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              console.log('🔄 PROMOCIÓN: Agregando otro producto');
-              // Reset form but keep modal open
-              setFormData({
-                nombre: '',
-                descripcion: '',
-                sucursales: [],
-                costo_unitario: '',
-                precio_unitario: '',
-                sku: ''
-              });
-            }}
-            className="px-4 py-2 text-gray-600 hover:text-gray-800"
-          >
-            Agregar otro producto
-          </button>
-          <button
             type="submit"
             disabled={loading}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
@@ -236,6 +219,33 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
           </button>
         </div>
       </form>
+      
+      {/* Resumen a la derecha */}
+      {productosPromocion.length > 0 && (
+        <div className="w-80 bg-gray-50 rounded-lg p-4 ml-6">
+          <h4 className="font-medium text-gray-900 mb-3">
+            📋 Productos en promoción ({productosPromocion.length})
+          </h4>
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {productosPromocion.map((producto, index) => (
+              <div key={index} className="flex items-center justify-between bg-white p-3 rounded border">
+                <div>
+                  <p className="font-medium text-sm">{producto.nombre}</p>
+                  <p className="text-xs text-gray-500">SKU: {producto.codigo}</p>
+                  <p className="text-xs text-gray-500">Precio: ${producto.precio?.toLocaleString('es-CL')}</p>
+                </div>
+                <button
+                  onClick={() => handleRemoverProducto(index)}
+                  className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded"
+                  title="Eliminar producto"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </Modal>
   );
 }
