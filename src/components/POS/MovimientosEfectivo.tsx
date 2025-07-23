@@ -123,11 +123,6 @@ export function MovimientosEfectivo() {
                 Sucursal
               </label>
               <select 
-                value={filters.tipo}
-                onChange={(e) => {
-                  console.log('📊 MOVIMIENTOS: Filtro tipo aplicado:', e.target.value);
-                  setFilters(prev => ({ ...prev, tipo: e.target.value }));
-                }}
                 value={filters.sucursal}
                 onChange={(e) => setFilters(prev => ({ ...prev, sucursal: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"

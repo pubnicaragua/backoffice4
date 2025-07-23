@@ -45,7 +45,6 @@ export function AgregarUsuarioModal({ isOpen, onClose }: AgregarUsuarioModalProp
       setFormData({
         nombres: '',
         apellidos: '',
-        apellidos: '',
         rut: '',
         fecha_nacimiento: '',
         rol_usuario: 'empleado',
