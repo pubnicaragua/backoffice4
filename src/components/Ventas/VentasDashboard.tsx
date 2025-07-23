@@ -86,11 +86,15 @@ export function VentasDashboard() {
     const yearVentas = filteredVentas.filter(v => new Date(v.fecha).getFullYear() === currentYear);
     
     const totalVentas = yearVentas.reduce((sum, venta) => sum + (parseFloat(venta.total) || 0), 0);
-    const totalUnidades = ventaItems.reduce((sum, item) => sum + (item.cantidad || 0), 0);
+    const totalUnidades = ventaItems.filter(item => 
+      yearVentas.some(venta => venta.id === item.venta_id)
+    ).reduce((sum, item) => sum + (item.cantidad || 0), 0);
     const numeroVentas = yearVentas.length;
     const ticketPromedio = numeroVentas > 0 ? totalVentas / numeroVentas : 0;
     
-    const totalCosto = ventaItems.reduce((sum, item) => {
+    const totalCosto = ventaItems.filter(item => 
+      yearVentas.some(venta => venta.id === item.venta_id)
+    ).reduce((sum, item) => {
       const producto = productos.find(p => p.id === item.producto_id);
       return sum + ((producto?.costo || 0) * item.cantidad);
     }, 0);

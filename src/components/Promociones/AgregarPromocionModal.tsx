@@ -293,25 +293,23 @@ export function AgregarPromocionModal({ isOpen, onClose, onSuccess }: AgregarPro
                 Productos: {productosAgregados.length}
               </p>
             </div>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {productosAgregados.map((producto, index) => (
-                <div key={index} className="flex items-center justify-between bg-white p-3 rounded border">
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">{producto.nombre}</p>
-                    <p className="text-xs text-gray-500">
-                      Real: ${producto.precio_real?.toLocaleString('es-CL')} → 
-                      Promo: ${producto.precio_promocion?.toLocaleString('es-CL')}
-                    </p>
-                    <p className="text-xs text-gray-400">{producto.sku}</p>
-                  </div>
-                  <button
-                    onClick={() => handleRemoverProducto(index)}
-                    className="text-red-600 hover:text-red-800 p-1"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+        {/* Productos en la promoción */}
+        {formData.producto_seleccionado && (
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <h4 className="font-medium text-blue-900 mb-3">📦 Productos en esta promoción</h4>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between bg-white p-3 rounded border">
+                <div>
+                  <p className="font-medium text-sm">{formData.producto_seleccionado.nombre}</p>
+                  <p className="text-xs text-gray-500">SKU: {formData.producto_seleccionado.codigo}</p>
+                  <p className="text-xs text-gray-500">Precio original: ${formData.producto_seleccionado.precio?.toLocaleString('es-CL')}</p>
                 </div>
-              ))}
+                <div className="text-right">
+                  <p className="text-sm font-medium text-green-600">
+                    Precio promocional: ${parseFloat(formData.precio_promocion || '0').toLocaleString('es-CL')}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         )}

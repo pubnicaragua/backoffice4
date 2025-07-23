@@ -180,10 +180,10 @@ export function PromocionesTodas({ onShowModal }: PromocionesTodasProps) {
             {filteredData.map((row, index) => (
               <tr key={index} className="hover:bg-gray-50">
                 <td className="px-6 py-4 text-sm text-gray-900">{row.nombre}</td>
-                <td className="px-6 py-4 text-sm text-gray-900">{row.numero_limite}</td>
+                <td className="px-6 py-4 text-sm text-gray-900">Ilimitado</td>
                 <td className="px-6 py-4 text-sm text-gray-900">{row.descripcion}</td>
                 <td className="px-6 py-4 text-sm text-gray-900">{row.sucursal}</td>
-                <td className="px-6 py-4 text-sm text-gray-900">{row.costo}</td>
+                <td className="px-6 py-4 text-sm text-gray-900">{Math.round(row.promocion?.costo || 0)}</td>
                 <td className="px-6 py-4 text-sm text-gray-900">{row.precio}</td>
                 <td className="px-6 py-4 text-sm text-gray-900">{row.disponible}</td>
                 <td className="px-6 py-4 text-sm">

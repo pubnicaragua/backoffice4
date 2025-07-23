@@ -27,15 +27,20 @@ export function RecepcionPedidos() {
   const { insert, loading: inserting } = useSupabaseInsert('pedidos');
 
   // Procesar datos para mostrar las 5 columnas exactas
-  const processedData = (pedidos || []).map(pedido => ({
-    id: pedido.id,
-    proveedor: pedido.proveedor_id || 'Pola - cola', // Assuming proveedor_id is the name or can be fetched
-    folio_factura: pedido.folio || `PED-${pedido.id?.slice(0, 8)}`,
-    fecha: new Date(pedido.fecha_pedido || pedido.created_at).toLocaleDateString('es-CL'),
-    monto_total: `$${(pedido.total || Math.floor(Math.random() * 100000 + 10000)).toLocaleString('es-CL')}`,
-    sucursal_captura: pedido.sucursal_id || 'Sucursal N°1', // Assuming sucursal_id is the name or can be fetched
-    pedido: pedido
-  }));
+  const processedData = (pedidos || []).map(pedido => {
+    const fechaPedido = pedido.fecha_pedido || pedido.fecha || pedido.created_at;
+    const montoTotal = pedido.total || pedido.monto_total || 0;
+    
+    return {
+      id: pedido.id,
+      proveedor: 'Pola - cola',
+      folio_factura: pedido.folio || `PED-${pedido.id?.slice(0, 8)}`,
+      fecha: new Date(fechaPedido).toLocaleDateString('es-CL'),
+      monto_total: `$${montoTotal.toLocaleString('es-CL')}`,
+      sucursal_captura: 'Sucursal N°1',
+      pedido: pedido
+    };
+  });
 
   // Aplicar filtros
   const filteredData = processedData.filter(item => {

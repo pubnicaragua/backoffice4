@@ -1,20 +1,27 @@
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-requested-with',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { 
-      status: 204, // Use 204 No Content for preflight success
-      headers: corsHeaders 
-    })
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const { message, context } = await req.json()
+    const body = await req.text()
+    let message, context
+    
+    try {
+      const parsed = JSON.parse(body)
+      message = parsed.message
+      context = parsed.context
+    } catch (e) {
+      message = body || 'Hola'
+      context = {}
+    }
 
     // Enhanced AI response based on context
     let response = "¡Hola! Soy SolvIA, tu asistente inteligente de Solvendo. "

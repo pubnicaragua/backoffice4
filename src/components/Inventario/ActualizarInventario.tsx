@@ -348,11 +348,11 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
         )}
 
         {/* Preview */}
-        {productos.length > 0 && sucursalDestino && (
+        {productos.length > 0 && (
           <div>
             <h4 className="font-medium text-gray-900 mb-2">
               Productos encontrados ({productos.length})
-              {productos.some(p => p.precio) && (
+              {productos.some(p => p.costo) && (
                 <span className="text-sm text-green-600 ml-2">✓ IVA 19% aplicado</span>
               )}
             </h4>

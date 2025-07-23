@@ -20,7 +20,7 @@ export function Header({ onMenuToggle, currentView }: HeaderProps) {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 1000);
+    }, 1000); // Update every second
 
     return () => clearInterval(timer);
   }, []);
@@ -98,7 +98,10 @@ export function Header({ onMenuToggle, currentView }: HeaderProps) {
           </div>
           
           <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <span className="font-medium">{formatTime(currentTime)}</span>
+            <div className="text-center">
+              <div className="font-medium">{formatTime(currentTime)}</div>
+              <div className="text-xs text-gray-500">{currentTime.toLocaleDateString('es-CL')}</div>
+            </div>
             <Clock className="w-4 h-4" />
           </div>
           
