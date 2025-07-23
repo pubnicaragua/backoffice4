@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Modal } from '../Common/Modal';
-import { useSupabaseUpdate } from '../../hooks/useSupabaseData';
+import { useSupabaseUpdate, useSupabaseData } from '../../hooks/useSupabaseData';
 import { supabase } from '../../lib/supabase';
 
 interface EditarPromocionModalProps {
@@ -43,7 +43,7 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
       );
       setProductosPromocion(productosRelacionados);
     }
-  }, [promocion]);
+  }, [promocion, productos]);
 
   const handleSucursalChange = (sucursal: string, checked: boolean) => {
     setFormData(prev => ({

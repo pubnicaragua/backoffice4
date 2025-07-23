@@ -10,6 +10,7 @@ interface AsignarTurnoModalProps {
 export function AsignarTurnoModal({ isOpen, onClose }: AsignarTurnoModalProps) {
   const [formData, setFormData] = useState({
     sucursal: 'N°1',
+    fecha_turno: new Date().toISOString().split('T')[0],
     hora_ingreso: '10:00 AM',
     hora_salida: '18:00 PM'
   });
@@ -53,10 +54,22 @@ export function AsignarTurnoModal({ isOpen, onClose }: AsignarTurnoModalProps) {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
+            Fecha del turno
+          </label>
+          <input
+            type="date"
+            value={formData.fecha_turno}
+            onChange={(e) => setFormData(prev => ({ ...prev, fecha_turno: e.target.value }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             Hora de ingreso
           </label>
           <input
-            type="text"
+            type="time"
             value={formData.hora_ingreso}
             onChange={(e) => setFormData(prev => ({ ...prev, hora_ingreso: e.target.value }))}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -68,7 +81,7 @@ export function AsignarTurnoModal({ isOpen, onClose }: AsignarTurnoModalProps) {
             Hora de salida
           </label>
           <input
-            type="text"
+            type="time"
             value={formData.hora_salida}
             onChange={(e) => setFormData(prev => ({ ...prev, hora_salida: e.target.value }))}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"

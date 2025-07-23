@@ -6,6 +6,7 @@ import { Modal } from '../Common/Modal';
 
 export function RecepcionPedidos() {
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const [showDetalle, setShowDetalle] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showAgregarModal, setShowAgregarModal] = useState(false);
@@ -42,9 +43,13 @@ export function RecepcionPedidos() {
     return true;
   });
 
+  // Paginación
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
+
   const handleViewDetalle = (pedido) => {
-    // Navigate to detail view instead of modal
-    window.location.hash = `#detalle-pedido-${pedido.id}`;
+    console.log('📋 PEDIDO: Navegando a detalle', pedido.id);
     setShowDetalle(true);
   };
 
@@ -164,11 +169,28 @@ export function RecepcionPedidos() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="p-8 space-y-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Recepción de Pedidos</h1>
-        <div className="flex space-x-3">
+        <div className="flex space-x-4">
+          {/* Selector de items por página */}
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-600">Mostrar:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+          
           <button 
             onClick={() => setShowFilters(true)}
             className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -216,7 +238,7 @@ export function RecepcionPedidos() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {filteredData.map((row, index) => (
+            {paginatedData.map((row, index) => (
               <tr 
                 key={index} 
                 className="hover:bg-gray-50 cursor-pointer"
@@ -231,6 +253,53 @@ export function RecepcionPedidos() {
             ))}
           </tbody>
         </table>
+        
+        {/* Paginación */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 py-3 border-t border-gray-200 bg-gray-50">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-700">
+                Mostrando {startIndex + 1} a {Math.min(startIndex + itemsPerPage, filteredData.length)} de {filteredData.length} pedidos
+              </span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 rounded-md text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+              >
+                Anterior
+              </button>
+              
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const page = i + 1;
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-3 py-1 rounded-md text-sm ${
+                        currentPage === page
+                          ? 'bg-blue-600 text-white'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                })}
+              </div>
+              
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 rounded-md text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modal de Filtros */}
@@ -358,19 +427,19 @@ export function RecepcionPedidos() {
         isOpen={showAgregarModal}
         onClose={() => setShowAgregarModal(false)}
         title="Agregar pedido recibido"
-        size="md"
+        size="lg"
       >
-        <div className="space-y-4">
+        <div className="space-y-6 p-4">
           {/* PDF Upload Section */}
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
             {processing ? (
               <div className="w-12 h-12 mx-auto mb-4 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
             ) : (
-              <div className="w-12 h-12 text-gray-400 mx-auto mb-4">📄</div>
+              <div className="w-16 h-16 text-gray-400 mx-auto mb-4 text-4xl">📄</div>
             )}
-            <div>
+            <div className="mb-4">
               <label className="cursor-pointer">
-                <span className="text-blue-600 hover:text-blue-500">
+                <span className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-block font-medium">
                   {processing ? 'Procesando PDF...' : 'Subir archivo PDF'}
                 </span>
                 <input
@@ -382,18 +451,41 @@ export function RecepcionPedidos() {
                 />
               </label>
             </div>
-            <p className="text-xs text-gray-500 mt-2">
-              Solo archivos PDF hasta 10MB
+            <div className="text-center space-y-2">
+              <p className="text-sm text-gray-600">
+                <strong>Análisis automático de PDF:</strong>
+              </p>
+              <p className="text-xs text-gray-500">
+                • Extrae productos y cantidades automáticamente<br/>
+                • Calcula costos con IVA incluido (19%)<br/>
+                • Identifica referencias de facturas<br/>
+                • Solo archivos PDF hasta 10MB
+              </p>
+            </div>
+          </div>
+          
+          {/* Información del análisis PDF */}
+          {file && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h4 className="font-medium text-blue-900 mb-2">📋 Análisis del PDF:</h4>
+              <div className="text-sm text-blue-800 space-y-1">
+                <p><strong>Archivo:</strong> {file.name}</p>
+                <p><strong>Método:</strong> Extracción automática de tablas y texto</p>
+                <p><strong>Productos detectados:</strong> {productos.length}</p>
+                <p><strong>IVA aplicado:</strong> 19% automáticamente</p>
+              </div>
+            </div>
+          )}
             </p>
           </div>
 
           {/* Productos extraídos del PDF */}
           {productos.length > 0 && (
-            <div className="bg-gray-50 rounded-lg p-4">
+            <div className="bg-gray-50 rounded-lg p-6">
               <h4 className="font-medium text-gray-900 mb-3">Productos detectados:</h4>
-              <div className="space-y-3 max-h-40 overflow-y-auto">
+              <div className="space-y-3 max-h-60 overflow-y-auto">
                 {productos.map((producto, index) => (
-                  <div key={index} className="grid grid-cols-4 gap-4 text-sm items-center">
+                  <div key={index} className="grid grid-cols-4 gap-4 text-sm items-center bg-white p-3 rounded border">
                     <input
                       type="checkbox"
                       checked={selectedProducts[producto.nombre]?.selected || false}
@@ -444,13 +536,6 @@ export function RecepcionPedidos() {
       </Modal>
 
       {/* Modal Detalle */}
-      {showDetalle && (
-        <DetallePedido
-          isOpen={showDetalle}
-          onClose={() => setShowDetalle(false)}
-          pedido={filteredData[0]?.pedido}
-        />
-      )}
     </div>
   );
 }

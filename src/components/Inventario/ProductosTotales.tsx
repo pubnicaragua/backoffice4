@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
 import { Table } from '../Common/Table';
 import { FilterModal } from '../Common/FilterModal';
-import { Filter, Plus, Search, AlertTriangle, Edit, Trash2, X } from 'lucide-react';
+import { Filter, Plus, Search, AlertTriangle, Edit, Trash2, X, Bell } from 'lucide-react';
 import { useSupabaseData } from '../../hooks/useSupabaseData';
 import { ReporteMermas } from './ReporteMermas';
 import { ActualizarInventario } from './ActualizarInventario';
 import { AgregarProductoModal } from './AgregarProductoModal';
 import { Modal } from '../Common/Modal';
 import { supabase } from '../../lib/supabase';
+import { useSupabaseInsert } from '../../hooks/useSupabaseData';
 
 export function ProductosTotales() {
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     sucursal: '',
@@ -25,7 +27,6 @@ export function ProductosTotales() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
-  const [xmlFiles, setXmlFiles] = useState<Array<{id: string, name: string, products: any[]}>>([]);
 
   const { data: productos, loading, refetch } = useSupabaseData<any>(
     'productos',
@@ -33,6 +34,7 @@ export function ProductosTotales() {
   );
   const { data: sucursales } = useSupabaseData<any>('sucursales', '*');
   const { data: categorias } = useSupabaseData<any>('categorias', '*');
+  const { insert: insertNotification } = useSupabaseInsert('notificaciones');
 
   const columns = [
     { key: 'checkbox', label: '', width: '40px' },
@@ -50,12 +52,12 @@ export function ProductosTotales() {
 
   // Aplicar filtros
   const filteredProductos = (productos || []).filter(producto => {
+    if (filters.sucursal && filters.sucursal !== '') {
+      // Aplicar filtro de sucursal
+    }
     if (filters.categoria && filters.categoria !== '') {
       const categoria = categorias.find(c => c.nombre.toLowerCase() === filters.categoria.toLowerCase());
       if (categoria && producto.categoria_id !== categoria.id) return false;
-    }
-    if (filters.sucursal && filters.sucursal !== '') {
-      // Apply sucursal filter logic here
     }
     if (filters.disponibilidad === 'disponibles' && (producto.stock || 0) <= 0) return false;
     if (filters.disponibilidad === 'agotados' && (producto.stock || 0) > 0) return false;
@@ -131,61 +133,6 @@ export function ProductosTotales() {
     }
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files) {
-      console.log(`📁 PROCESANDO ${files.length} ARCHIVO(S) XML`);
-      
-      Array.from(files).forEach((file, index) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const content = e.target?.result as string;
-          processXmlFile(file, content);
-        };
-        reader.readAsText(file);
-      });
-    }
-  };
-
-  const processXmlFile = (file: File, content: string) => {
-    try {
-      const parser = new DOMParser();
-      const xmlDoc = parser.parseFromString(content, 'text/xml');
-      
-      const detalles = xmlDoc.querySelectorAll('Detalle');
-      const processedProducts = Array.from(detalles).map(detalle => {
-        const codigo = detalle.querySelector('CdgItem VlrCodigo')?.textContent || '';
-        const nombre = detalle.querySelector('NmbItem')?.textContent || '';
-        const cantidad = parseInt(detalle.querySelector('QtyItem')?.textContent || '0');
-        const costoBase = parseFloat(detalle.querySelector('PrcItem')?.textContent || '0');
-        const costoConIva = Math.round(costoBase * 1.19);
-        
-        return {
-          nombre,
-          codigo,
-          cantidad,
-          costo: costoConIva,
-          descripcion: `Costo con IVA incluido (${costoBase} + 19%)`
-        };
-      });
-      
-      const newXmlFile = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        name: file.name,
-        products: processedProducts
-      };
-      
-      setXmlFiles(prev => [...prev, newXmlFile]);
-      console.log('✅ XML procesado:', file.name, processedProducts.length, 'productos');
-    } catch (error) {
-      console.error('❌ Error procesando XML:', error);
-    }
-  };
-
-  const removeXmlFile = (fileId: string) => {
-    setXmlFiles(prev => prev.filter(f => f.id !== fileId));
-    console.log('🗑️ XML removido:', fileId);
-  };
   const processedData = filteredProductos.map(producto => ({
     id: producto.id,
     producto: producto.nombre,
@@ -237,6 +184,10 @@ export function ProductosTotales() {
      item.sku.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  // Paginación
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -258,6 +209,24 @@ export function ProductosTotales() {
         </div>
         
         <div className="flex items-center space-x-3">
+          {/* Selector de items por página */}
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-600">Mostrar:</span>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => {
+                console.log('🏢 INVENTARIO: Filtro sucursal aplicado:', e.target.value);
+                setItemsPerPage(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+          
           {selectedProducts.size > 0 && (
             <button 
               onClick={handleBulkDelete}
@@ -309,50 +278,102 @@ export function ProductosTotales() {
           </button>
         </div>
       </div>
-
-      {/* XML Files Counter */}
-      {xmlFiles.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-medium text-blue-900">Archivos XML Cargados ({xmlFiles.length})</h3>
-          </div>
-          <div className="space-y-2">
-            {xmlFiles.map((file) => (
-              <div key={file.id} className="flex items-center justify-between bg-white p-3 rounded border">
-                <div>
-                  <span className="font-medium text-gray-900">{file.name}</span>
-                  <span className="text-sm text-gray-500 ml-2">({file.products.length} productos)</span>
-                </div>
-                <button
-                  onClick={() => removeXmlFile(file.id)}
-                  className="text-red-600 hover:text-red-800 p-1"
+      {/* Tabla con paginación mejorada */}
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              {columns.map((column) => (
+                <th
+                  key={column.key}
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  style={{ width: column.width }}
                 >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+                  {column.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {paginatedData.map((row, index) => (
+              <tr key={index} className="hover:bg-gray-50">
+                {columns.map((column) => (
+                  <td key={column.key} className="px-6 py-4 text-sm text-gray-900">
+                    {row[column.key]}
+                  </td>
+                ))}
+              </tr>
             ))}
+          </tbody>
+        </table>
+        
+        {/* Paginación personalizada */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 py-3 border-t border-gray-200 bg-gray-50">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-700">
+                Mostrando {startIndex + 1} a {Math.min(startIndex + itemsPerPage, filteredData.length)} de {filteredData.length} productos
+              </span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 rounded-md text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+              >
+                Anterior
+              </button>
+              
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const page = i + 1;
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-3 py-1 rounded-md text-sm ${
+                        currentPage === page
+                          ? 'bg-blue-600 text-white'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                })}
+              </div>
+              
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 rounded-md text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+              >
+                Siguiente
+              </button>
+            </div>
           </div>
-        </div>
-      )}
-
-      <Table
-        columns={columns}
-        data={filteredData}
-        currentPage={currentPage}
-        totalPages={Math.ceil(filteredData.length / 10)}
-        onPageChange={setCurrentPage}
-      />
+        )}
+      </div>
 
       <ReporteMermas 
         isOpen={showMermasModal} 
-        onClose={() => setShowMermasModal(false)} 
+        onClose={() => setShowMermasModal(false)}
+        onMermaReported={async (mermaData) => {
+          // Crear notificación cuando se reporte una merma
+          await insertNotification({
+            empresa_id: '00000000-0000-0000-0000-000000000001',
+            tipo: 'merma_reportada',
+            titulo: 'Nueva Merma Reportada',
+            mensaje: `Se reportó una merma de ${mermaData.cantidad} unidades por ${mermaData.tipo}`,
+            prioridad: 'media'
+          });
+        }}
       />
       
       <ActualizarInventario 
         isOpen={showInventarioModal} 
         onClose={() => {
           setShowInventarioModal(false);
-          setXmlFiles([]); // Limpiar archivos XML al cerrar
         }} 
       />
       
@@ -428,7 +449,10 @@ export function ProductosTotales() {
           
           <div className="flex justify-end">
             <button
-              onClick={() => setShowFilters(false)}
+              onClick={() => {
+                console.log('✅ INVENTARIO: Filtros aplicados:', filters);
+                setShowFilters(false);
+              }}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               Aplicar filtros

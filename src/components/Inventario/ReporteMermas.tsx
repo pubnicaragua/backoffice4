@@ -6,9 +6,10 @@ import { useSupabaseData, useSupabaseInsert } from '../../hooks/useSupabaseData'
 interface ReporteMermasProps {
   isOpen: boolean;
   onClose: () => void;
+  onMermaReported?: (mermaData: any) => void;
 }
 
-export function ReporteMermas({ isOpen, onClose }: ReporteMermasProps) {
+export function ReporteMermas({ isOpen, onClose, onMermaReported }: ReporteMermasProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
     tipo_merma: 'robo',
@@ -38,6 +39,15 @@ export function ReporteMermas({ isOpen, onClose }: ReporteMermasProps) {
     });
 
     if (success) {
+      // Llamar callback para crear notificación
+      if (onMermaReported) {
+        onMermaReported({
+          tipo: formData.tipo_merma,
+          cantidad: formData.cantidad_mermada,
+          producto: searchTerm
+        });
+      }
+      
       onClose();
       setFormData({
         tipo_merma: 'robo',

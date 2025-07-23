@@ -117,7 +117,7 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({ isOpen
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center">
                 <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-                Martes (Hoy)
+                {new Date().toLocaleDateString('es-CL', { weekday: 'long' })} (Hoy)
               </h3>
               <button 
                 onClick={() => setShowTareaModal(true)}
@@ -136,6 +136,7 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({ isOpen
                   <div>
                     <p className="text-sm font-semibold text-gray-900">{tarea.nombre}</p>
                     <p className="text-sm text-gray-600">{tarea.descripcion}</p>
+                    <p className="text-xs text-blue-600">Asignado para hoy - {new Date().toLocaleDateString('es-CL')}</p>
                   </div>
                 </div>
               ))}
@@ -150,7 +151,10 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({ isOpen
                 Rol actual (Empleado)
               </h3>
               <div className="flex space-x-3">
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                <button 
+                  onClick={() => setShowPermisoModal(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
                   Editar permisos
                 </button>
                 <button 
