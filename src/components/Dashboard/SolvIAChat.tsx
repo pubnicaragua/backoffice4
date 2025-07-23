@@ -19,7 +19,7 @@ export function SolvIAChat({ isOpen, onClose }: SolvIAChatProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: '¡Hola! Soy SolvIA, tu asistente inteligente de Solvendo. ¿En qué puedo ayudarte hoy?',
+      text: '¡Hola! Soy SolvIA, tu asistente inteligente especializado en gestión empresarial. Estoy aquí para ayudarte con análisis de datos, reportes y optimización de procesos. ¿En qué puedo asistirte hoy?',
       isUser: false,
       timestamp: new Date()
     }

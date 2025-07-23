@@ -350,7 +350,10 @@ export function ProductosTotales() {
       
       <ActualizarInventario 
         isOpen={showInventarioModal} 
-        onClose={() => setShowInventarioModal(false)} 
+        onClose={() => {
+          setShowInventarioModal(false);
+          setXmlFiles([]); // Limpiar archivos XML al cerrar
+        }} 
       />
       
       <AgregarProductoModal 

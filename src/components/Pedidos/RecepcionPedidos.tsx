@@ -124,6 +124,11 @@ export function RecepcionPedidos() {
   const handleAgregarPedido = async () => {
     console.log('➕ PEDIDO: Iniciando creación de pedido');
     
+    // Crear pedido con productos del PDF
+    const productosSeleccionados = Object.entries(selectedProducts)
+      .filter(([_, data]) => data.selected)
+      .map(([nombre, data]) => ({ nombre, cantidad: data.cantidad }));
+    
     const success = await insert({
       empresa_id: '00000000-0000-0000-0000-000000000001',
       sucursal_id: '00000000-0000-0000-0000-000000000001',
@@ -131,12 +136,15 @@ export function RecepcionPedidos() {
       folio: `PED-${Date.now()}`,
       fecha: new Date().toISOString(),
       estado: 'pendiente',
-      total: 50000
+      total: productosSeleccionados.reduce((sum, p) => sum + (p.cantidad * 1000), 0)
     });
 
     if (success) {
       console.log('✅ PEDIDO: Pedido creado exitosamente');
       setShowAgregarModal(false);
+      setProductos([]);
+      setSelectedProducts({});
+      setFile(null);
       refetch();
     } else {
       console.error('❌ ERROR: No se pudo crear el pedido');

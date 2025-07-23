@@ -104,14 +104,15 @@ export function DetallePedido({ onBack, pedido }: DetallePedidoProps) {
       <div className="flex items-center space-x-4">
         <button
           onClick={onBack}
-          className="p-2 rounded-md hover:bg-gray-100"
+          className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-4 h-4" />
+          <span>Volver</span>
         </button>
         <h1 className="text-2xl font-semibold text-gray-900">Recepción de pedidos</h1>
         
-        {/* Botón de descarga alineado a la derecha */}
-        <div className="ml-auto">
+        {/* Botones con más margen */}
+        <div className="ml-auto flex space-x-4">
           <button
             onClick={handleDownloadDocument}
             className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"

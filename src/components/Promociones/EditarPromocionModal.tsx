@@ -59,12 +59,23 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
     const success = await update(promocionId, {
       nombre: formData.nombre,
       descripcion: formData.descripcion,
-      costo: parseFloat(formData.costo_unitario) || 1000,
-      disponible: true
+      precio_prom: parseFloat(formData.precio_unitario) || 0,
+      costo: parseFloat(formData.costo_unitario) || 0,
+      disponible: true,
+      activo: true
     });
 
     if (success) {
       console.log('✅ PROMOCIÓN: Actualizada exitosamente');
+      // Reset form
+      setFormData({
+        nombre: '',
+        descripcion: '',
+        sucursales: ['N°1'],
+        costo_unitario: '',
+        precio_unitario: '',
+        sku: ''
+      });
       if (onSuccess) {
         onSuccess();
       } else {

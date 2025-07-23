@@ -335,6 +335,18 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
                 <span className="text-sm text-green-600 ml-2">✓ IVA 19% aplicado</span>
               )}
             </h4>
+            
+            {/* Selector de Sucursal */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Sucursal de destino
+              </label>
+              <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="00000000-0000-0000-0000-000000000001">Sucursal N°1</option>
+                <option value="00000000-0000-0000-0000-000000000002">Sucursal N°2</option>
+              </select>
+            </div>
+            
             <div className="grid grid-cols-4 gap-4 text-sm font-medium text-gray-500 border-b pb-2">
               <span>Producto</span>
               <span>Descripción del Producto</span>
@@ -380,30 +392,6 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
                 </div>
               ))}
             </div>
-            
-            {/* Lista de archivos XML cargados */}
-            {xmlFiles.length > 0 && (
-              <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="font-medium text-blue-900 mb-3">Archivos XML Cargados ({xmlFiles.length})</h4>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                  {xmlFiles.map((file) => (
-                    <div key={file.id} className="flex items-center justify-between bg-white p-3 rounded border">
-                      <div>
-                        <span className="font-medium text-gray-900">{file.name}</span>
-                        <span className="text-sm text-gray-500 ml-2">({file.products.length} productos)</span>
-                      </div>
-                      <button
-                        onClick={() => removeXmlFile(file.id)}
-                        className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded"
-                        title="Remover archivo"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         )}
 
