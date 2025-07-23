@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { Modal } from '../Common/Modal';
-import { useSupabaseInsert } from '../../hooks/useSupabaseData';
+import { useSupabaseInsert, useSupabaseData } from '../../hooks/useSupabaseData';
 
 interface AsignarTurnoModalProps {
   isOpen: boolean;
   onClose: () => void;
+  selectedUser?: any; // User to assign turn to
+  onSuccess?: () => void; // Callback on successful assignment
+
 }
 
 export function AsignarTurnoModal({ isOpen, onClose }: AsignarTurnoModalProps) {
@@ -15,31 +18,42 @@ export function AsignarTurnoModal({ isOpen, onClose }: AsignarTurnoModalProps) {
     hora_salida: '18:00 PM'
   });
 
-  const { insert, loading } = useSupabaseInsert('turnos');
+  const { insert, loading } = useSupabaseInsert('turnos'); // For assigning turns
+  const { data: sucursales } = useSupabaseData<any>('sucursales', '*'); // For available sucursales
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!selectedUser?.id || !formData.fecha_turno || !formData.hora_ingreso || !formData.hora_salida) return;
+
+    const sucursalId = sucursales.find(s => s.nombre === formData.sucursal)?.id || '00000000-0000-0000-0000-000000000001';
+
     const success = await insert({
       empresa_id: '00000000-0000-0000-0000-000000000001',
-      sucursal_id: '00000000-0000-0000-0000-000000000001',
-      usuario_id: '00000000-0000-0000-0000-000000000001',
-      fecha: new Date().toISOString().split('T')[0],
-      hora_ingreso: formData.hora_ingreso,
-      hora_salida: formData.hora_salida
+      sucursal_id: sucursalId,
+      usuario_id: selectedUser.id,
+      fecha: formData.fecha_turno, // Use selected date
+      hora_ingreso: formData.hora_ingreso.replace(' AM', '').replace(' PM', ''), // Clean format
+      hora_salida: formData.hora_salida.replace(' AM', '').replace(' PM', '') // Clean format
     });
 
     if (success) {
       onClose();
     }
+    if (onSuccess) onSuccess();
   };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Asignar turno" size="sm">
+      <p className="text-sm text-gray-600 mb-4">
+        Asignar turno a: <span className="font-medium text-gray-900">
+          {selectedUser?.nombres || 'Usuario Seleccionado'}
+        </span>
+      </p>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Sucursal
+            Sucursal (para el turno)
           </label>
           <select
             value={formData.sucursal}
@@ -47,9 +61,9 @@ export function AsignarTurnoModal({ isOpen, onClose }: AsignarTurnoModalProps) {
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="N°1">N°1</option>
-            <option value="N°2">N°2</option>
-            <option value="N°3">N°3</option>
+            {sucursales.map(s => <option key={s.id} value={s.nombre}>{s.nombre}</option>)}
           </select>
+
         </div>
 
         <div>

@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { Modal } from '../Common/Modal';
-import { useSupabaseInsert } from '../../hooks/useSupabaseData';
+import { useSupabaseInsert, useSupabaseData } from '../../hooks/useSupabaseData';
 
 interface AsignarTareaModalProps {
   isOpen: boolean;
   onClose: () => void;
+  selectedUser?: any; // User to assign task to
+  onSuccess?: () => void; // Callback on successful assignment
+
 }
 
 export function AsignarTareaModal({ isOpen, onClose }: AsignarTareaModalProps) {
@@ -17,26 +20,36 @@ export function AsignarTareaModal({ isOpen, onClose }: AsignarTareaModalProps) {
     hora_fin: '18:00'
   });
 
-  const { insert, loading } = useSupabaseInsert('asignaciones_tareas');
+  const { insert, loading } = useSupabaseInsert('asignaciones_tareas'); // For assigning tasks
+  const { data: tareasDisponibles } = useSupabaseData<any>('tareas', '*'); // For available tasks
+  const { data: sucursales } = useSupabaseData<any>('sucursales', '*'); // For available sucursales
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!selectedUser?.id || !formData.nombre_tarea || !formData.fecha_asignacion) return;
+
     const success = await insert({
-      usuario_id: '00000000-0000-0000-0000-000000000001',
-      tarea_id: '00000000-0000-0000-0000-000000000001',
-      sucursal_id: '00000000-0000-0000-0000-000000000001',
+      usuario_id: selectedUser.id,
+      tarea_id: tareasDisponibles.find(t => t.nombre === formData.nombre_tarea)?.id || '00000000-0000-0000-0000-000000000001', // Find task ID
+      sucursal_id: sucursales[0]?.id || '00000000-0000-0000-0000-000000000001', // Default to first sucursal
       fecha_asignacion: formData.fecha_asignacion,
-      completada: false
+      completada: false,
     });
 
     if (success) {
       onClose();
     }
+    if (onSuccess) onSuccess();
   };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Agregar tarea" size="sm">
+      <p className="text-sm text-gray-600 mb-4">
+        Asignar tarea a: <span className="font-medium text-gray-900">
+          {selectedUser?.nombres || 'Usuario Seleccionado'}
+        </span>
+      </p>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -44,7 +57,12 @@ export function AsignarTareaModal({ isOpen, onClose }: AsignarTareaModalProps) {
           </label>
           <input
             type="text"
-            value={formData.nombre_tarea}
+            list="tareas-list" // Add datalist for suggestions
+            value={formData.nombre_tarea} // Bind to input value
+            onChange={(e) => {
+              setFormData(prev => ({ ...prev, nombre_tarea: e.target.value }));
+              setFormData(prev => ({ ...prev, descripcion: tareasDisponibles.find(t => t.nombre === e.target.value)?.descripcion || '' }));
+            }}
             onChange={(e) => setFormData(prev => ({ ...prev, nombre_tarea: e.target.value }))}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -54,7 +72,7 @@ export function AsignarTareaModal({ isOpen, onClose }: AsignarTareaModalProps) {
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Descripción
           </label>
-          <textarea
+          <textarea // Make this read-only if description is auto-filled
             value={formData.descripcion}
             onChange={(e) => setFormData(prev => ({ ...prev, descripcion: e.target.value }))}
             rows={3}
@@ -65,16 +83,18 @@ export function AsignarTareaModal({ isOpen, onClose }: AsignarTareaModalProps) {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Tipo de tareas
-          </label>
-          <select
-            value={formData.tipo_tareas}
-            onChange={(e) => setFormData(prev => ({ ...prev, tipo_tareas: e.target.value }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="Limpieza">Limpieza</option>
-            <option value="Inventario">Inventario</option>
-            <option value="Atención al cliente">Atención al cliente</option>
-          </select>
+          </label> {/* This field is now derived from the selected task */}
+          <input
+            type="text"
+            value={tareasDisponibles.find(t => t.nombre === formData.nombre_tarea)?.tipo || ''}
+            readOnly // Make it read-only
+            className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-700"
+          />
+          <datalist id="tareas-list">
+            {tareasDisponibles.map(tarea => (
+              <option key={tarea.id} value={tarea.nombre} />
+            ))}
+          </datalist>
         </div>
 
         <div>

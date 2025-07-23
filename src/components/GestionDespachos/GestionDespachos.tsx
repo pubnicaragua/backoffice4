@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Filter, Plus, Download } from 'lucide-react';
 import { DetalleDespacho } from '../Pedidos/DetalleDespacho';
+import { saveAs } from 'file-saver'; // Import file-saver
 import { useSupabaseData, useSupabaseInsert } from '../../hooks/useSupabaseData';
 import { Modal } from '../Common/Modal';
 
@@ -24,7 +25,7 @@ export function GestionDespachos() {
   const { data: usuarios } = useSupabaseData<any>('usuarios', 'id, nombres, apellidos');
 
   // Apply filters
-  const filteredDespachos = (despachos || []).filter(despacho => {
+  const filteredDespachosData = (despachos || []).filter(despacho => {
     if (filters.fecha && !new Date(despacho.fecha || despacho.created_at).toLocaleDateString('es-CL').includes(filters.fecha)) return false;
     if (filters.estado && despacho.estado.toLowerCase() !== filters.estado.toLowerCase()) return false;
     if (filters.sucursal && despacho.sucursal_id !== filters.sucursal) return false;
@@ -32,7 +33,7 @@ export function GestionDespachos() {
   });
 
   const processedData = filteredDespachos.map(despacho => ({
-    id: despacho.id,
+    id: despacho.id, // Keep original ID for detail view
     entregado_por: usuarios.find(u => u.id === despacho.entregado_por)?.nombres || 'Emilio Aguilera',
     folio_factura: despacho.folio || despacho.id?.slice(0, 8) || 'N/A',
     fecha: new Date(despacho.fecha || despacho.created_at),
@@ -43,7 +44,7 @@ export function GestionDespachos() {
     despacho: despacho
   }));
 
-  // Aplicar filtros
+  // Apply search term filter (if any)
   const filteredData = processedData.filter(item => {
     if (filters.fecha && !item.fechaDisplay.includes(filters.fecha)) return false;
     if (filters.estado && item.estado.toLowerCase() !== filters.estado.toLowerCase()) return false;
@@ -94,13 +95,8 @@ export function GestionDespachos() {
       ].join('\n');
     
       const BOM = '\uFEFF';
-      const blob = new Blob([BOM + csvContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `reporte_despachos_${new Date().toISOString().split('T')[0]}.xls`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' }); // Changed to CSV
+      saveAs(blob, `reporte_despachos_${new Date().toISOString().split('T')[0]}.csv`); // Changed to CSV
       console.log('✅ DESPACHO: Reporte descargado');
     } catch (error) {
       console.error('Error downloading report:', error);

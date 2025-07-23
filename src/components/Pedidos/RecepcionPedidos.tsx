@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { DetallePedido } from './DetallePedido';
 import { Filter, Plus, Download } from 'lucide-react';
+import { saveAs } from 'file-saver'; // Import file-saver
 import { useSupabaseData, useSupabaseInsert } from '../../hooks/useSupabaseData';
 import { Modal } from '../Common/Modal';
 
@@ -17,7 +18,7 @@ export function RecepcionPedidos() {
   const [processing, setProcessing] = useState(false);
   const [filters, setFilters] = useState({
     proveedor: '',
-    fecha: '',
+    fecha: '', // Format YYYY-MM-DD
     estado: ''
   });
 
@@ -25,13 +26,13 @@ export function RecepcionPedidos() {
   const { insert, loading: inserting } = useSupabaseInsert('pedidos');
 
   // Procesar datos para mostrar las 5 columnas exactas
-  const processedData = pedidos.map(pedido => ({
+  const processedData = (pedidos || []).map(pedido => ({
     id: pedido.id,
-    proveedor: 'Pola - cola',
+    proveedor: pedido.proveedor_id || 'Pola - cola', // Assuming proveedor_id is the name or can be fetched
     folio_factura: pedido.folio || `PED-${pedido.id?.slice(0, 8)}`,
     fecha: new Date(pedido.fecha_pedido || pedido.created_at).toLocaleDateString('es-CL'),
     monto_total: `$${(pedido.total || Math.floor(Math.random() * 100000 + 10000)).toLocaleString('es-CL')}`,
-    sucursal_captura: 'Sucursal N°1',
+    sucursal_captura: pedido.sucursal_id || 'Sucursal N°1', // Assuming sucursal_id is the name or can be fetched
     pedido: pedido
   }));
 
@@ -56,7 +57,7 @@ export function RecepcionPedidos() {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const uploadedFile = event.target.files?.[0];
     if (uploadedFile) {
-      console.log(`📁 PROCESANDO ARCHIVO PDF: ${uploadedFile.name}`);
+      console.log(`📁 PEDIDO: Procesando archivo PDF: ${uploadedFile.name}`);
       setFile(uploadedFile);
       processFile(uploadedFile);
     }
@@ -65,7 +66,7 @@ export function RecepcionPedidos() {
   const processFile = async (file: File) => {
     setProcessing(true);
     try {
-      console.log('📋 PEDIDO: Procesando PDF real', file.name);
+      console.log('📋 PEDIDO: Procesando PDF para extracción de productos', file.name);
       
       // Leer el contenido del PDF
       const text = await file.text();
@@ -107,7 +108,7 @@ export function RecepcionPedidos() {
         );
       }
       
-      console.log('✅ PEDIDO: PDF procesado', processedProducts.length, 'productos');
+      console.log('✅ PEDIDO: PDF procesado, productos detectados:', processedProducts.length);
       setProductos(processedProducts);
     } catch (error) {
       console.error('❌ ERROR PROCESANDO PDF:', error);
@@ -163,9 +164,41 @@ export function RecepcionPedidos() {
     }
   };
 
-  const handleDownloadReport = () => {
-    console.log('📊 PEDIDO: Generando reporte de pedidos');
-    // Implementar lógica de descarga
+  const handleDownloadReport = (type: 'full' | 'template') => {
+    if (type === 'full') {
+      console.log('📊 PEDIDO: Generando reporte completo de pedidos');
+      const headers = ['Proveedor', 'Folio Factura', 'Fecha', 'Monto Total', 'Sucursal Captura'];
+      const csvContent = [
+        headers.join(','),
+        ...filteredData.map(row => [
+          row.proveedor,
+          row.folio_factura,
+          row.fecha,
+          row.monto_total.replace('$', '').replace(/\./g, ''), // Clean format for numbers
+          row.sucursal_captura
+        ].join(','))
+      ].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      saveAs(blob, `reporte_pedidos_${new Date().toISOString().split('T')[0]}.csv`);
+      console.log('✅ PEDIDO: Reporte completo descargado');
+    } else if (type === 'template') {
+      console.log('📊 PEDIDO: Generando plantilla de productos y stock');
+      const headers = ['Producto', 'Stock'];
+      const csvContent = [
+        headers.join(','),
+        // Puedes añadir productos existentes aquí si quieres que el usuario los vea
+        // Por ahora, solo la cabecera para una plantilla vacía
+      ].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      saveAs(blob, `plantilla_productos_stock_${new Date().toISOString().split('T')[0]}.csv`);
+      console.log('✅ PEDIDO: Plantilla de productos y stock descargada');
+    }
+  };
+
+  if (showDetalle) {
+    return <DetallePedido onBack={() => setShowDetalle(false)} pedido={selectedPedido} />;
   };
 
   return (
@@ -206,14 +239,24 @@ export function RecepcionPedidos() {
             <span>Agregar pedido recibido</span>
           </button>
           <button 
-            onClick={handleDownloadReport}
+            onClick={() => handleDownloadReport('full')}
             className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             <Download className="w-4 h-4" />
-            <span>Descargar</span>
+            <span>Descargar Reporte</span>
+          </button>
+          <button 
+            onClick={() => handleDownloadReport('template')}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            <Download className="w-4 h-4" />
+            <span>Descargar Plantilla</span>
           </button>
         </div>
       </div>
+
+      {/* Modal Detalle (Rendered conditionally outside the main return for full page view) */}
+      {/* This section is now handled by the conditional return at the top */}
 
       {/* Tabla con las 5 columnas exactas */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -242,7 +285,7 @@ export function RecepcionPedidos() {
               <tr 
                 key={index} 
                 className="hover:bg-gray-50 cursor-pointer"
-                onClick={() => handleViewDetalle(row.pedido)}
+                onClick={() => handleViewDetalle(row.pedido)} // Pass the full pedido object
               >
                 <td className="px-6 py-4 text-sm text-gray-900">{row.proveedor}</td>
                 <td className="px-6 py-4 text-sm text-gray-900">{row.folio_factura}</td>
@@ -532,8 +575,5 @@ export function RecepcionPedidos() {
           )}
         </div>
       </Modal>
-
-      {/* Modal Detalle */}
-    </div>
   );
 }

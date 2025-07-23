@@ -42,7 +42,7 @@ export function ReporteMermas({ isOpen, onClose, onMermaReported }: ReporteMerma
       // Llamar callback para crear notificación
       if (onMermaReported) {
         onMermaReported({
-          tipo: formData.tipo_merma,
+          tipo: formData.tipo_merma, // Pasa el tipo de merma
           cantidad: formData.cantidad_mermada,
           producto: searchTerm
         });

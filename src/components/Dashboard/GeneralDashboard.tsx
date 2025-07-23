@@ -222,17 +222,7 @@ export default function GeneralDashboard() {
       <div className="bg-blue-600 text-white p-6 rounded-lg relative overflow-hidden cursor-pointer" onClick={() => setShowChat(true)}>
         <div className="relative z-10">
           <h3 className="text-lg font-semibold mb-2">¡Hola, soy SolvIA!</h3>
-          <p className="text-blue-100 mb-4">Tu asistente especializado en gestión empresarial.</p>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              console.log('📊 CAMBIANDO PERÍODO:', showPreviousPeriod ? 'actual' : 'anterior');
-              setShowPreviousPeriod(!showPreviousPeriod);
-            }}
-            className="text-xs bg-blue-500 px-2 py-1 rounded"
-          >
-            {showPreviousPeriod ? 'Período actual' : 'Período anterior'}
-          </button>
+          <p className="text-blue-100 mb-4">Tu asistente inteligente especializado en gestión empresarial.</p>
         </div>
         <div className="absolute bottom-4 right-4">
           <div className="w-12 h-12 bg-black bg-opacity-20 rounded-full flex items-center justify-center">

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Modal } from '../Common/Modal';
-import { useSupabaseUpdate, useSupabaseData } from '../../hooks/useSupabaseData';
+import { useSupabaseUpdate, useSupabaseData } from '../../hooks/useSupabaseData'; // Ensure useSupabaseData is imported
 import { supabase } from '../../lib/supabase';
 
 interface EditarPromocionModalProps {
@@ -17,7 +17,7 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
     sucursales: ['N°1'] as string[],
     costo_unitario: '',
     precio_unitario: '',
-    sku: ''
+    sku: '' // This SKU is for the promotion itself, not a product
   });
   const [productosPromocion, setProductosPromocion] = useState<any[]>([]);
 
@@ -34,10 +34,10 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
         costo_unitario: promocion.promocion?.costo?.toString() || '',
         precio_unitario: promocion.promocion?.precio_prom?.toString() || '',
         sku: promocion.promocion?.codigo || ''
-      });
+      }); // Initialize form data with existing promotion data
       
-      // Set productos for this promotion
-      const productosRelacionados = productos.filter(p => 
+      // Filter products that are part of this promotion (example logic)
+      const productosRelacionados = (productos || []).filter(p => 
         p.nombre.toLowerCase().includes(promocion.nombre?.toLowerCase() || '') ||
         p.codigo === promocion.sku
       );
@@ -45,6 +45,10 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
     }
   }, [promocion, productos]);
 
+  // Explanation for the user:
+  // The `promocion` prop contains the data of the promotion being edited.
+  // `productos` is a list of all available products from Supabase.
+  // `productosPromocion` is a filtered list of products that are associated with this specific promotion.
   const handleSucursalChange = (sucursal: string, checked: boolean) => {
     setFormData(prev => ({
       ...prev,
@@ -177,7 +181,7 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
               <p className="text-sm"><strong>Nombre:</strong> {formData.nombre}</p>
               <p className="text-sm"><strong>Descripción:</strong> {formData.descripcion}</p>
               <p className="text-sm"><strong>Precio promocional:</strong> ${parseFloat(formData.precio_unitario || '0').toLocaleString('es-CL')}</p>
-              <p className="text-sm"><strong>Costo:</strong> ${parseFloat(formData.costo_unitario || '0').toLocaleString('es-CL')}</p>
+              <p className="text-sm"><strong>Costo de la promoción:</strong> ${parseFloat(formData.costo_unitario || '0').toLocaleString('es-CL')}</p>
               <p className="text-sm"><strong>Productos relacionados:</strong> {productosPromocion.length}</p>
               <div className="mt-2">
                 <p className="text-xs font-medium text-blue-800">Productos:</p>

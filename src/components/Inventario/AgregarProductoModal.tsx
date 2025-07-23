@@ -16,7 +16,7 @@ export function AgregarProductoModal({ isOpen, onClose, selectedProduct, onSucce
     descripcion: '',
     se_vende_por: 'unidad',
     codigo_unitario: '',
-    precio_unitario: '',
+    precio_unitario: '', // Precio de venta
     sku: '',
     agregar_stock: '',
     costo: ''
@@ -33,7 +33,7 @@ export function AgregarProductoModal({ isOpen, onClose, selectedProduct, onSucce
         categoria: selectedProduct.categoria || '',
         descripcion: selectedProduct.descripcion || '',
         se_vende_por: selectedProduct.unidad === 'KG' ? 'kilogramo' : 'unidad',
-        codigo_unitario: selectedProduct.codigo || '',
+        codigo_unitario: selectedProduct.codigo || '', // SKU
         precio_unitario: selectedProduct.precio?.toString() || '',
         sku: selectedProduct.codigo || '',
         agregar_stock: selectedProduct.stock?.toString() || '',
@@ -47,7 +47,7 @@ export function AgregarProductoModal({ isOpen, onClose, selectedProduct, onSucce
         descripcion: '',
         se_vende_por: 'unidad',
         codigo_unitario: '',
-        precio_unitario: '',
+        precio_unitario: '', // Precio de venta
         sku: '',
         agregar_stock: '',
         costo: ''
@@ -65,7 +65,7 @@ export function AgregarProductoModal({ isOpen, onClose, selectedProduct, onSucce
         descripcion: '',
         se_vende_por: 'unidad',
         codigo_unitario: '',
-        precio_unitario: '',
+        precio_unitario: '', // Precio de venta
         sku: '',
         agregar_stock: '',
         costo: ''
@@ -205,7 +205,22 @@ export function AgregarProductoModal({ isOpen, onClose, selectedProduct, onSucce
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4">
+        <div>
+          <label htmlFor="producto-sku" className="block text-sm font-medium text-gray-700 mb-1">
+            SKU (Opcional)
+          </label>
+          <input
+            id="producto-sku"
+            name="producto-sku"
+            type="text"
+            value={formData.sku}
+            onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
+            placeholder="SKU específico"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label htmlFor="costo-producto" className="block text-sm font-medium text-gray-700 mb-1">
               Costo
@@ -220,9 +235,6 @@ export function AgregarProductoModal({ isOpen, onClose, selectedProduct, onSucce
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-        </div>
-        
-        <div className="grid grid-cols-1 gap-4">
           <div>
             <label htmlFor="precio-unitario" className="block text-sm font-medium text-gray-700 mb-1">
               Precio de venta
@@ -238,21 +250,6 @@ export function AgregarProductoModal({ isOpen, onClose, selectedProduct, onSucce
               required
             />
           </div>
-        </div>
-
-        <div>
-          <label htmlFor="producto-sku" className="block text-sm font-medium text-gray-700 mb-1">
-            SKU (Opcional)
-          </label>
-          <input
-            id="producto-sku"
-            name="producto-sku"
-            type="text"
-            value={formData.sku}
-            onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
-            placeholder="SKU específico"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
         </div>
 
         <div>

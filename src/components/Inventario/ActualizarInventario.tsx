@@ -16,25 +16,27 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
   const [processing, setProcessing] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<{[key: string]: {selected: boolean, cantidad: number, descripcion?: string}}>({});
   const [xmlFiles, setXmlFiles] = useState<Array<{id: string, name: string, products: any[]}>>([]);
-  const [sucursalDestino, setSucursalDestino] = useState('00000000-0000-0000-0000-000000000001');
 
   const { insert, loading } = useSupabaseInsert('inventario');
   const { data: productosExistentes } = useSupabaseData<any>('productos', '*');
   const { data: sucursales } = useSupabaseData<any>('sucursales', '*');
+  
+  const [sucursalDestino, setSucursalDestino] = useState(sucursales[0]?.id || '');
 
   const removeXmlFile = (fileId: string) => {
     setXmlFiles(prev => prev.filter(f => f.id !== fileId));
-    
-    // Update productos list when XML files change
-    const remainingProducts = xmlFiles
-      .filter(f => f.id !== fileId)
+    // Recalculate products from remaining XML files
+    const remainingProducts = xmlFiles.filter(f => f.id !== fileId)
       .flatMap(f => f.products);
     setProductos(remainingProducts);
     
-    // Clear selected products for removed file
-    setSelectedProducts({});
-    
-    console.log('🗑️ XML removido y productos actualizados:', fileId);
+    // Clear selected products that are no longer in the list
+    setSelectedProducts(prev => {
+      const newSelection = {};
+      remainingProducts.forEach(p => { if (prev[p.nombre]) newSelection[p.nombre] = prev[p.nombre]; });
+      return newSelection;
+    });
+    console.log('🗑️ XML removido y productos actualizados:', fileId, remainingProducts.length);
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,12 +44,14 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
     if (uploadedFiles && uploadedFiles.length > 0) {
       console.log(`📁 PROCESANDO ${uploadedFiles.length} ARCHIVO(S) ${uploadMethod.toUpperCase()}`);
       
-      if (uploadedFiles.length === 1) {
-        setFile(uploadedFiles[0]);
-        processFile(uploadedFiles[0]);
-      } else {
+      // Always process multiple files, even if only one is selected
+      // This ensures the xmlFiles state is always an array of processed files
+      setFile(uploadedFiles[0]); // Set the first file for single file display
+      if (uploadMethod === 'xml') { // Only XML files are managed as multiple "loaded files"
         // Procesar múltiples archivos
         processMultipleFiles(Array.from(uploadedFiles));
+      } else {
+        processFile(uploadedFiles[0]);
       }
     }
   };
@@ -58,13 +62,14 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
     
     try {
       for (const file of files) {
-        console.log(`📄 PROCESANDO ARCHIVO: ${file.name}`);
+        console.log(`📄 PROCESANDO ARCHIVO XML: ${file.name}`);
         const fileProducts = await processFileContent(file);
-        allProducts = [...allProducts, ...fileProducts];
+        allProducts.push({ id: Date.now().toString() + Math.random().toString(36).substr(2, 9), name: file.name, products: fileProducts });
       }
       
-      console.log(`✅ TOTAL PRODUCTOS PROCESADOS: ${allProducts.length}`);
-      setProductos(allProducts);
+      setXmlFiles(allProducts); // Store all processed XML files
+      setProductos(allProducts.flatMap(f => f.products)); // Flatten products for display
+      console.log(`✅ TOTAL ARCHIVOS XML PROCESADOS: ${allProducts.length}`);
     } catch (error) {
       console.error('❌ ERROR PROCESANDO MÚLTIPLES ARCHIVOS:', error);
       alert('Error al procesar los archivos');
@@ -75,22 +80,10 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
 
   const processFile = async (file: File) => {
     setProcessing(true);
+    setXmlFiles([]); // Clear XML files for non-XML uploads
     try {
       const processedProducts = await processFileContent(file);
       setProductos(processedProducts);
-      
-      // Add to XML files list
-      const newXmlFile = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        name: file.name,
-        products: processedProducts
-      };
-      setXmlFiles(prev => [...prev, newXmlFile]);
-      
-      
-      // Update productos list with all XML files
-      const allProducts = [...xmlFiles, newXmlFile].flatMap(f => f.products);
-      setProductos(allProducts);
     } catch (error) {
       console.error('❌ ERROR PROCESANDO ARCHIVO:', error);
       alert('Error al procesar el archivo');
@@ -323,7 +316,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
         </div>
 
         {/* Lista de archivos XML cargados */}
-        {xmlFiles.length > 0 && (
+        {uploadMethod === 'xml' && xmlFiles.length > 0 && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <h4 className="font-medium text-blue-900 mb-3">📁 Archivos XML Cargados ({xmlFiles.length})</h4>
             <div className="space-y-2">
@@ -347,7 +340,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
         )}
 
         {/* Preview */}
-        {productos.length > 0 && (
+        {productos.length > 0 && sucursalDestino && (
           <div>
             <h4 className="font-medium text-gray-900 mb-2">
               Productos encontrados ({productos.length})
@@ -363,7 +356,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
               </label>
               <select 
                 value={sucursalDestino}
-                onChange={(e) => setSucursalDestino(e.target.value)}
+                onChange={(e) => setSucursalDestino(e.target.value as string)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {sucursales.map(sucursal => (
@@ -372,7 +365,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
               </select>
             </div>
             
-            <div className="grid grid-cols-4 gap-4 text-sm font-medium text-gray-500 border-b pb-2">
+            <div className="grid grid-cols-4 gap-4 text-sm font-medium text-gray-500 border-b pb-2 mb-2">
               <span>Producto</span>
               <span>Descripción del Producto</span>
               <span>Cantidad</span>
@@ -387,7 +380,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
                     value={selectedProducts[producto.nombre]?.descripcion || producto.descripcion || ''}
                     onChange={(e) => {
                       setSelectedProducts(prev => ({
-                        ...prev,
+                        ...prev, // Keep existing selections
                         [producto.nombre]: {
                           selected: true,
                           cantidad: prev[producto.nombre]?.cantidad || producto.cantidad,
@@ -403,7 +396,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
                     value={selectedProducts[producto.nombre]?.cantidad || producto.cantidad}
                     onChange={(e) => {
                       setSelectedProducts(prev => ({
-                        ...prev,
+                        ...prev, // Keep existing selections
                         [producto.nombre]: {
                           selected: true,
                           cantidad: parseInt(e.target.value) || 0,
@@ -420,7 +413,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
           </div>
         )}
 
-        {file && (
+        {file && uploadMethod !== 'xml' && ( // Only show single file upload message if not XML
           <div className="flex items-center space-x-2 p-3 bg-green-50 rounded-lg">
             <FileText className="w-5 h-5 text-green-600" />
             <span className="text-sm text-green-800">Archivo cargado: {file.name}</span>
