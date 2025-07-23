@@ -92,21 +92,21 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({ isOpen
 
           {/* Botones de acción */}
           <div className="flex justify-center space-x-4 py-4">
-            <button 
+            <button
               onClick={() => setShowTareaModal(true)}
-              className="px-6 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+              className="px-6 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               Tareas
             </button>
-            <button 
+            <button
               onClick={() => setShowTurnoModal(true)}
-              className="px-6 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm"
+              className="px-6 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               Turnos
             </button>
-            <button 
+            <button
               onClick={() => setShowPermisoModal(true)}
-              className="px-6 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-sm"
+              className="px-6 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               Permisos
             </button>
@@ -121,7 +121,7 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({ isOpen
               </h3>
               <button 
                 onClick={() => setShowTareaModal(true)}
-                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 Agregar tarea
               </button>
@@ -150,12 +150,12 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({ isOpen
                 Rol actual (Empleado)
               </h3>
               <div className="flex space-x-3">
-                <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                   Editar permisos
                 </button>
                 <button 
                   onClick={() => setShowPermisoModal(true)}
-                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
                   Asignar permisos
                 </button>

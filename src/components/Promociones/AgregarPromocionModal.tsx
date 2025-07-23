@@ -54,16 +54,16 @@ export function AgregarPromocionModal({ isOpen, onClose, onSuccess }: AgregarPro
       producto_seleccionado: producto,
       sku: producto.codigo
     }));
-    setSearchTerm(producto.nombre);
+    setSearchTerm(''); // Clear search instead of keeping product name
   };
 
   const handleAgregarOtroProducto = () => {
-    if (formData.producto_seleccionado && formData.precio_promocion) {
+    if (formData.producto_seleccionado) {
       const nuevoProducto = {
         nombre: formData.nombre || formData.producto_seleccionado.nombre,
         descripcion: formData.descripcion || formData.producto_seleccionado.descripcion,
         precio_real: formData.producto_seleccionado.precio,
-        precio_promocion: parseFloat(formData.precio_promocion),
+        precio_promocion: parseFloat(formData.precio_promocion) || formData.producto_seleccionado.precio * 0.8,
         sku: formData.sku,
         sucursales: [...formData.sucursales],
         producto: formData.producto_seleccionado
@@ -71,10 +71,9 @@ export function AgregarPromocionModal({ isOpen, onClose, onSuccess }: AgregarPro
       
       setProductosAgregados(prev => [...prev, nuevoProducto]);
       
-      // Limpiar solo campos específicos, mantener nombre y descripción
+      // Clear product-specific fields but keep promotion info
       setFormData(prev => ({
         ...prev,
-        precio_promocion: '',
         sku: '',
         producto_seleccionado: null
       }));
@@ -245,7 +244,8 @@ export function AgregarPromocionModal({ isOpen, onClose, onSuccess }: AgregarPro
               </div>
             )}
 
-            <div>
+            {productosAgregados.length === 0 && (
+              <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Precio de promoción
               </label>
@@ -255,22 +255,22 @@ export function AgregarPromocionModal({ isOpen, onClose, onSuccess }: AgregarPro
                 onChange={(e) => setFormData(prev => ({ ...prev, precio_promocion: e.target.value }))}
                 placeholder="Precio promocional"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
               />
             </div>
+            )}
 
             <div className="flex justify-center space-x-3">
               <button
                 type="button"
                 onClick={handleAgregarOtroProducto}
-                disabled={!formData.producto_seleccionado || !formData.precio_promocion}
+                disabled={!formData.producto_seleccionado}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg disabled:opacity-50"
               >
                 Agregar otro producto
               </button>
               <button
                 type="submit"
-                disabled={loading || (productosAgregados.length === 0 && (!formData.producto_seleccionado || !formData.precio_promocion))}
+                disabled={loading || (productosAgregados.length === 0 && !formData.producto_seleccionado)}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
                 {loading ? 'Guardando...' : `Guardar ${productosAgregados.length > 0 ? productosAgregados.length : 1} promoción(es)`}
@@ -284,6 +284,14 @@ export function AgregarPromocionModal({ isOpen, onClose, onSuccess }: AgregarPro
           <div className="w-80 bg-gray-50 rounded-lg p-4">
             <h4 className="font-medium text-gray-900 mb-3">
               📋 Productos agregados ({productosAgregados.length})
+            </h4>
+            <div className="mb-3 p-2 bg-blue-50 rounded border border-blue-200">
+              <p className="text-sm font-medium text-blue-900">Resumen Ejecutivo:</p>
+              <p className="text-xs text-blue-700">
+                Promoción: {formData.nombre || 'Sin nombre'}<br/>
+                Precio promocional: ${formData.precio_promocion ? parseFloat(formData.precio_promocion).toLocaleString('es-CL') : 'No definido'}<br/>
+                Productos: {productosAgregados.length}
+              </p>
             </h4>
             <div className="space-y-2 max-h-64 overflow-y-auto">
               {productosAgregados.map((producto, index) => (

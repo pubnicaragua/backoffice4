@@ -16,12 +16,25 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
   const [processing, setProcessing] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<{[key: string]: {selected: boolean, cantidad: number, descripcion?: string}}>({});
   const [xmlFiles, setXmlFiles] = useState<Array<{id: string, name: string, products: any[]}>>([]);
+  const [sucursalDestino, setSucursalDestino] = useState('00000000-0000-0000-0000-000000000001');
 
   const { insert, loading } = useSupabaseInsert('inventario');
   const { data: productosExistentes } = useSupabaseData<any>('productos', '*');
+  const { data: sucursales } = useSupabaseData<any>('sucursales', '*');
 
   const removeXmlFile = (fileId: string) => {
     setXmlFiles(prev => prev.filter(f => f.id !== fileId));
+    
+    // Update productos list when XML files change
+    const remainingProducts = xmlFiles
+      .filter(f => f.id !== fileId)
+      .flatMap(f => f.products);
+    setProductos(remainingProducts);
+    
+    // Clear selected products for removed file
+    setSelectedProducts({});
+    
+    console.log('🗑️ XML removido y productos actualizados:', fileId);
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,6 +87,10 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
       };
       setXmlFiles(prev => [...prev, newXmlFile]);
       
+      
+      // Update productos list with all XML files
+      const allProducts = [...xmlFiles, newXmlFile].flatMap(f => f.products);
+      setProductos(allProducts);
     } catch (error) {
       console.error('❌ ERROR PROCESANDO ARCHIVO:', error);
       alert('Error al procesar el archivo');
@@ -208,7 +225,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
         // Registrar movimiento de inventario
         await insert({
           empresa_id: '00000000-0000-0000-0000-000000000001',
-          sucursal_id: '00000000-0000-0000-0000-000000000001',
+          sucursal_id: sucursalDestino,
           producto_id: newProduct.id,
           movimiento: 'entrada',
           cantidad: cantidadFinal,
@@ -234,6 +251,9 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
     console.log('🔄 INVENTARIO: Sincronizando con terminales POS...');
     
     onClose();
+    setXmlFiles([]); // Clear XML files
+    setProductos([]); // Clear products list
+    setSelectedProducts({}); // Clear selections
     window.location.reload(); // Refresh para mostrar nuevos productos
   };
 
@@ -341,9 +361,14 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Sucursal de destino
               </label>
-              <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="00000000-0000-0000-0000-000000000001">Sucursal N°1</option>
-                <option value="00000000-0000-0000-0000-000000000002">Sucursal N°2</option>
+              <select 
+                value={sucursalDestino}
+                onChange={(e) => setSucursalDestino(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {sucursales.map(sucursal => (
+                  <option key={sucursal.id} value={sucursal.id}>{sucursal.nombre}</option>
+                ))}
               </select>
             </div>
             

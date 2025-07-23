@@ -19,8 +19,10 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
     precio_unitario: '',
     sku: ''
   });
+  const [productosPromocion, setProductosPromocion] = useState<any[]>([]);
 
   const { update, loading } = useSupabaseUpdate('promociones');
+  const { data: productos } = useSupabaseData<any>('productos', '*');
   
   // Update form when promocion changes
   React.useEffect(() => {
@@ -33,6 +35,13 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
         precio_unitario: promocion.promocion?.precio_prom?.toString() || '',
         sku: promocion.promocion?.codigo || ''
       });
+      
+      // Set productos for this promotion
+      const productosRelacionados = productos.filter(p => 
+        p.nombre.toLowerCase().includes(promocion.nombre?.toLowerCase() || '') ||
+        p.codigo === promocion.sku
+      );
+      setProductosPromocion(productosRelacionados);
     }
   }, [promocion]);
 
@@ -159,6 +168,29 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
             />
           </div>
         </div>
+
+        {/* Resumen Ejecutivo */}
+        {productosPromocion.length > 0 && (
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <h4 className="font-medium text-blue-900 mb-3">📋 Resumen Ejecutivo de la Promoción</h4>
+            <div className="space-y-2">
+              <p className="text-sm"><strong>Nombre:</strong> {formData.nombre}</p>
+              <p className="text-sm"><strong>Descripción:</strong> {formData.descripcion}</p>
+              <p className="text-sm"><strong>Precio promocional:</strong> ${parseFloat(formData.precio_unitario || '0').toLocaleString('es-CL')}</p>
+              <p className="text-sm"><strong>Costo:</strong> ${parseFloat(formData.costo_unitario || '0').toLocaleString('es-CL')}</p>
+              <p className="text-sm"><strong>Productos relacionados:</strong> {productosPromocion.length}</p>
+              <div className="mt-2">
+                <p className="text-xs font-medium text-blue-800">Productos:</p>
+                {productosPromocion.slice(0, 3).map((producto, index) => (
+                  <p key={index} className="text-xs text-blue-700">• {producto.nombre} (${producto.precio?.toLocaleString('es-CL')})</p>
+                ))}
+                {productosPromocion.length > 3 && (
+                  <p className="text-xs text-blue-600">... y {productosPromocion.length - 3} más</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -31,24 +31,15 @@ export function LoginForm() {
       setLoading(true);
       setError('');
       
-      // Try to sign up the test user, but ignore if already exists
-      try {
-        await supabase.auth.signUp({
-          email: 'test@example.com',
-          password: 'password123',
-        });
-      } catch (signUpError) {
-        // Ignore "user already exists" error, continue to sign in
-        if (!signUpError.message?.includes('already registered') && 
-            !signUpError.message?.includes('already exists')) {
-          throw signUpError;
-        }
-      }
-      
-      // Now try to sign in
+      // Directly sign in without trying to sign up first
       await signIn('test@example.com', 'password123');
     } catch (err: any) {
-      setError('Error en login rápido: ' + err.message);
+      // If user doesn't exist, show friendly message
+      if (err.message?.includes('Invalid login credentials')) {
+        setError('✅ Usuario de prueba no existe. Usa "Usar credenciales de prueba" para configurar el formulario.');
+      } else {
+        setError('Error en login rápido: ' + err.message);
+      }
     } finally {
       setLoading(false);
     }
