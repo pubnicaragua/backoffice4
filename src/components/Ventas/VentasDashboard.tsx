@@ -11,7 +11,7 @@ import {
   Clock, // For last update timestamp
   TrendingUp
 } from 'lucide-react';
-import { ResponsiveContainer, ComposedChart, CartesianGrid, XAxis, YAxis, Line, Tooltip, Legend } from 'recharts';
+import { ResponsiveContainer, ComposedChart, CartesianGrid, XAxis, YAxis, Line, Tooltip, Legend, Brush } from 'recharts';
 import { useSupabaseData } from '../../hooks/useSupabaseData'; // Keep this for data fetching
 import toast from 'react-hot-toast'; // For notifications
 
@@ -112,6 +112,42 @@ export function VentasDashboard() {
   }, [filteredVentas, filters.fechaFin, productos, ventaItems, showAnterior]);
 
   const calculateMonthlyChartData = React.useCallback(() => {
+    // Si hay filtros de fecha específicos, crear datos por día
+    if (filters.fechaInicio && filters.fechaFin) {
+      const startDate = new Date(filters.fechaInicio);
+      const endDate = new Date(filters.fechaFin);
+      const dayData = [];
+      
+      // Crear datos día por día
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        const dayName = d.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' });
+        const currentYear = d.getFullYear();
+        const previousYear = currentYear - 1;
+        
+        const dayEntry = { mes: dayName, actual: 0, anterior: 0 };
+        
+        filteredVentas.forEach(venta => {
+          const ventaDate = new Date(venta.fecha);
+          if (ventaDate.toDateString() === d.toDateString()) {
+            const year = ventaDate.getFullYear();
+            const total = parseFloat(venta.total) || 0;
+            
+            if (year === currentYear) {
+              dayEntry.actual += total;
+            } else if (year === previousYear) {
+              dayEntry.anterior += total;
+            }
+          }
+        });
+        
+        dayData.push(dayEntry);
+      }
+      
+      setMonthlyChartData(dayData);
+      return;
+    }
+    
+    // Lógica original para meses
     const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     
     // Si hay filtros de fecha específicos, mostrar solo ese rango
@@ -440,6 +476,7 @@ export function VentasDashboard() {
                   dot={false}
                   name="Período seleccionado"
                 />
+                <Brush dataKey="mes" height={30} stroke="#1E40AF" />
                 <Legend layout="horizontal" verticalAlign="bottom" align="center" />
               </ComposedChart>
             </ResponsiveContainer>

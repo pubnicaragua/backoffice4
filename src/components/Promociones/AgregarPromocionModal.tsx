@@ -69,7 +69,17 @@ export function AgregarPromocionModal({ isOpen, onClose, onSuccess }: AgregarPro
         producto: formData.producto_seleccionado
       };
       
-      setProductosAgregados(prev => [...prev, nuevoProducto]);
+      setProductosAgregados(prev => {
+        // Verificar si el producto ya existe
+        const exists = prev.find(p => p.sku === nuevoProducto.sku);
+        if (exists) {
+          // Actualizar producto existente
+          return prev.map(p => p.sku === nuevoProducto.sku ? nuevoProducto : p);
+        } else {
+          // Agregar nuevo producto
+          return [...prev, nuevoProducto];
+        }
+      });
       
       // Clear product-specific fields but keep promotion info
       setFormData(prev => ({
@@ -285,31 +295,32 @@ export function AgregarPromocionModal({ isOpen, onClose, onSuccess }: AgregarPro
             <h4 className="font-medium text-gray-900 mb-3">
               📋 Productos agregados ({productosAgregados.length})
             </h4>
-            <div className="mb-3 p-2 bg-blue-50 rounded border border-blue-200">
-              <p className="text-sm font-medium text-blue-900">Resumen Ejecutivo:</p>
-              <p className="text-xs text-blue-700">
-                Promoción: {formData.nombre || 'Sin nombre'}<br/>
-                Precio promocional: ${formData.precio_promocion ? parseFloat(formData.precio_promocion).toLocaleString('es-CL') : 'No definido'}<br/>
-                Productos: {productosAgregados.length}
-              </p>
-            </div>
-            {/* Productos en la promoción */}
-            {formData.producto_seleccionado && (
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <h4 className="font-medium text-blue-900 mb-3">📦 Productos en esta promoción</h4>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between bg-white p-3 rounded border">
-                    <div>
-                      <p className="font-medium text-sm">{formData.producto_seleccionado.nombre}</p>
-                      <p className="text-xs text-gray-500">SKU: {formData.producto_seleccionado.codigo}</p>
-                      <p className="text-xs text-gray-500">Precio original: ${formData.producto_seleccionado.precio?.toLocaleString('es-CL')}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-green-600">
-                        Precio promocional: ${parseFloat(formData.precio_promocion || '0').toLocaleString('es-CL')}
-                      </p>
-                    </div>
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {productosAgregados.map((producto, index) => (
+                <div key={index} className="flex items-center justify-between bg-white p-3 rounded border">
+                  <div>
+                    <p className="font-medium text-sm">{producto.nombre}</p>
+                    <p className="text-xs text-gray-500">SKU: {producto.sku}</p>
+                    <p className="text-xs text-gray-500">Precio: ${producto.precio_real?.toLocaleString('es-CL')}</p>
                   </div>
+                  <button
+                    onClick={() => handleRemoverProducto(index)}
+                    className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded"
+                    title="Eliminar producto"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            
+            {/* Producto actual siendo editado */}
+            {formData.producto_seleccionado && (
+              <div className="mt-3 bg-blue-50 p-3 rounded border border-blue-200">
+                <h5 className="text-sm font-medium text-blue-900 mb-2">Producto actual:</h5>
+                <div className="text-xs text-blue-700">
+                  <p>{formData.producto_seleccionado.nombre}</p>
+                  <p>Precio promocional: ${parseFloat(formData.precio_promocion || '0').toLocaleString('es-CL')}</p>
                 </div>
               </div>
             )}
