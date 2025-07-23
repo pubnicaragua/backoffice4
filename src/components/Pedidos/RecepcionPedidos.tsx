@@ -16,6 +16,7 @@ export function RecepcionPedidos() {
   const [productos, setProductos] = useState<any[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<{[key: string]: {selected: boolean, cantidad: number}}>({});
   const [processing, setProcessing] = useState(false);
+  const [selectedPedido, setSelectedPedido] = useState(null);
   const [filters, setFilters] = useState({
     proveedor: '',
     fecha: '', // Format YYYY-MM-DD
@@ -51,6 +52,7 @@ export function RecepcionPedidos() {
 
   const handleViewDetalle = (pedido) => {
     console.log('📋 PEDIDO: Navegando a detalle', pedido.id);
+    setSelectedPedido(pedido);
     setShowDetalle(true);
   };
 
@@ -199,7 +201,7 @@ export function RecepcionPedidos() {
 
   if (showDetalle) {
     return <DetallePedido onBack={() => setShowDetalle(false)} pedido={selectedPedido} />;
-  };
+  }
 
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto">
@@ -575,5 +577,6 @@ export function RecepcionPedidos() {
           )}
         </div>
       </Modal>
+    </div>
   );
 }
