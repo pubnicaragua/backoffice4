@@ -37,7 +37,12 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({ isOpen
 
   const empleado = userDetails[0] || selectedUser; // Use fetched details or fallback to passed prop
   const permisos = userPermissions || [];
-  const tareas = userTasks || []; // Use the fetched tasks
+  const tareas = userTasks || [];
+
+  // Prevent rendering if no user is selected
+  if (!selectedUser && (!userDetails || userDetails.length === 0)) {
+    return null;
+  }
 
   return (
     <>

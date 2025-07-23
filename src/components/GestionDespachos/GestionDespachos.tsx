@@ -25,7 +25,7 @@ export function GestionDespachos() {
   const { data: usuarios } = useSupabaseData<any>('usuarios', 'id, nombres, apellidos');
 
   // Apply filters
-  const filteredDespachosData = (despachos || []).filter(despacho => {
+  const filteredDespachos = (despachos || []).filter(despacho => {
     if (filters.fecha && !new Date(despacho.fecha || despacho.created_at).toLocaleDateString('es-CL').includes(filters.fecha)) return false;
     if (filters.estado && despacho.estado.toLowerCase() !== filters.estado.toLowerCase()) return false;
     if (filters.sucursal && despacho.sucursal_id !== filters.sucursal) return false;
