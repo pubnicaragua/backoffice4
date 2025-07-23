@@ -42,6 +42,12 @@ export function RecepcionPedidos() {
     return true;
   });
 
+  const handleViewDetalle = (pedido) => {
+    // Navigate to detail view instead of modal
+    window.location.hash = `#detalle-pedido-${pedido.id}`;
+    setShowDetalle(true);
+  };
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const uploadedFile = event.target.files?.[0];
     if (uploadedFile) {
@@ -214,7 +220,7 @@ export function RecepcionPedidos() {
               <tr 
                 key={index} 
                 className="hover:bg-gray-50 cursor-pointer"
-                onClick={() => setShowDetalle(true)}
+                onClick={() => handleViewDetalle(row.pedido)}
               >
                 <td className="px-6 py-4 text-sm text-gray-900">{row.proveedor}</td>
                 <td className="px-6 py-4 text-sm text-gray-900">{row.folio_factura}</td>

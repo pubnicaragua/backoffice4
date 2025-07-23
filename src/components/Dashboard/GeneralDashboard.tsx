@@ -222,7 +222,7 @@ export default function GeneralDashboard() {
       <div className="bg-blue-600 text-white p-6 rounded-lg relative overflow-hidden cursor-pointer" onClick={() => setShowChat(true)}>
         <div className="relative z-10">
           <h3 className="text-lg font-semibold mb-2">¡Hola, soy SolvIA!</h3>
-          <p className="text-blue-100 mb-4">Tu asistente personal.</p>
+          <p className="text-blue-100 mb-4">Tu asistente especializado en gestión empresarial.</p>
           <button
             onClick={(e) => {
               e.stopPropagation();

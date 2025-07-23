@@ -274,11 +274,11 @@ export function VentasDashboard() {
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-1 text-sm text-gray-600">
               <span className="w-2 h-2 bg-gray-300 rounded-full inline-block"></span>
-              <span>Período anterior</span>
+              <span>Período actual</span>
             </div>
             <div className="flex items-center space-x-1 text-sm text-gray-600">
               <span className="w-2 h-2 bg-blue-600 rounded-full inline-block"></span>
-              <span>Período seleccionado</span>
+              <span>Período comparativo</span>
             </div>
           </div>
           <button 
