@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Modal } from '../Common/Modal';
 import { useSupabaseInsert, useSupabaseUpdate } from '../../hooks/useSupabaseData';
 
+import { useSupabaseData } from '../../hooks/useSupabaseData';
+
 interface AgregarProductoModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -24,6 +26,7 @@ export function AgregarProductoModal({ isOpen, onClose, selectedProduct, onSucce
 
   const { insert, loading } = useSupabaseInsert('productos');
   const { update, loading: updating } = useSupabaseUpdate('productos');
+  const { data: sucursales } = useSupabaseData<any>('sucursales', '*');
 
   // Update form when selectedProduct changes
   React.useEffect(() => {
@@ -218,6 +221,25 @@ export function AgregarProductoModal({ isOpen, onClose, selectedProduct, onSucce
             placeholder="SKU específico"
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+        </div>
+
+        <div>
+          <label htmlFor="sucursal-select" className="block text-sm font-medium text-gray-700 mb-1">
+            Sucursal
+          </label>
+          <select
+            id="sucursal-select"
+            name="sucursal-select"
+            value={formData.sucursal || ''}
+            onChange={(e) => setFormData(prev => ({ ...prev, sucursal: e.target.value }))}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          >
+            <option value="">Seleccionar sucursal</option>
+            {sucursales.map(sucursal => (
+              <option key={sucursal.id} value={sucursal.id}>{sucursal.nombre}</option>
+            ))}
+          </select>
         </div>
 
         <div className="grid grid-cols-2 gap-4">

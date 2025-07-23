@@ -244,18 +244,10 @@ export function VentasDashboard() {
           <button
             onClick={() => handleDownloadReport('excel')}
             className="group flex flex-col items-center text-blue-600 hover:text-blue-800 transition-colors p-1 rounded-lg hover:bg-blue-50 text-center"
-            title="Descargar Reporte"
+            title="Descargar Excel"
           >
             <Download className="w-4 h-4" />
-            <span className="text-[10px] mt-1">Descargar Excel</span>
-          </button>
-          <button
-            onClick={() => handleDownloadReport('template')}
-            className="group flex flex-col items-center text-blue-600 hover:text-blue-800 transition-colors p-1 rounded-lg hover:bg-blue-50 text-center"
-            title="Descargar Plantilla"
-          >
-            <Download className="w-4 h-4" />
-            <span className="text-[10px] mt-1">Descargar Plantilla</span>
+            <span className="text-[10px] mt-1">Excel</span>
           </button>
           <button
             onClick={() => refetch()}

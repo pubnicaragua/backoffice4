@@ -25,18 +25,26 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
 
   const removeXmlFile = (fileId: string) => {
     setXmlFiles(prev => prev.filter(f => f.id !== fileId));
-    // Recalculate products from remaining XML files
-    const remainingProducts = xmlFiles.filter(f => f.id !== fileId)
-      .flatMap(f => f.products);
-    setProductos(remainingProducts);
     
-    // Clear selected products that are no longer in the list
-    setSelectedProducts(prev => {
-      const newSelection = {};
-      remainingProducts.forEach(p => { if (prev[p.nombre]) newSelection[p.nombre] = prev[p.nombre]; });
-      return newSelection;
+    // Update products and selections after file removal
+    setXmlFiles(currentFiles => {
+      const remainingFiles = currentFiles.filter(f => f.id !== fileId);
+      const remainingProducts = remainingFiles.flatMap(f => f.products);
+      
+      setProductos(remainingProducts);
+      
+      // Clear selected products that are no longer in the list
+      setSelectedProducts(prev => {
+        const newSelection = {};
+        remainingProducts.forEach(p => { 
+          if (prev[p.nombre]) newSelection[p.nombre] = prev[p.nombre]; 
+        });
+        return newSelection;
+      });
+      
+      console.log('🗑️ XML removido y productos actualizados:', fileId, remainingProducts.length);
+      return remainingFiles;
     });
-    console.log('🗑️ XML removido y productos actualizados:', fileId, remainingProducts.length);
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {

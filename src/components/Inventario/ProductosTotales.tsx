@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Table } from '../Common/Table';
 import { FilterModal } from '../Common/FilterModal';
-import { Filter, Plus, Search, AlertTriangle, Edit, Trash2, X, Bell } from 'lucide-react';
+import { Filter, Plus, Search, AlertTriangle, Edit, Trash2, X, Bell, Package } from 'lucide-react';
 import { useSupabaseData } from '../../hooks/useSupabaseData';
 import { ReporteMermas } from './ReporteMermas';
 import { ActualizarInventario } from './ActualizarInventario';
@@ -209,24 +209,6 @@ export function ProductosTotales() {
         </div>
         
         <div className="flex items-center space-x-3">
-          {/* Selector de items por página */}
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-600">Mostrar:</span>
-            <select
-              value={itemsPerPage}
-              onChange={(e) => {
-                console.log('🏢 INVENTARIO: Filtro sucursal aplicado:', e.target.value);
-                setItemsPerPage(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-              className="px-3 py-1 border border-gray-300 rounded-md text-sm"
-            >
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-          </div>
-          
           {selectedProducts.size > 0 && (
             <button 
               onClick={handleBulkDelete}
@@ -241,10 +223,10 @@ export function ProductosTotales() {
               console.log('🔍 FILTROS: Abriendo panel de filtros'); 
               setShowFilters(true);
             }}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            title="Filtros"
           >
             <Filter className="w-4 h-4" />
-            <span>Filtros</span>
           </button>
           <button 
             onClick={() => {
@@ -252,29 +234,30 @@ export function ProductosTotales() {
               setSelectedProduct(null);
               setShowProductoModal(true);
             }}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            title="Agregar"
           >
             <Plus className="w-4 h-4" />
-            <span>Agregar</span>
           </button>
           <button 
             onClick={() => {
               console.log('📊 INVENTARIO: Abriendo actualización masiva'); 
               setShowInventarioModal(true);
             }}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            title="Actualizar inventario"
           >
-            <span>Actualizar inventario</span>
+            <Package className="w-4 h-4" />
           </button>
           <button 
             onClick={() => {
               console.log('⚠️ MERMAS: Abriendo reporte');
               setShowMermasModal(true);
             }}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            title="Mermas"
           >
             <AlertTriangle className="w-4 h-4" />
-            <span>Mermas</span>
           </button>
         </div>
       </div>
@@ -310,6 +293,23 @@ export function ProductosTotales() {
         {/* Paginación personalizada */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-6 py-3 border-t border-gray-200 bg-gray-50">
+            {/* Selector de items por página */}
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-600">Mostrar:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+              >
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+            
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-700">
                 Mostrando {startIndex + 1} a {Math.min(startIndex + itemsPerPage, filteredData.length)} de {filteredData.length} productos
