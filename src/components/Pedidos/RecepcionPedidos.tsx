@@ -24,20 +24,25 @@ export function RecepcionPedidos() {
   });
 
   const { data: pedidos, loading, refetch } = useSupabaseData<any>('pedidos', '*');
+  const { data: clientes } = useSupabaseData<any>('clientes', '*');
+  const { data: sucursales } = useSupabaseData<any>('sucursales', '*');
   const { insert, loading: inserting } = useSupabaseInsert('pedidos');
 
   // Procesar datos para mostrar las 5 columnas exactas
   const processedData = (pedidos || []).map(pedido => {
     const fechaPedido = pedido.fecha_pedido || pedido.fecha || pedido.created_at;
     const montoTotal = pedido.total || pedido.monto_total || 0;
+    const proveedor = pedido.proveedor_id ? 
+      (clientes.find(c => c.id === pedido.proveedor_id)?.razon_social || 'Proveedor') : 
+      'Proveedor General';
     
     return {
       id: pedido.id,
-      proveedor: 'Pola - cola',
+      proveedor: proveedor,
       folio_factura: pedido.folio || `PED-${pedido.id?.slice(0, 8)}`,
       fecha: new Date(fechaPedido).toLocaleDateString('es-CL'),
       monto_total: `$${montoTotal.toLocaleString('es-CL')}`,
-      sucursal_captura: 'Sucursal N°1',
+      sucursal_captura: sucursales.find(s => s.id === pedido.sucursal_id)?.nombre || 'Sucursal N°1',
       pedido: pedido
     };
   });

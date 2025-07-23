@@ -203,9 +203,9 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({ isOpen
       <AsignarTurnoModal 
         isOpen={showTurnoModal} onClose={() => setShowTurnoModal(false)} selectedUser={empleado} />
       <AsignarTareaModal 
-        isOpen={showTareaModal} onClose={() => setShowTareaModal(false)} selectedUser={empleado} />
+        isOpen={showTareaModal} onClose={() => setShowTareaModal(false)} selectedUser={empleado} onSuccess={() => refetchTasks()} />
       <AsignarPermisoModal 
-        isOpen={showPermisoModal} onClose={() => setShowPermisoModal(false)} selectedUser={empleado} />
+        isOpen={showPermisoModal} onClose={() => setShowPermisoModal(false)} />
     </>
   );
 };
