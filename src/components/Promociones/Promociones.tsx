@@ -10,7 +10,6 @@ export function Promociones() {
 
   const tabs = [
     { id: 'todas', label: 'Promociones de todas las tiendas' },
-    { id: 'descuentos', label: 'Descuentos' },
     { id: 'cupones', label: 'Cupones' },
   ];
 
@@ -18,8 +17,6 @@ export function Promociones() {
     switch (activeTab) {
       case 'todas':
         return <PromocionesTodas onShowModal={() => setShowModal(true)} />;
-      case 'descuentos':
-        return <DescuentosTodas />;
       case 'cupones':
         return <CuponesTodas />;
       default:

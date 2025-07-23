@@ -7,7 +7,6 @@ interface AsignarTareaModalProps {
   onClose: () => void;
   selectedUser?: any;
   onSuccess?: () => void; // Callback on successful assignment
-
 }
 
 export function AsignarTareaModal({ isOpen, onClose, selectedUser, onSuccess }: AsignarTareaModalProps) {
@@ -27,10 +26,13 @@ export function AsignarTareaModal({ isOpen, onClose, selectedUser, onSuccess }: 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedUser?.id || !formData.nombre_tarea || !formData.fecha_asignacion) return;
+    if (!selectedUser?.id || !formData.nombre_tarea || !formData.fecha_asignacion) {
+      console.log('❌ TAREA: Faltan datos requeridos');
+      return;
+    }
 
     const success = await insert({
-      usuario_id: selectedUser.id,
+      usuario_id: selectedUser?.id || '80ca7f2b-d125-4df6-9f22-a5fe3ada00e4',
       tarea_id: tareasDisponibles.find(t => t.nombre === formData.nombre_tarea)?.id || '00000000-0000-0000-0000-000000000001', // Find task ID
       sucursal_id: sucursales[0]?.id || '00000000-0000-0000-0000-000000000001', // Default to first sucursal
       fecha_asignacion: formData.fecha_asignacion,
@@ -40,7 +42,9 @@ export function AsignarTareaModal({ isOpen, onClose, selectedUser, onSuccess }: 
     if (success) {
       onClose();
     }
-    if (onSuccess) onSuccess();
+    if (onSuccess) {
+      onSuccess();
+    }
   };
 
   return (

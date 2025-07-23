@@ -342,7 +342,7 @@ export function VentasDashboard() {
               {new Date().toLocaleTimeString('es-CL')}
             </div>
             <div className="text-center py-1 text-gray-500 text-[6px]">
-              Última: {lastUpdate.split(',')[1]}
+              Última: {new Date().toLocaleTimeString('es-CL')}
             </div>
           </div>
         </div>

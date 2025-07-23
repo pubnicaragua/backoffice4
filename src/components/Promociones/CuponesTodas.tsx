@@ -61,6 +61,56 @@ export function CuponesTodas() {
         </div>
       </div>
 
+      {/* Modal de Filtros */}
+      <div className={`fixed inset-0 z-50 ${false ? 'block' : 'hidden'}`}>
+        <div className="fixed inset-0 bg-black bg-opacity-50" />
+        <div className="fixed right-0 top-0 h-full w-80 bg-white shadow-xl">
+          <div className="p-4">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Filtros de Cupones</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Código</label>
+                <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Estado</label>
+                <select className="w-full px-3 py-2 border border-gray-300 rounded-md">
+                  <option value="">Todos</option>
+                  <option value="activo">Activo</option>
+                  <option value="inactivo">Inactivo</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Modal de Agregar */}
+      <div className={`fixed inset-0 z-50 ${false ? 'block' : 'hidden'}`}>
+        <div className="fixed inset-0 bg-black bg-opacity-50" />
+        <div className="fixed inset-y-0 right-0 w-96 bg-white shadow-xl">
+          <div className="p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Agregar Cupón</h3>
+            <form className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Código</label>
+                <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                <input type="text" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Valor</label>
+                <input type="number" className="w-full px-3 py-2 border border-gray-300 rounded-md" />
+              </div>
+              <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded-lg">
+                Guardar Cupón
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
       <div className="relative flex-1 max-w-md">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
         <input

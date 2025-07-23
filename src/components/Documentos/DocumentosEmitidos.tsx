@@ -70,23 +70,23 @@ export function DocumentosEmitidos() {
             <tr className="hover:bg-gray-50 cursor-pointer" onClick={() => handleViewDetalle({
               tipo: 'Boleta',
               folio: '849456465456',
-              fecha: '28/05/2025 20:00',
-              monto: '234235432',
+              fecha: '234235432',
+              monto: '28/05/2025 20:00',
               sucursal: 'N°1',
               caja: 'N°1'
             })}>
               <td className="px-6 py-4 text-sm text-gray-900">Boleta</td>
               <td className="px-6 py-4 text-sm text-gray-900">849456465456</td>
-              <td className="px-6 py-4 text-sm text-gray-900">234235432</td>
               <td className="px-6 py-4 text-sm text-gray-900">28/05/2025 20:00</td>
+              <td className="px-6 py-4 text-sm text-gray-900">$234.235.432</td>
               <td className="px-6 py-4 text-sm text-gray-900">N°1</td>
               <td className="px-6 py-4 text-sm text-gray-900">N°1</td>
             </tr>
             <tr className="hover:bg-gray-50 cursor-pointer">
               <td className="px-6 py-4 text-sm text-gray-900">Factura</td>
               <td className="px-6 py-4 text-sm text-gray-900">849456465456</td>
-              <td className="px-6 py-4 text-sm text-gray-900">234235432</td>
               <td className="px-6 py-4 text-sm text-gray-900">28/05/2025 20:00</td>
+              <td className="px-6 py-4 text-sm text-gray-900">$234.235.432</td>
               <td className="px-6 py-4 text-sm text-gray-900">N°1</td>
               <td className="px-6 py-4 text-sm text-gray-900">N°1</td>
             </tr>
