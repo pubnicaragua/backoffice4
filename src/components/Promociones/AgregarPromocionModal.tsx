@@ -292,7 +292,7 @@ export function AgregarPromocionModal({ isOpen, onClose, onSuccess }: AgregarPro
                 Precio promocional: ${formData.precio_promocion ? parseFloat(formData.precio_promocion).toLocaleString('es-CL') : 'No definido'}<br/>
                 Productos: {productosAgregados.length}
               </p>
-            </h4>
+            </div>
             <div className="space-y-2 max-h-64 overflow-y-auto">
               {productosAgregados.map((producto, index) => (
                 <div key={index} className="flex items-center justify-between bg-white p-3 rounded border">
