@@ -167,10 +167,9 @@ export function PromocionesTodas({ onShowModal }: PromocionesTodasProps) {
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Promoción</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número límite</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Productos</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descripción</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sucursal</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Costo</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Precio</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Disponible</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
@@ -180,10 +179,14 @@ export function PromocionesTodas({ onShowModal }: PromocionesTodasProps) {
             {filteredData.map((row, index) => (
               <tr key={index} className="hover:bg-gray-50">
                 <td className="px-6 py-4 text-sm text-gray-900">{row.nombre}</td>
-                <td className="px-6 py-4 text-sm text-gray-900">Ilimitado</td>
+                <td className="px-6 py-4 text-sm text-gray-900">
+                  <div className="text-xs text-gray-600">
+                    {productos.filter(p => p.nombre.toLowerCase().includes(row.nombre.toLowerCase())).slice(0, 2).map(p => p.nombre).join(', ')}
+                    {productos.filter(p => p.nombre.toLowerCase().includes(row.nombre.toLowerCase())).length > 2 && '...'}
+                  </div>
+                </td>
                 <td className="px-6 py-4 text-sm text-gray-900">{row.descripcion}</td>
                 <td className="px-6 py-4 text-sm text-gray-900">{row.sucursal}</td>
-                <td className="px-6 py-4 text-sm text-gray-900">{Math.round(row.promocion?.costo || 0)}</td>
                 <td className="px-6 py-4 text-sm text-gray-900">{row.precio}</td>
                 <td className="px-6 py-4 text-sm text-gray-900">{row.disponible}</td>
                 <td className="px-6 py-4 text-sm">

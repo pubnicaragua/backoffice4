@@ -5,12 +5,12 @@ import { useSupabaseInsert, useSupabaseData } from '../../hooks/useSupabaseData'
 interface AsignarTareaModalProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedUser?: any; // User to assign task to
+  selectedUser?: any;
   onSuccess?: () => void; // Callback on successful assignment
 
 }
 
-export function AsignarTareaModal({ isOpen, onClose }: AsignarTareaModalProps) {
+export function AsignarTareaModal({ isOpen, onClose, selectedUser, onSuccess }: AsignarTareaModalProps) {
   const [formData, setFormData] = useState({
     nombre_tarea: 'Limpieza total de la sucursal',
     descripcion: 'Hacer limpieza y sacar la basura de la sucursal',

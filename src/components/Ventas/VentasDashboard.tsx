@@ -83,10 +83,12 @@ export function VentasDashboard() {
 
   const calculateKpis = React.useCallback(() => {
     const currentYear = new Date(filters.fechaFin).getFullYear(); // Use year from selected end date
-    const yearVentas = filteredVentas.filter(v => new Date(v.fecha).getFullYear() === currentYear);
+    const yearVentas = showAnterior 
+      ? filteredVentas.filter(v => new Date(v.fecha).getFullYear() === currentYear - 1)
+      : filteredVentas.filter(v => new Date(v.fecha).getFullYear() === currentYear);
     
     const totalVentas = yearVentas.reduce((sum, venta) => sum + (parseFloat(venta.total) || 0), 0);
-    const totalUnidades = ventaItems.filter(item => 
+    const totalUnidades = ventaItems.filter(item =>
       yearVentas.some(venta => venta.id === item.venta_id)
     ).reduce((sum, item) => sum + (item.cantidad || 0), 0);
     const numeroVentas = yearVentas.length;
@@ -107,7 +109,7 @@ export function VentasDashboard() {
       numeroVentas: numeroVentas,
       ticketPromedio: ticketPromedio
     });
-  }, [filteredVentas, filters.fechaFin, productos, ventaItems]);
+  }, [filteredVentas, filters.fechaFin, productos, ventaItems, showAnterior]);
 
   const calculateMonthlyChartData = React.useCallback(() => {
     const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];

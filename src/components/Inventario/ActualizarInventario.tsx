@@ -418,6 +418,21 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
                 </div>
               ))}
             </div>
+            
+            {/* Paginación para productos */}
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-600">Mostrar:</span>
+                <select className="px-2 py-1 border border-gray-300 rounded text-sm">
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+              <div className="text-sm text-gray-500">
+                Mostrando {productos.length} productos
+              </div>
+            </div>
           </div>
         )}
 

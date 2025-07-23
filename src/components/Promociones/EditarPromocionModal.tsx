@@ -15,7 +15,6 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
     nombre: '',
     descripcion: '',
     sucursales: ['N°1'] as string[],
-    costo_unitario: '',
     precio_unitario: '',
     sku: '' // This SKU is for the promotion itself, not a product
   });
@@ -31,7 +30,6 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
         nombre: promocion.promocion?.nombre || promocion.nombre || '',
         descripcion: promocion.promocion?.descripcion || promocion.descripcion || '',
         sucursales: ['N°1'],
-        costo_unitario: promocion.promocion?.costo?.toString() || '',
         precio_unitario: promocion.promocion?.precio_prom?.toString() || '',
         sku: promocion.promocion?.codigo || ''
       }); // Initialize form data with existing promotion data
@@ -73,7 +71,6 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
       nombre: formData.nombre,
       descripcion: formData.descripcion,
       precio_prom: parseFloat(formData.precio_unitario) || 0,
-      costo: parseFloat(formData.costo_unitario) || 0,
       disponible: true,
       activo: true
     });
@@ -85,7 +82,6 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
         nombre: '',
         descripcion: '',
         sucursales: ['N°1'],
-        costo_unitario: '',
         precio_unitario: '',
         sku: ''
       });
@@ -146,20 +142,7 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Costo
-            </label>
-            <input
-              type="text"
-              value={formData.costo_unitario}
-              onChange={(e) => setFormData(prev => ({ ...prev, costo_unitario: e.target.value }))}
-              placeholder="Costo"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
+        <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Precio
             </label>
@@ -170,7 +153,6 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
               placeholder="Precio"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-          </div>
         </div>
 
         {/* Resumen Ejecutivo */}
@@ -181,7 +163,6 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
               <p className="text-sm"><strong>Nombre:</strong> {formData.nombre}</p>
               <p className="text-sm"><strong>Descripción:</strong> {formData.descripcion}</p>
               <p className="text-sm"><strong>Precio promocional:</strong> ${parseFloat(formData.precio_unitario || '0').toLocaleString('es-CL')}</p>
-              <p className="text-sm"><strong>Costo de la promoción:</strong> ${parseFloat(formData.costo_unitario || '0').toLocaleString('es-CL')}</p>
               <p className="text-sm"><strong>Productos relacionados:</strong> {productosPromocion.length}</p>
               <div className="mt-2">
                 <p className="text-xs font-medium text-blue-800">Productos:</p>

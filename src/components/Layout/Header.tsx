@@ -44,6 +44,7 @@ export function Header({ onMenuToggle, currentView }: HeaderProps) {
     return date.toLocaleTimeString('es-CL', { 
       hour: '2-digit', 
       minute: '2-digit',
+      second: '2-digit',
       hour12: false 
     });
   };
@@ -100,7 +101,7 @@ export function Header({ onMenuToggle, currentView }: HeaderProps) {
           <div className="flex items-center space-x-2 text-sm text-gray-600">
             <div className="text-center">
               <div className="font-medium">{formatTime(currentTime)}</div>
-              <div className="text-xs text-gray-500">{currentTime.toLocaleDateString('es-CL')}</div>
+              <div className="text-xs text-gray-500">Última: {formatTime(currentTime)}</div>
             </div>
             <Clock className="w-4 h-4" />
           </div>

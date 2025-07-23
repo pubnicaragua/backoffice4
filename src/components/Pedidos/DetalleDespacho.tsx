@@ -218,7 +218,7 @@ export function DetalleDespacho({ onBack, despacho }: DetalleDespachoProps) {
                     Fecha:
                   </label>
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-900">30/05/2025</span>
+                    <span className="text-sm text-gray-900">{despacho?.fecha ? new Date(despacho.fecha).toLocaleDateString('es-CL') : new Date().toLocaleDateString('es-CL')}</span>
                     <Calendar className="w-4 h-4 text-gray-400" />
                   </div>
                 </div>
