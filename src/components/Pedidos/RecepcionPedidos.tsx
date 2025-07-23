@@ -480,6 +480,18 @@ export function RecepcionPedidos() {
         size="lg"
       >
         <div className="space-y-6 p-4">
+          {/* Sucursal de captura */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Sucursal de captura
+            </label>
+            <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Seleccionar sucursal</option>
+              <option value="sucursal1">Sucursal N°1</option>
+              <option value="sucursal2">Sucursal N°2</option>
+            </select>
+          </div>
+          
           {/* PDF Upload Section */}
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
             {processing ? (

@@ -113,6 +113,40 @@ export function VentasDashboard() {
 
   const calculateMonthlyChartData = React.useCallback(() => {
     const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    
+    // Si hay filtros de fecha específicos, mostrar solo ese rango
+    if (filters.fechaInicio && filters.fechaFin) {
+      const startDate = new Date(filters.fechaInicio);
+      const endDate = new Date(filters.fechaFin);
+      
+      // Si es el mismo mes, mostrar solo ese mes
+      if (startDate.getMonth() === endDate.getMonth() && startDate.getFullYear() === endDate.getFullYear()) {
+        const monthName = months[startDate.getMonth()];
+        const currentYear = startDate.getFullYear();
+        const previousYear = currentYear - 1;
+        
+        const monthData = { mes: monthName, actual: 0, anterior: 0 };
+        
+        filteredVentas.forEach(venta => {
+          const ventaDate = new Date(venta.fecha);
+          if (ventaDate.getMonth() === startDate.getMonth()) {
+            const year = ventaDate.getFullYear();
+            const total = parseFloat(venta.total) || 0;
+            
+            if (year === currentYear) {
+              monthData.actual += total;
+            } else if (year === previousYear) {
+              monthData.anterior += total;
+            }
+          }
+        });
+        
+        setMonthlyChartData([monthData]);
+        return;
+      }
+    }
+    
+    // Lógica original para mostrar todos los meses
     const currentYear = new Date(filters.fechaFin).getFullYear();
     const previousYear = currentYear - 1;
 

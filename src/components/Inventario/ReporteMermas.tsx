@@ -49,13 +49,13 @@ export function ReporteMermas({ isOpen, onClose, onMermaReported }: ReporteMerma
       }
       
       onClose();
+      setSearchTerm(''); // Limpiar búsqueda
       setFormData({
         tipo_merma: 'robo',
         cantidad_mermada: '',
         observaciones: '',
         producto_seleccionado: ''
       });
-      setSearchTerm('');
     }
   };
 

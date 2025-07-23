@@ -28,6 +28,8 @@ export function PromocionesTodas({ onShowModal }: PromocionesTodasProps) {
   const { update: updatePromocion } = useSupabaseUpdate('promociones');
   
 
+  const { data: productos } = useSupabaseData<any>('productos', '*');
+
   // Apply filters to data
   const filteredPromociones = (promociones || []).filter(promocion => {
     if (filters.sucursal && promocion.sucursal_id !== filters.sucursal) return false;

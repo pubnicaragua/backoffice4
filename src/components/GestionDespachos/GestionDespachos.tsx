@@ -36,7 +36,6 @@ export function GestionDespachos() {
     id: despacho.id, // Keep original ID for detail view
     entregado_por: usuarios.find(u => u.id === despacho.entregado_por)?.nombres || 'Emilio Aguilera',
     folio_factura: despacho.folio || despacho.id?.slice(0, 8) || 'N/A',
-    fecha: new Date(despacho.fecha || despacho.created_at),
     fechaDisplay: new Date(despacho.fecha || despacho.created_at).toLocaleDateString('es-CL'),
     monto_total: `$${Math.floor(Math.random() * 50000 + 10000).toLocaleString('es-CL')}`,
     estado: despacho.estado === 'pendiente' ? 'Pendiente' : 'Entregado',
@@ -54,8 +53,8 @@ export function GestionDespachos() {
   // Aplicar ordenamiento
   const sortedData = [...filteredData].sort((a, b) => {
     if (sortBy === 'fecha') {
-      const dateA = new Date(a.fecha);
-      const dateB = new Date(b.fecha);
+      const dateA = new Date(a.fechaDisplay);
+      const dateB = new Date(b.fechaDisplay);
       return sortOrder === 'desc' ? dateB.getTime() - dateA.getTime() : dateA.getTime() - dateB.getTime();
     }
     return 0;
