@@ -47,6 +47,7 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
 
   const handleRemoverProducto = (index: number) => {
     setProductosPromocion(prev => prev.filter((_, i) => i !== index));
+    console.log('🗑️ PROMOCIÓN: Producto removido del índice', index);
   };
 
   const handleAgregarProducto = () => {
@@ -57,7 +58,14 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
     
     if (filteredProductos.length > 0) {
       const producto = filteredProductos[0];
-      setProductosPromocion(prev => [...prev, producto]);
+      // Verificar que no esté duplicado
+      const yaExiste = productosPromocion.some(p => p.id === producto.id);
+      if (!yaExiste) {
+        setProductosPromocion(prev => [...prev, producto]);
+        console.log('➕ PROMOCIÓN: Producto agregado', producto.nombre);
+      } else {
+        alert('Este producto ya está en la promoción');
+      }
       setSearchTerm('');
     }
   };
@@ -112,7 +120,10 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Editar promoción" size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title="Editar promoción" size="xl">
+      <div className="flex space-x-6">
+        {/* Formulario principal */}
+        <div className="flex-1">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -201,6 +212,7 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
             SKU
           </label>
           <input
+        </div>
             type="text"
             value={formData.sku}
             onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
@@ -220,8 +232,7 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
         </div>
       </form>
       
-      {/* Resumen a la derecha */}
-      {productosPromocion.length > 0 && (
+        {/* Resumen a la derecha */}
         <div className="w-80 bg-gray-50 rounded-lg p-4 ml-6">
           <h4 className="font-medium text-gray-900 mb-3">
             📋 Productos en promoción ({productosPromocion.length})
@@ -235,6 +246,7 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
                   <p className="text-xs text-gray-500">Precio: ${producto.precio?.toLocaleString('es-CL')}</p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => handleRemoverProducto(index)}
                   className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded"
                   title="Eliminar producto"
@@ -244,8 +256,13 @@ export function EditarPromocionModal({ isOpen, onClose, promocion, onSuccess }: 
               </div>
             ))}
           </div>
+          {productosPromocion.length === 0 && (
+            <div className="text-center text-gray-500 py-4">
+              No hay productos en esta promoción
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </Modal>
   );
 }

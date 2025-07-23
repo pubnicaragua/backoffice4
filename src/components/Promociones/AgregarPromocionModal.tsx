@@ -59,6 +59,12 @@ export function AgregarPromocionModal({ isOpen, onClose, onSuccess }: AgregarPro
 
   const handleAgregarOtroProducto = () => {
     if (formData.producto_seleccionado) {
+      // Validar que tenga precio de promoción
+      if (!formData.precio_promocion) {
+        alert('Por favor ingresa un precio de promoción');
+        return;
+      }
+      
       const nuevoProducto = {
         nombre: formData.nombre || formData.producto_seleccionado.nombre,
         descripcion: formData.descripcion || formData.producto_seleccionado.descripcion,
@@ -69,13 +75,20 @@ export function AgregarPromocionModal({ isOpen, onClose, onSuccess }: AgregarPro
         producto: formData.producto_seleccionado
       };
       
-      // Siempre agregar como nuevo producto (acumulativo)
+      // Verificar que no esté duplicado
+      const yaExiste = productosAgregados.some(p => p.sku === nuevoProducto.sku);
+      if (yaExiste) {
+        alert('Este producto ya está agregado');
+        return;
+      }
+      
+      // Agregar como nuevo producto (acumulativo)
       setProductosAgregados(prev => [...prev, nuevoProducto]);
       
-      // Clear product-specific fields but keep promotion info
+      // Limpiar campos del producto pero mantener info de promoción
       setFormData(prev => ({
         ...prev,
-        precio_promocion: '', // Clear price for next product
+        precio_promocion: '',
         sku: '',
         producto_seleccionado: null
       }));
@@ -246,8 +259,7 @@ export function AgregarPromocionModal({ isOpen, onClose, onSuccess }: AgregarPro
               </div>
             )}
 
-            {productosAgregados.length === 0 && (
-              <div>
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Precio de promoción
               </label>
@@ -257,15 +269,15 @@ export function AgregarPromocionModal({ isOpen, onClose, onSuccess }: AgregarPro
                 onChange={(e) => setFormData(prev => ({ ...prev, precio_promocion: e.target.value }))}
                 placeholder="Precio promocional"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
               />
             </div>
-            )}
 
             <div className="flex justify-center space-x-3">
               <button
                 type="button"
                 onClick={handleAgregarOtroProducto}
-                disabled={!formData.producto_seleccionado}
+                disabled={!formData.producto_seleccionado || !formData.precio_promocion}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg disabled:opacity-50"
               >
                 Agregar otro producto

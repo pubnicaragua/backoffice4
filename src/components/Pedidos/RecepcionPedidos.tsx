@@ -32,16 +32,20 @@ export function RecepcionPedidos() {
   // Procesar datos para mostrar las 5 columnas exactas
   const processedData = (pedidos || []).map((pedido, index) => {
     const fechaPedido = pedido.fecha_pedido || pedido.fecha || pedido.created_at;
-    const proveedor = clientes.find(c => c.id === pedido.proveedor_id)?.razon_social || 
-                     ['Distribuidora ABC', 'Proveedor XYZ', 'Comercial 123', 'Suministros DEF'][index % 4];
+    
+    // Usar datos reales del backend
+    const proveedor = clientes.find(c => c.id === pedido.proveedor_id)?.razon_social || 'Proveedor Desconocido';
+    const montoReal = pedido.total || 0;
+    const fechaReal = new Date(fechaPedido).toLocaleDateString('es-CL');
+    const sucursalReal = sucursales.find(s => s.id === pedido.sucursal_id)?.nombre || 'Sucursal Desconocida';
     
     return {
       id: pedido.id,
       proveedor: proveedor,
       folio_factura: pedido.folio || `PED-${pedido.id?.slice(0, 8)}`,
-      fecha: new Date(fechaPedido).toLocaleDateString('es-CL'),
-      monto_total: `$${(pedido.total || Math.floor(Math.random() * 100000 + 10000)).toLocaleString('es-CL')}`,
-      sucursal_captura: sucursales.find(s => s.id === pedido.sucursal_id)?.nombre || 'Sucursal N°1',
+      fecha: fechaReal,
+      monto_total: `$${montoReal.toLocaleString('es-CL')}`,
+      sucursal_captura: sucursalReal,
       pedido: pedido
     };
   });

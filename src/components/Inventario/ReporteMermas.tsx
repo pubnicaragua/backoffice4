@@ -32,6 +32,11 @@ export function ReporteMermas({ isOpen, onClose, onMermaReported }: ReporteMerma
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!formData.sucursal_seleccionada) {
+      alert('Por favor selecciona una sucursal');
+      return;
+    }
+    
     const success = await insert({
       tipo: formData.tipo_merma,
       cantidad: parseFloat(formData.cantidad_mermada),

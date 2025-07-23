@@ -334,8 +334,9 @@ export function VentasDashboard() {
             <span className="text-[10px] mt-1">Actualizar</span>
           </button>
           <div className="text-center text-gray-500 mt-auto pt-2 border-t border-gray-100 w-full">
-            <div className="text-center py-1 text-gray-500 text-[6px]">
-              Última: {new Date().toLocaleTimeString('es-CL', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })}
+            <div className="flex items-center justify-center space-x-1 py-1 text-gray-500 text-[10px]">
+              <Clock className="w-3 h-3" />
+              <span>Última: {new Date().toLocaleTimeString('es-CL', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })}</span>
             </div>
           </div>
         </div>
