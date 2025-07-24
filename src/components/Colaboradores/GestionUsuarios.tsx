@@ -1,21 +1,14 @@
-import React, { useState } from 'react';
-import { Table } from '../Common/Table';
-import { FilterModal } from '../Common/FilterModal';
-import { Search, Plus, Mail, Clock, Filter } from 'lucide-react';
-import { useSupabaseData } from '../../hooks/useSupabaseData';
-import { AgregarUsuarioModal } from './AgregarUsuarioModal';
-import { AsignarTiempoModal } from './AsignarTiempoModal';
-import { EnviarComunicadoModal } from './EnviarComunicadoModal';
-import { PerfilEmpleadoModal } from './PerfilEmpleadoModal';
+import React, { useState } from "react";
+import { Search, Plus, Mail, Clock, Filter } from "lucide-react";
+import { useSupabaseData } from "../../hooks/useSupabaseData";
+import { AgregarUsuarioModal } from "./AgregarUsuarioModal";
+import { AsignarTiempoModal } from "./AsignarTiempoModal";
+import { EnviarComunicadoModal } from "./EnviarComunicadoModal";
+import { PerfilEmpleadoModal } from "./PerfilEmpleadoModal";
+import { FilterModal } from "../Common/FilterModal";
 
 export function GestionUsuarios() {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filters, setFilters] = useState({
-    sucursal: '',
-    fecha: '',
-    hora: ''
-  });
+  const [searchTerm, setSearchTerm] = useState("");
   const [showAgregarModal, setShowAgregarModal] = useState(false);
   const [showTiempoModal, setShowTiempoModal] = useState(false);
   const [showComunicadoModal, setShowComunicadoModal] = useState(false);
@@ -23,41 +16,46 @@ export function GestionUsuarios() {
   const [showPerfilModal, setShowPerfilModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
 
-  const { data: usuarios, loading, error, refetch } = useSupabaseData<any>('usuarios', '*');
-  const { data: asistencias } = useSupabaseData<any>('asistencias', '*, usuarios(nombres, apellidos, rut)');
+  const {
+    data: usuarios = [],
+    loading,
+    error,
+    refetch,
+  } = useSupabaseData<any>("usuarios", "*");
 
+  // Defino las columnas que mostraré en la tabla
   const columns = [
-    { key: 'nombres', label: 'Nombres' },
-    { key: 'rut', label: 'RUT' },
-    { key: 'edad', label: 'Edad' },
-    { key: 'rol', label: 'Rol' },
+    { key: "nombreCompleto", label: "Nombre completo" },
+    { key: "email", label: "Email" },
+    { key: "rut", label: "RUT" },
+    { key: "rol", label: "Rol" },
   ];
 
-  const processedData = usuarios.map(usuario => {
-    // Calculate age from birth date or use a default
-    const birthYear = usuario.fecha_nacimiento ? new Date(usuario.fecha_nacimiento).getFullYear() : 1990;
-    const edad = new Date().getFullYear() - birthYear;
-    
-    return {
-      id: usuario.id,
-      nombres: `${usuario.nombres || ''} ${usuario.apellidos || ''}`.trim() || 'Sin nombre',
-      rut: usuario.rut || 'Sin RUT',
-      edad: edad.toString(),
-      rol: usuario.rol || 'Empleado',
-      usuario: usuario
-    };
-  });
+  // Proceso los datos para construir las filas que usaré en la tabla
+  const processedData = usuarios.map((usuario) => ({
+    id: usuario.id,
+    nombreCompleto:
+      `${usuario.nombres || ""} ${usuario.apellidos || ""}`.trim() ||
+      "Sin nombre",
+    email: usuario.email || "Sin email",
+    rut: usuario.rut || "Sin RUT",
+    rol: usuario.rol || "Empleado",
+    usuario,
+  }));
 
-  const filteredData = processedData.filter(item =>
-    (searchTerm === '' || 
-     item.nombres.toLowerCase().includes(searchTerm.toLowerCase()) ||
-     item.rut.includes(searchTerm))
+  // Aplico filtro simple por nombre completo o rut
+  const filteredData = processedData.filter(
+    (item) =>
+      searchTerm === "" ||
+      item.nombreCompleto.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.rut.includes(searchTerm)
   );
 
   const handleViewPerfil = (userData) => {
     setSelectedUser(userData);
     setShowPerfilModal(true);
   };
+
   if (loading) {
     return <div className="text-center py-4">Cargando usuarios...</div>;
   }
@@ -65,26 +63,29 @@ export function GestionUsuarios() {
   if (error) {
     return <div className="text-center py-4 text-red-600">Error: {error}</div>;
   }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-medium text-gray-900">Gestión de usuarios</h2>
+        <h2 className="text-base font-medium text-gray-900">
+          Gestión de usuarios
+        </h2>
         <div className="flex items-center space-x-2">
-          <button 
+          <button
             onClick={() => setShowComunicadoModal(true)}
             className="flex items-center space-x-2 px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             <Mail className="w-4 h-4" />
             <span>Enviar un comunicado general</span>
           </button>
-          <button 
+          <button
             onClick={() => setShowTiempoModal(true)}
             className="flex items-center space-x-2 px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             <Clock className="w-4 h-4" />
             <span>Asignar tiempo de colación</span>
           </button>
-          <button 
+          <button
             onClick={() => setShowFilters(true)}
             className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
@@ -99,18 +100,19 @@ export function GestionUsuarios() {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3" />
           <input
             type="text"
-            placeholder="Buscar"
+            placeholder="Buscar por nombre o RUT"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-8 pr-4 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
         </div>
         <div className="ml-auto">
-          <button 
+          <button
             onClick={() => setShowAgregarModal(true)}
-            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+            className="flex items-center space-x-2 px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             <Plus className="w-4 h-4" />
+            <span>Agregar usuario</span>
           </button>
         </div>
       </div>
@@ -130,47 +132,45 @@ export function GestionUsuarios() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {filteredData.map((row, index) => (
-              <tr 
-                key={index} 
+            {filteredData.map((row) => (
+              <tr
+                key={row.id}
                 className="hover:bg-gray-50 cursor-pointer"
-                onClick={() => handleViewPerfil(row)}
+                onClick={() => handleViewPerfil(row.usuario)}
               >
-                <td className="px-4 py-3 text-sm">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
-                    <span className="text-gray-900">{row.nombres}</span>
-                  </div>
+                <td className="px-4 py-3 text-sm text-gray-900">
+                  {row.nombreCompleto}
                 </td>
-                {columns.slice(1).map((column) => (
-                  <td key={column.key} className="px-4 py-3 text-sm text-gray-900">
-                    {row[column.key]}
-                  </td>
-                ))}
+                <td className="px-4 py-3 text-sm text-gray-900">{row.email}</td>
+                <td className="px-4 py-3 text-sm text-gray-900">{row.rut}</td>
+                <td className="px-4 py-3 text-sm text-gray-900">{row.rol}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <AgregarUsuarioModal 
-        isOpen={showAgregarModal} 
-        onClose={() => setShowAgregarModal(false)} 
-      />
-      
-      <AsignarTiempoModal 
-        isOpen={showTiempoModal} 
-        onClose={() => setShowTiempoModal(false)} 
-      />
-      
-      <EnviarComunicadoModal 
-        isOpen={showComunicadoModal} 
-        onClose={() => setShowComunicadoModal(false)} 
+      <AgregarUsuarioModal
+        isOpen={showAgregarModal}
+        onClose={() => {
+          setShowAgregarModal(false);
+          refetch(); // Refresco datos luego de agregar un usuario nuevo
+        }}
       />
 
-      <PerfilEmpleadoModal 
-        isOpen={showPerfilModal} 
-        onClose={() => setShowPerfilModal(false)} 
+      <AsignarTiempoModal
+        isOpen={showTiempoModal}
+        onClose={() => setShowTiempoModal(false)}
+      />
+
+      <EnviarComunicadoModal
+        isOpen={showComunicadoModal}
+        onClose={() => setShowComunicadoModal(false)}
+      />
+
+      <PerfilEmpleadoModal
+        isOpen={showPerfilModal}
+        onClose={() => setShowPerfilModal(false)}
         selectedUser={selectedUser}
       />
 
@@ -179,6 +179,7 @@ export function GestionUsuarios() {
         onClose={() => setShowFilters(false)}
         title="Filtros"
       >
+        {/* Aquí podrías conservar o modificar los filtros según necesidad */}
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -190,7 +191,6 @@ export function GestionUsuarios() {
               <option value="n2">N°2</option>
             </select>
           </div>
-          
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Fecha
@@ -200,7 +200,6 @@ export function GestionUsuarios() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Hora
