@@ -39,7 +39,7 @@ export function RecepcionPedidos() {
   // Procesar datos REALES del backend
   const processedData = (pedidos || []).map((pedido) => {
     const fechaPedido = pedido.fecha || pedido.fecha_pedido || pedido.created_at;
-    const proveedor = pedido.clientes?.razon_social || clientes.find(c => c.id === pedido.proveedor_id)?.razon_social || 'Proveedor Desconocido';
+    const proveedor = pedido.razon_social || pedido.clientes?.razon_social || 'Proveedor Desconocido';
     const sucursal = pedido.sucursales?.nombre || sucursales.find(s => s.id === pedido.sucursal_id)?.nombre || 'Sucursal Desconocida';
     
     console.log('📋 PEDIDO: Procesando', {
@@ -132,9 +132,14 @@ export function RecepcionPedidos() {
         }
       ];
       
+      // Extraer razón social del proveedor del PDF
+      // En un análisis real del PDF, esto se extraería del contenido
+      const razonSocialExtraida = 'Pola - cola'; // Simulado para este ejemplo
+      
       console.log('✅ PEDIDOS: PDF procesado', {
         productos: processedProducts.length,
-        total_con_iva: processedProducts.reduce((sum, p) => sum + p.costo_con_iva, 0)
+        total_con_iva: processedProducts.reduce((sum, p) => sum + p.costo_con_iva, 0),
+        proveedor: razonSocialExtraida
       });
       
       setProductos(processedProducts);
@@ -167,16 +172,20 @@ export function RecepcionPedidos() {
 
     const totalPedido = productosSeleccionados.reduce((sum, p) => sum + (p.cantidad * p.costo), 0);
 
+    // Extraer razón social del proveedor del PDF (simulado)
+    const razonSocialProveedor = 'Pola - cola'; // En producción, esto vendría del análisis del PDF
+
     console.log('💾 PEDIDOS: Guardando pedido', {
       sucursal: sucursalCaptura,
       productos: productosSeleccionados.length,
-      total: totalPedido
+      total: totalPedido,
+      proveedor: razonSocialProveedor
     });
 
     const success = await insert({
       empresa_id: '00000000-0000-0000-0000-000000000001',
       sucursal_id: sucursalCaptura,
-      proveedor_id: '00000000-0000-0000-0000-000000000001',
+      razon_social: razonSocialProveedor, // Almacenar directamente en pedidos
       folio: `PED-${Date.now()}`,
       fecha: new Date().toISOString(),
       estado: 'pendiente',
