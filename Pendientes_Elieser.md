@@ -1,3 +1,9 @@
+## Objetivo
+
+Valida y corrige TODO estos detalles de los módulos de Recepción de Pedidos, Ventas, Cupones, Inventario y Colaboradores. Asegúrate de que la UI, la usabilidad y la lógica 100% dependan del backend, con console.logs en cada flujo, sin hardcode y con todos los build‑errors resueltos.
+
+---
+
 ### 1) Recepción de Pedidos
 
 - **Filtrar por fecha** Actualmente funciona mal,no muestra correctamente los productos del dia seleccionado
@@ -36,3 +42,16 @@
   - El modal de filtro por fecha no funciona
 
 ---
+
+### 5) Colaboradores
+
+- **Seccion Gestion usuarios**:
+  - Al desplegar el modal de descripccion de cada usuario consumes diversos ednpoints,entre estos hay 2 que estan dando error 400 "son los endpoints encargados de mostrar los datos del usuario y sus permisos"
+  - Agregar tareas modal de descripccion de cada usuario activa el endpoint pero en la ventana se mantienen los datos estaticos
+  - Los endpoints para editar los roles y permisos de los usuarios dan error 400,no se realiza la en modal de descripccion de cada usuario
+  - El endpoint de asignar turno en modal de descripccion de cada usuario no esta trabajando,las sucursales que aparecen listadas no son las correctas (tiene una de mas)
+  - Los filtros de esta seccion estan mal,permite filtrar por fechas pero no las muestro en ninguna columna,las sucursales a usar para filtrar estan estaticas
+
+### 6) Colaboradores
+
+- NO ENCONTRE ERRORES,SOLO UN DETALLE DE INCONGRUENCIA,CUANDO ESTEMOS EN SECCION TE LO EXPLICO (SIMPLE PERO MUY LARGO DE ESCRIBIR)
