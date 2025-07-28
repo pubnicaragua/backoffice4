@@ -370,16 +370,20 @@ export function VentasDashboard() {
   const handleDownloadReport = (type: "excel" | "template") => {
     try {
       if (type === "excel") {
-        const headers = ["Folio", "Fecha", "Total", "Sucursal", "Método Pago"];
+        const headers = ["Folio", "Fecha", "Total", "Sucursal", "Método Pago", "Cliente", "Usuario", "Tipo DTE", "Estado"];
         const csvContent = [
           headers.join(","),
           ...filteredVentas.map((v) =>
             [
-              v.folio || "N/A",
-              new Date(v.fecha).toLocaleDateString("es-CL"),
-              v.total || "0",
-              v.sucursales?.nombre || "N/A",
-              v.metodo_pago || "N/A",
+              `"${v.folio || "N/A"}"`,
+              `"${new Date(v.fecha).toLocaleDateString("es-CL")}"`,
+              `"${v.total || "0"}"`,
+              `"${v.sucursales?.nombre || "N/A"}"`,
+              `"${v.metodo_pago || "N/A"}"`,
+              `"${v.cliente_id || "Cliente General"}"`,
+              `"${v.usuario_id || "Sistema"}"`,
+              `"${v.tipo_dte || "boleta"}"`,
+              `"${v.estado || "completado"}"`,
             ].join(",")
           ),
         ].join("\n");

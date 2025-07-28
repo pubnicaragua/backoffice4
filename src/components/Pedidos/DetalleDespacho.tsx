@@ -313,6 +313,7 @@ export function DetalleDespacho({ onBack, despacho }: DetalleDespachoProps) {
             >
               <option value="pendiente">Pendiente</option>
               <option value="entregado">Entregado</option>
+              <option value="cancelado">Cancelado</option>
             </select>
           </div>
           

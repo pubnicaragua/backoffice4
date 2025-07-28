@@ -1,30 +1,11 @@
 import React, { useState } from "react";
 import { DetallePedido } from "./DetallePedido";
-import { Filter, Plus, Download, FileDown } from "lucide-react";
-import { saveAs } from "file-saver";
+import { Filter, Plus } from "lucide-react";
 import {
   useSupabaseData,
   useSupabaseInsert,
 } from "../../hooks/useSupabaseData";
 import { Modal } from "../Common/Modal";
-import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
-
-import { extraerDatosCompletos } from "../../../utils/pdfParser";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.js";
-
-interface Producto {
-  numero_serie: string;
-  cantidad: number;
-  descripcion: string;
-  total: number | null;
-}
-
-interface ResultadoExtraccion {
-  proveedor: string | null;
-  productos: Producto[];
-  costo_total: number | null;
-}
 
 export function RecepcionPedidos() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -32,38 +13,30 @@ export function RecepcionPedidos() {
   const [showDetalle, setShowDetalle] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showAgregarModal, setShowAgregarModal] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-  const [parsedPdfInfo, setParsedPdfInfo] =
-    useState<ResultadoExtraccion | null>(null);
-  const [selectedProducts, setSelectedProducts] = useState<{
-    [key: string]: { selected: boolean; cantidad: number };
-  }>({});
-  const [processing, setProcessing] = useState(false);
   const [selectedPedido, setSelectedPedido] = useState<any>(null);
   const [filters, setFilters] = useState({
     proveedor: "",
     fecha: "",
     estado: "",
   });
-  const [sucursalCaptura, setSucursalCaptura] = useState("");
 
-  // Hooks para datos, clientes, pedidos y sucursales
+  // Formulario para agregar pedido manualmente
+  const [formData, setFormData] = useState({
+    proveedor: "",
+    folio_factura: "",
+    monto_total: "",
+    sucursal_captura: "",
+    archivo_respaldo: null as File | null,
+  });
+
+  // Hooks para datos
   const {
     data: pedidos,
     loading,
     refetch,
-  } = useSupabaseData<any>(
-    "pedidos",
-    "*, clientes(razon_social), sucursales(nombre)"
-  );
-  const { data: clientes, refetch: refetchClientes } = useSupabaseData<any>(
-    "clientes",
-    "*"
-  );
+  } = useSupabaseData<any>("pedidos", "*, sucursales(nombre)");
   const { data: sucursales } = useSupabaseData<any>("sucursales", "*");
   const { insert, loading: inserting } = useSupabaseInsert("pedidos");
-  const { insert: insertCliente, loading: insertingCliente } =
-    useSupabaseInsert("clientes");
 
   // Procesa datos para tabla principal
   const processedData = (pedidos || [])
@@ -73,12 +46,7 @@ export function RecepcionPedidos() {
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     )
     .map((pedido) => {
-      const fechaPedido =
-        pedido.fecha || pedido.fecha_pedido || pedido.created_at;
-      const proveedor =
-        pedido.clientes?.razon_social ||
-        clientes.find((c) => c.id === pedido.proveedor_id)?.razon_social ||
-        "Proveedor Desconocido";
+      const fechaPedido = pedido.fecha || pedido.created_at;
       const sucursal =
         pedido.sucursales?.nombre ||
         sucursales.find((s) => s.id === pedido.sucursal_id)?.nombre ||
@@ -86,7 +54,7 @@ export function RecepcionPedidos() {
 
       return {
         id: pedido.id,
-        proveedor,
+        proveedor: pedido.razon_social || "Proveedor Desconocido",
         folio_factura: pedido.folio || `PED-${pedido.id?.slice(0, 8)}`,
         fecha: new Date(fechaPedido).toLocaleDateString("es-CL"),
         monto_total: `$${(pedido.total || 0).toLocaleString("es-CL")}`,
@@ -119,201 +87,72 @@ export function RecepcionPedidos() {
     setShowDetalle(true);
   };
 
-  const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const uploadedFile = event.target.files?.[0];
-    if (uploadedFile) {
-      setFile(uploadedFile);
-      await processFile(uploadedFile);
-    }
-  };
-
-  const processFile = async (file: File) => {
-    setProcessing(true);
-    setParsedPdfInfo(null);
-    setSelectedProducts({});
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      let fullText = "";
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items
-          .map((item: any) => item.str)
-          .join(" ");
-        fullText += pageText + "\n";
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validar tipos de archivo permitidos
+      const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'application/pdf'];
+      if (!allowedTypes.includes(file.type)) {
+        alert('Solo se permiten archivos PNG, JPG, JPEG y PDF');
+        return;
       }
-      const resultado: ResultadoExtraccion = extraerDatosCompletos(fullText);
-      setParsedPdfInfo(resultado);
-
-      // Inicializa selectedProducts con todos seleccionados y cantidades
-      const initialSelectedProducts = resultado.productos.reduce(
-        (acc, producto) => {
-          acc[producto.descripcion] = {
-            selected: true,
-            cantidad: producto.cantidad,
-          };
-          return acc;
-        },
-        {} as { [key: string]: { selected: boolean; cantidad: number } }
-      );
-      setSelectedProducts(initialSelectedProducts);
-    } catch (error) {
-      console.error("Error procesando PDF:", error);
-      alert("No se pudo procesar el archivo PDF correctamente.");
-    } finally {
-      setProcessing(false);
+      setFormData(prev => ({ ...prev, archivo_respaldo: file }));
     }
   };
 
-  // Espera a que cliente aparezca en datos de clientes tras la recarga
-  const waitForCliente = async (
-    razon_social: string,
-    retries = 5,
-    delayMs = 500
-  ): Promise<string> => {
-    for (let i = 0; i < retries; i++) {
-      const clienteEncontrado = (clientes || []).find(
-        (c) =>
-          c.razon_social?.trim().toLowerCase() === razon_social.toLowerCase()
-      );
-      if (clienteEncontrado) return clienteEncontrado.id;
-
-      // Esperar antes de reiniciar
-      await new Promise((res) => setTimeout(res, delayMs));
-      await refetchClientes();
+  const handleAgregarPedido = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.proveedor.trim()) {
+      alert("Por favor ingresa el nombre del proveedor");
+      return;
     }
-    throw new Error(
-      "No se pudo obtener el id del nuevo cliente insertado después de crear"
-    );
-  };
-
-  // Obtiene el id de proveedor: busca o inserta y espera a tenerlo
-  const getProveedorId = async (): Promise<string> => {
-    if (!parsedPdfInfo?.proveedor) {
-      throw new Error("Proveedor no detectado en el PDF");
+    if (!formData.folio_factura.trim()) {
+      alert("Por favor ingresa el folio de la factura");
+      return;
     }
-    const nombreProveedor = parsedPdfInfo.proveedor.trim();
-
-    const clienteExistente = (clientes || []).find(
-      (c) =>
-        c.razon_social?.trim().toLowerCase() === nombreProveedor.toLowerCase()
-    );
-    if (clienteExistente) {
-      return clienteExistente.id;
+    if (!formData.monto_total) {
+      alert("Por favor ingresa el monto total");
+      return;
     }
-
-    // Inserta cliente nuevo
-    const insertResult = await insertCliente({ razon_social: nombreProveedor });
-    if (!insertResult) {
-      throw new Error("Error insertando nuevo cliente");
-    }
-
-    // Espera y obtiene el id del cliente insertado
-    const clienteId = await waitForCliente(nombreProveedor);
-    return clienteId;
-  };
-
-  const handleAgregarPedido = async () => {
-    if (!sucursalCaptura) {
+    if (!formData.sucursal_captura) {
       alert("Por favor selecciona una sucursal de captura");
       return;
     }
-    if (!parsedPdfInfo) {
-      alert("No hay datos para agregar.");
-      return;
-    }
+
+    console.log('📝 PEDIDOS: Agregando pedido manual', formData);
+
     try {
-      setProcessing(true);
-
-      const proveedorId = await getProveedorId();
-
-      const productosSeleccionados = Object.entries(selectedProducts)
-        .filter(([_, data]) => data.selected)
-        .map(([key, data]) => {
-          const producto = parsedPdfInfo.productos.find(
-            (p) => p.descripcion === key
-          );
-          return {
-            nombre: key,
-            cantidad: data.cantidad,
-            costo: producto?.total || 1000,
-          };
-        });
-
-      const totalPedido = productosSeleccionados.reduce(
-        (sum, p) => sum + p.cantidad * p.costo,
-        0
-      );
-
       const success = await insert({
         empresa_id: "00000000-0000-0000-0000-000000000001",
-        sucursal_id: sucursalCaptura,
-        proveedor_id: proveedorId,
-        folio: `PED-${Date.now()}`,
+        sucursal_id: formData.sucursal_captura,
+        razon_social: formData.proveedor.trim(),
+        folio: formData.folio_factura.trim(),
         fecha: new Date().toISOString(),
-        estado: "pendiente",
-        total: totalPedido,
+        total: parseFloat(formData.monto_total),
+        estado: "recibido",
       });
 
       if (success) {
+        console.log('✅ PEDIDOS: Pedido agregado exitosamente');
         setShowAgregarModal(false);
-        setFile(null);
-        setParsedPdfInfo(null);
-        setSelectedProducts({});
-        setSucursalCaptura("");
+        setFormData({
+          proveedor: "",
+          folio_factura: "",
+          monto_total: "",
+          sucursal_captura: "",
+          archivo_respaldo: null,
+        });
         refetch();
-        refetchClientes();
       }
     } catch (error) {
-      console.error("Error agregando pedido:", error);
-      alert(`Hubo un error al agregar el pedido: ${(error as Error).message}`);
-    } finally {
-      setProcessing(false);
+      console.error('❌ PEDIDOS: Error agregando pedido:', error);
+      alert(`Error al agregar el pedido: ${error.message}`);
     }
   };
 
-  const handleDownloadReport = () => {
-    const headers = [
-      "Proveedor",
-      "Folio Factura",
-      "Fecha",
-      "Monto Total",
-      "Sucursal Captura",
-    ];
-    const csvContent = [
-      headers.join(","),
-      ...filteredData.map((row) =>
-        [
-          row.proveedor,
-          row.folio_factura,
-          row.fecha,
-          row.monto_total.replace(/[$.,]/g, ""),
-          row.sucursal_captura,
-        ].join(",")
-      ),
-    ].join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    saveAs(
-      blob,
-      `reporte_pedidos_${new Date().toISOString().split("T")[0]}.csv`
-    );
-  };
-
-  const handleDownloadTemplate = () => {
-    const headers = ["Producto", "Stock"];
-    const csvContent = headers.join(",") + "\n";
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    saveAs(
-      blob,
-      `plantilla_productos_stock_${new Date().toISOString().split("T")[0]}.csv`
-    );
-  };
-
   const applyFilters = () => {
+    console.log('🔍 PEDIDOS: Aplicando filtros', filters);
     setCurrentPage(1);
     setShowFilters(false);
   };
@@ -352,23 +191,7 @@ export function RecepcionPedidos() {
             className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             <Plus className="w-4 h-4" />
-            <span>Agregar pedido recibido</span>
-          </button>
-
-          <button
-            onClick={handleDownloadReport}
-            className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            title="Descargar Reporte"
-          >
-            <Download className="w-4 h-4" />
-          </button>
-
-          <button
-            onClick={handleDownloadTemplate}
-            className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            title="Descargar Plantilla"
-          >
-            <FileDown className="w-4 h-4" />
+            <span>Agregar pedido</span>
           </button>
         </div>
       </div>
@@ -489,6 +312,7 @@ export function RecepcionPedidos() {
         )}
       </div>
 
+      {/* Modal de Filtros */}
       <Modal
         isOpen={showFilters}
         onClose={() => setShowFilters(false)}
@@ -536,20 +360,88 @@ export function RecepcionPedidos() {
         </div>
       </Modal>
 
+      {/* Modal Agregar Pedido Manual */}
       <Modal
         isOpen={showAgregarModal}
         onClose={() => setShowAgregarModal(false)}
-        title="Agregar pedido recibido"
-        size="lg"
+        title="Agregar pedido"
+        size="md"
       >
-        <div className="space-y-6">
+        <form onSubmit={handleAgregarPedido} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Proveedor *
+            </label>
+            <input
+              type="text"
+              value={formData.proveedor}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, proveedor: e.target.value }))
+              }
+              placeholder="Nombre del proveedor"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Folio factura *
+            </label>
+            <input
+              type="text"
+              value={formData.folio_factura}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, folio_factura: e.target.value }))
+              }
+              placeholder="Número de folio"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Fecha
+            </label>
+            <input
+              type="text"
+              value={new Date().toLocaleDateString("es-CL")}
+              disabled
+              className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              La fecha se asigna automáticamente
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Monto total *
+            </label>
+            <input
+              type="number"
+              value={formData.monto_total}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, monto_total: e.target.value }))
+              }
+              placeholder="0"
+              min="0"
+              step="0.01"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Sucursal de captura *
             </label>
             <select
-              value={sucursalCaptura}
-              onChange={(e) => setSucursalCaptura(e.target.value)}
+              value={formData.sucursal_captura}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, sucursal_captura: e.target.value }))
+              }
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             >
@@ -562,141 +454,43 @@ export function RecepcionPedidos() {
             </select>
           </div>
 
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-            {processing ? (
-              <div className="w-12 h-12 mx-auto mb-4 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-            ) : (
-              <div className="w-16 h-16 text-gray-400 mx-auto mb-4 text-4xl">
-                📄
-              </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Archivo de respaldo (PNG, JPG, JPEG, PDF)
+            </label>
+            <input
+              type="file"
+              accept=".png,.jpg,.jpeg,.pdf"
+              onChange={handleFileUpload}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {formData.archivo_respaldo && (
+              <p className="text-xs text-green-600 mt-1">
+                ✓ Archivo seleccionado: {formData.archivo_respaldo.name}
+              </p>
             )}
-            <div className="mb-4">
-              <label className="cursor-pointer">
-                <span className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-block font-medium">
-                  {processing ? "Procesando PDF..." : "Subir archivo PDF"}
-                </span>
-                <input
-                  type="file"
-                  accept=".pdf"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  disabled={processing}
-                />
-              </label>
-            </div>
-
-            {file && parsedPdfInfo && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
-                <h4 className="font-medium text-blue-900 mb-2">
-                  📋 Análisis del PDF:
-                </h4>
-                <p>
-                  <strong>Archivo:</strong> {file.name}
-                </p>
-                <p>
-                  <strong>Proveedor Detectado:</strong>{" "}
-                  {parsedPdfInfo.proveedor || "No detectado"}
-                </p>
-                <p>
-                  <strong>Costo Total:</strong>{" "}
-                  {parsedPdfInfo.costo_total !== null
-                    ? `$${parsedPdfInfo.costo_total.toLocaleString("es-CL")}`
-                    : "No disponible"}
-                </p>
-
-                <h5 className="mt-4 font-semibold text-blue-900">
-                  Productos detectados:
-                </h5>
-                {parsedPdfInfo.productos.length === 0 && (
-                  <p className="text-sm text-blue-800">
-                    No se detectaron productos.
-                  </p>
-                )}
-                <div className="max-h-60 overflow-y-auto mt-2 space-y-2">
-                  {parsedPdfInfo.productos.map((producto) => (
-                    <div
-                      key={producto.descripcion}
-                      className="grid grid-cols-4 gap-4 text-sm items-center bg-white p-3 rounded border"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={
-                          selectedProducts[producto.descripcion]?.selected ||
-                          false
-                        }
-                        onChange={(e) =>
-                          setSelectedProducts((prev) => ({
-                            ...prev,
-                            [producto.descripcion]: {
-                              selected: e.target.checked,
-                              cantidad:
-                                prev[producto.descripcion]?.cantidad ||
-                                producto.cantidad,
-                            },
-                          }))
-                        }
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                      <span className="text-gray-900">
-                        {producto.descripcion}
-                      </span>
-                      <input
-                        type="number"
-                        value={
-                          selectedProducts[producto.descripcion]?.cantidad ||
-                          producto.cantidad
-                        }
-                        onChange={(e) =>
-                          setSelectedProducts((prev) => ({
-                            ...prev,
-                            [producto.descripcion]: {
-                              selected: true,
-                              cantidad: Math.max(
-                                1,
-                                parseInt(e.target.value) || 1
-                              ),
-                            },
-                          }))
-                        }
-                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                        min="1"
-                      />
-                      <span className="text-gray-600 text-xs">
-                        Total:{" "}
-                        {producto.total !== null
-                          ? `$${producto.total.toLocaleString("es-CL")}`
-                          : "No disponible"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {parsedPdfInfo && parsedPdfInfo.productos.length > 0 && (
-              <div className="flex justify-center">
-                <button
-                  onClick={handleAgregarPedido}
-                  disabled={
-                    inserting ||
-                    !sucursalCaptura ||
-                    insertingCliente ||
-                    processing
-                  }
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {inserting
-                    ? "Agregando..."
-                    : `Agregar ${
-                        Object.values(selectedProducts).filter(
-                          (p) => p.selected
-                        ).length
-                      } productos como pedido`}
-                </button>
-              </div>
-            )}
+            <p className="text-xs text-gray-500 mt-1">
+              Opcional: Sube una foto de la guía de despacho como respaldo
+            </p>
           </div>
-        </div>
+
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={() => setShowAgregarModal(false)}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={inserting}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              {inserting ? "Guardando..." : "Guardar pedido"}
+            </button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

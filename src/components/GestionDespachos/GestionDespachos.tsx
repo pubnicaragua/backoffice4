@@ -62,7 +62,9 @@ export function GestionDespachos() {
     monto_total: `$${Math.floor(Math.random() * 50000 + 10000).toLocaleString(
       "es-CL"
     )}`,
-    estado: despacho.estado === "pendiente" ? "Pendiente" : "Entregado",
+    estado: despacho.estado === "pendiente" ? "Pendiente" : 
+            despacho.estado === "entregado" ? "Entregado" : 
+            despacho.estado === "cancelado" ? "Cancelado" : "Pendiente",
     sucursal_destino: despacho.direccion || "Jr. Santiago de Chile 193",
     despacho: despacho,
   }));
