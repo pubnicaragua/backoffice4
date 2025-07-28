@@ -110,13 +110,13 @@ export function AgregarPromocionModal({
       precio_real: formData.producto_seleccionado.precio,
     };
 
-    // Evitar duplicados por producto ID y sucursal
+    // Evitar duplicados por sku y sucursal
     const yaExiste = productosAgregados.some(
       (p) =>
-        p.id === nuevoProducto.id && p.sucursal === nuevoProducto.sucursal
+        p.sku === nuevoProducto.sku && p.sucursal === nuevoProducto.sucursal
     );
     if (yaExiste) {
-      alert(`El producto "${nuevoProducto.nombre}" ya está agregado para esta sucursal. Si quieres modificar el precio, elimínalo primero y vuelve a agregarlo.`);
+      alert("Este producto ya está agregado para la sucursal seleccionada");
       return;
     }
 
@@ -442,7 +442,7 @@ export function AgregarPromocionModal({
         {productosAgregados.length > 0 && (
           <div className="w-80 bg-gray-50 rounded-lg p-4">
             <h4 className="font-medium text-gray-900 mb-3">
-              📋 Productos agregados ({productosAgregados.length})
+              📋 Productos en esta promoción ({productosAgregados.length})
             </h4>
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {productosAgregados.map((producto, index) => (
@@ -454,8 +454,12 @@ export function AgregarPromocionModal({
                     <p className="font-medium text-sm">{producto.nombre}</p>
                     <p className="text-xs text-gray-500">SKU: {producto.sku}</p>
                     <p className="text-xs text-gray-500">
-                      Precio promoción: $
+                      Precio promo: $
                       {producto.precio_promocion.toLocaleString("es-CL")}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      Precio normal: $
+                      {producto.precio_real.toLocaleString("es-CL")}
                     </p>
                     <p className="text-xs text-gray-500">
                       Sucursal: {producto.sucursalNombre}
