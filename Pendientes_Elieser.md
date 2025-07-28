@@ -1,9 +1,3 @@
-## Objetivo
-
-Valida y corrige TODO estos detalles de los módulos de Recepción de Pedidos, Ventas, Cupones, Inventario y Colaboradores. Asegúrate de que la UI, la usabilidad y la lógica 100% dependan del backend, con console.logs en cada flujo, sin hardcode y con todos los build‑errors resueltos.
-
----
-
 ### 1) Recepción de Pedidos
 
 - **Filtrar por fecha** Actualmente funciona mal,no muestra correctamente los productos del dia seleccionado
@@ -52,6 +46,17 @@ Valida y corrige TODO estos detalles de los módulos de Recepción de Pedidos, V
   - El endpoint de asignar turno en modal de descripccion de cada usuario no esta trabajando,las sucursales que aparecen listadas no son las correctas (tiene una de mas)
   - Los filtros de esta seccion estan mal,permite filtrar por fechas pero no las muestro en ninguna columna,las sucursales a usar para filtrar estan estaticas
 
-### 6) Colaboradores
+---
 
-- NO ENCONTRE ERRORES,SOLO UN DETALLE DE INCONGRUENCIA,CUANDO ESTEMOS EN SECCION TE LO EXPLICO (SIMPLE PERO MUY LARGO DE ESCRIBIR)
+### 6) Ventas
+- En el panel de filtro "Buscar producto" no sigue la misma logica que el resto de los componentes (no me genera el autocompletado)
+- En ventas,cuando aplicas los filtros por metodo de pago si el total que tenemos es de 24 ventas y cuando filtramos por efectivo salen 20,cuando filtres por tarjeta deberia de salir el resto,no lo hace.....
+- Ninguno de lso 2 refresh funciona
+
+---
+
+### 6) Inventario
+  - El editar producto no funciona,el endpoint genera error 409 en todos los casos de prueba
+  - Actualizar inventario masivo,descargar (los dos) no tienen sus funcionalidades
+  
+
