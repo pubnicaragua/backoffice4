@@ -9,11 +9,24 @@ interface SolicitudVacacionesModalProps {
 }
 
 export function SolicitudVacacionesModal({ isOpen, onClose, solicitud }: SolicitudVacacionesModalProps) {
+  const [respuesta, setRespuesta] = useState('');
+  const [isProcessed, setIsProcessed] = useState(false);
   const { update, loading } = useSupabaseUpdate('solicitudes_vacaciones');
 
+  // Check if solicitud is already processed
+  React.useEffect(() => {
+    if (solicitud?.estado && solicitud.estado !== 'pendiente') {
+      setIsProcessed(true);
+    } else {
+      setIsProcessed(false);
+    }
+  }, [solicitud]);
   const handleAprobar = async () => {
+    if (isProcessed) return;
+    
     const success = await update(solicitud?.id || 'sol-vac-001-001-001-001-001001001', {
-      estado: 'aprobado'
+      estado: 'aprobado',
+      respuesta: respuesta || 'Solicitud aprobada'
     });
 
     if (success) {
@@ -23,8 +36,11 @@ export function SolicitudVacacionesModal({ isOpen, onClose, solicitud }: Solicit
   };
 
   const handleRechazar = async () => {
+    if (isProcessed) return;
+    
     const success = await update(solicitud?.id || 'sol-vac-001-001-001-001-001001001', {
-      estado: 'rechazado'
+      estado: 'rechazado',
+      respuesta: respuesta || 'Solicitud rechazada'
     });
 
     if (success) {
@@ -61,25 +77,59 @@ export function SolicitudVacacionesModal({ isOpen, onClose, solicitud }: Solicit
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Estado:
           </label>
-          <span className="text-sm text-gray-900">{solicitud?.estado || 'Pendiente'}</span>
+          <span className={`text-sm font-medium ${
+            solicitud?.estado === 'aprobado' ? 'text-green-600' :
+            solicitud?.estado === 'rechazado' ? 'text-red-600' : 'text-yellow-600'
+          }`}>
+            {solicitud?.estado === 'aprobado' ? 'Aprobado' :
+             solicitud?.estado === 'rechazado' ? 'Rechazado' : 'Pendiente'}
+          </span>
         </div>
 
-        <div className="flex justify-center space-x-3">
-          <button
-            onClick={handleRechazar}
-            disabled={loading}
-            className="px-6 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-50"
-          >
-            {loading ? 'Procesando...' : 'Rechazar solicitud'}
-          </button>
-          <button
-            onClick={handleAprobar}
-            disabled={loading}
-            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-          >
-            {loading ? 'Procesando...' : 'Aceptar solicitud'}
-          </button>
-        </div>
+        {!isProcessed && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Respuesta (opcional):
+              </label>
+              <textarea
+                value={respuesta}
+                onChange={(e) => setRespuesta(e.target.value)}
+                placeholder="Agregar comentarios sobre la decisión..."
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex justify-center space-x-3">
+              <button
+                onClick={handleRechazar}
+                disabled={loading}
+                className="px-6 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-50"
+              >
+                {loading ? 'Procesando...' : 'Rechazar solicitud'}
+              </button>
+              <button
+                onClick={handleAprobar}
+                disabled={loading}
+                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+              >
+                {loading ? 'Procesando...' : 'Aceptar solicitud'}
+              </button>
+            </div>
+          </>
+        )}
+        
+        {isProcessed && (
+          <div className="text-center p-4 bg-gray-50 rounded-lg">
+            <p className="text-gray-600">Esta solicitud ya ha sido procesada y no puede modificarse.</p>
+            {solicitud?.respuesta && (
+              <div className="mt-2">
+                <p className="text-sm font-medium text-gray-700">Respuesta:</p>
+                <p className="text-sm text-gray-600">{solicitud.respuesta}</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </Modal>
   );

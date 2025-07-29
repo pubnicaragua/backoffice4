@@ -169,7 +169,6 @@ export function OpcionesCaja() {
         <h3 className="font-medium text-gray-900">Integración con POS</h3>
         <div className="space-y-3">
           {[
-            { key: 'mercado_pago', label: 'Mercado Pago' },
             { key: 'sumup', label: 'SumUp' },
             { key: 'transbank', label: 'Transbank' },
             { key: 'getnet', label: 'GetNet' },

@@ -3,7 +3,7 @@ import { Modal } from "../Common/Modal";
 import { AsignarTurnoModal } from "./AsignarTurnoModal";
 import { useSupabaseData } from "../../hooks/useSupabaseData";
 import { AsignarTareaModal } from "./AsignarTareaModal";
-import { AsignarPermisoModal } from "./AsignarPermisoModal";
+import { EditarPermisosModal } from "./EditarPermisosModal";
 
 interface PerfilEmpleadoModalProps {
   isOpen: boolean;
@@ -18,12 +18,12 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({
 }) => {
   const [showTurnoModal, setShowTurnoModal] = useState(false);
   const [showTareaModal, setShowTareaModal] = useState(false);
-  const [showPermisoModal, setShowPermisoModal] = useState(false);
+ const [showEditarPermisosModal, setShowEditarPermisosModal] = useState(false);
 
   // Fetch user details, permissions, and tasks for the selected user
   const { data: userDetails, loading: userLoading } = useSupabaseData<any>(
     "usuarios",
-    "*, roles(nombre, permisos)", // Fetch role and its permissions
+    "*", // Remove roles relationship that doesn't exist
     selectedUser?.id ? { id: selectedUser.id } : null
   );
 
@@ -32,9 +32,9 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({
     loading: permissionsLoading,
     refetch: refetchPermissions,
   } = useSupabaseData<any>(
-    "usuario_permisos",
-    "*, permisos(nombre, modulo)",
-    selectedUser?.id ? { usuario_id: selectedUser.id } : null
+    "permisos", // Get all available permissions
+    "*",
+    null // Get all permissions, not user-specific
   );
 
   const {
@@ -218,13 +218,13 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({
               </h3>
               <div className="flex space-x-3">
                 <button
-                  onClick={() => setShowPermisoModal(true)} // Pass selectedUser to modal
+                  onClick={() => setShowEditarPermisosModal(true)}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
                   Editar permisos
                 </button>
                 <button
-                  onClick={() => setShowPermisoModal(true)} // Pass selectedUser to modal
+                  onClick={() => setShowEditarPermisosModal(true)}
                   className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
                   Asignar permisos
@@ -233,28 +233,28 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-48 overflow-y-auto">
-              {permisos.length > 0 ? (
-                permisos.map((permiso, index) => (
+              {userPermissions.length > 0 ? (
+                userPermissions.map((permiso, index) => (
                   <div
-                    key={permiso.id || index}
+                    key={index}
                     className="text-center p-2 bg-white rounded-lg border border-gray-200"
                   >
                     <p className="text-xs text-gray-600 mb-2 font-medium">
-                      {permiso.permisos?.nombre || permiso.nombre}
+                      {permiso.nombre}
                     </p>
                     <div
                       className={`w-4 h-4 mx-auto rounded ${
-                        permiso.estado === "permitido"
+                        permiso.activo
                           ? "bg-green-500"
                           : "bg-red-500"
                       } flex items-center justify-center`}
                     >
                       <span className="text-white text-xs">
-                        {permiso.estado === "permitido" ? "✓" : "✗"}
+                        {permiso.activo ? "✓" : "✗"}
                       </span>
                     </div>
                     <p className="text-xs text-gray-400 mt-1">
-                      {permiso.permisos?.modulo || ""}
+                      {permiso.modulo || ""}
                     </p>
                   </div>
                 ))
@@ -279,9 +279,11 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({
         selectedUser={empleado}
         onSuccess={() => refetchTasks()}
       />
-      <AsignarPermisoModal
-        isOpen={showPermisoModal}
-        onClose={() => setShowPermisoModal(false)}
+      <EditarPermisosModal
+        isOpen={showEditarPermisosModal}
+        onClose={() => setShowEditarPermisosModal(false)}
+        selectedUser={empleado}
+        availablePermissions={userPermissions}
       />
     </>
   );

@@ -33,13 +33,11 @@ export function GestionDespachos() {
   );
 
   const filteredDespachos = (despachos || []).filter((despacho) => {
-    if (
-      filters.fecha &&
-      !new Date(despacho.fecha || despacho.created_at)
-        .toLocaleDateString("es-CL")
-        .includes(filters.fecha)
-    )
-      return false;
+    if (filters.fecha) {
+      const despachoDate = new Date(despacho.fecha || despacho.created_at);
+      const filterDate = new Date(filters.fecha);
+      if (despachoDate.toDateString() !== filterDate.toDateString()) return false;
+    }
     if (
       filters.estado &&
       despacho.estado.toLowerCase() !== filters.estado.toLowerCase()
@@ -52,26 +50,27 @@ export function GestionDespachos() {
 
   const processedData = filteredDespachos.map((despacho) => ({
     id: despacho.id,
+    fecha: new Date(despacho.fecha || despacho.created_at),
     entregado_por:
       usuarios?.find((u) => u.id === despacho.entregado_por)?.nombres ||
       "Emilio Aguilera",
-    folio_factura: despacho.folio || despacho.id?.slice(0, 8) || "N/A",
+    folio_factura: despacho.folio || `DESP-${despacho.id?.slice(0, 8)}` || "N/A",
     fechaDisplay: new Date(
       despacho.fecha || despacho.created_at
     ).toLocaleDateString("es-CL"),
-    monto_total: `$${Math.floor(Math.random() * 50000 + 10000).toLocaleString(
-      "es-CL"
-    )}`,
+    monto_total: `$${(despacho.monto_total || Math.floor(Math.random() * 50000 + 10000)).toLocaleString("es-CL")}`,
     estado: despacho.estado === "pendiente" ? "Pendiente" : 
             despacho.estado === "entregado" ? "Entregado" : 
             despacho.estado === "cancelado" ? "Cancelado" : "Pendiente",
-    sucursal_destino: despacho.direccion || "Jr. Santiago de Chile 193",
+    sucursal_destino: despacho.direccion || despacho.sucursal_destino || "Jr. Santiago de Chile 193",
     despacho: despacho,
   }));
 
   const filteredData = processedData.filter((item) => {
-    if (filters.fecha && !item.fechaDisplay.includes(filters.fecha))
-      return false;
+    if (filters.fecha) {
+      const filterDate = new Date(filters.fecha);
+      if (item.fecha.toDateString() !== filterDate.toDateString()) return false;
+    }
     if (
       filters.estado &&
       item.estado.toLowerCase() !== filters.estado.toLowerCase()
@@ -82,8 +81,8 @@ export function GestionDespachos() {
 
   const sortedData = [...filteredData].sort((a, b) => {
     if (sortBy === "fecha") {
-      const dateA = new Date(a.fechaDisplay);
-      const dateB = new Date(b.fechaDisplay);
+      const dateA = a.fecha;
+      const dateB = b.fecha;
       return sortOrder === "desc"
         ? dateB.getTime() - dateA.getTime()
         : dateA.getTime() - dateB.getTime();

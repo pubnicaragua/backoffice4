@@ -27,6 +27,7 @@ export function ProductosTotales() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('productos');
 
   const { data: productos, loading, refetch } = useSupabaseData<any>(
     'productos',
@@ -35,6 +36,11 @@ export function ProductosTotales() {
   const { data: sucursales } = useSupabaseData<any>('sucursales', '*');
   const { data: categorias } = useSupabaseData<any>('categorias', '*');
   const { insert: insertNotification } = useSupabaseInsert('notificaciones');
+
+  const tabs = [
+    { id: 'productos', label: 'Productos totales' },
+    { id: 'codigos-barra', label: 'Códigos de barra' },
+  ];
 
   const columns = [
     { key: 'checkbox', label: '', width: '40px' },
@@ -135,14 +141,18 @@ export function ProductosTotales() {
 
   const handleDownloadTemplate = () => {
     console.log('📊 INVENTARIO: Generando plantilla Producto/Stock');
-    const headers = ['Producto', 'Stock'];
-    const csvContent = headers.join(',') + '\n';
+    const headers = ['Producto', 'Stock', 'Categoria', 'SKU', 'Costo', 'Precio'];
+    const csvContent = [
+      headers.join(','),
+      'Ejemplo Producto,10,Bebidas,PROD001,1000,1500',
+      'Otro Producto,25,Alimentos,PROD002,500,800'
+    ].join('\n');
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `plantilla_productos_stock_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `plantilla_productos_completa_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     console.log('✅ INVENTARIO: Plantilla CSV descargada');
@@ -150,18 +160,20 @@ export function ProductosTotales() {
 
   const handleDownloadReport = () => {
     console.log('📊 INVENTARIO: Generando reporte completo CSV');
-    const headers = ['Producto', 'Stock', 'Categoria', 'SKU', 'Costo', 'Precio', 'Margen', 'Disponible'];
+    const headers = ['Producto', 'Stock', 'Categoria', 'SKU', 'Costo', 'Precio', 'Margen', 'Disponible', 'Codigo_Barras', 'Activo'];
     const csvContent = [
       headers.join(','),
-      ...filteredData.map(row => [
-        row.producto,
-        row.stock,
-        row.categoria,
-        row.sku,
-        row.costo.replace(/[$.,]/g, ''),
-        row.precio.replace(/[$.,]/g, ''),
-        row.margen.replace('%', ''),
-        row.disponible
+      ...filteredProductos.map(producto => [
+        `"${producto.nombre}"`,
+        producto.stock || 0,
+        `"${categorias.find(c => c.id === producto.categoria_id)?.nombre || 'Sin categoría'}"`,
+        `"${producto.codigo}"`,
+        producto.costo || 0,
+        producto.precio || 0,
+        `"${Math.round(((producto.precio || 0) - (producto.costo || 0)) / (producto.precio || 1) * 100)}%"`,
+        `"${producto.stock > 0 ? 'Disponible' : 'Agotado'}"`,
+        `"${producto.codigo_barras || ''}"`,
+        'true'
       ].join(','))
     ].join('\n');
     
@@ -230,12 +242,20 @@ export function ProductosTotales() {
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
-  return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Productos totales</h1>
-      </div>
-      
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'productos':
+        return renderProductosTab();
+      case 'codigos-barra':
+        return <CodigosBarra productos={productos} />;
+      default:
+        return renderProductosTab();
+    }
+  };
+
+  const renderProductosTab = () => (
+    <>
       <div className="flex items-center justify-between mb-6">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -261,14 +281,14 @@ export function ProductosTotales() {
             </button>
           )}
           <button 
-            onClick={() => handleDownloadReport}
+            onClick={handleDownloadReport}
             className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             title="Descargar Reporte"
           >
             <Download className="w-4 h-4" />
           </button>
           <button 
-            onClick={() => handleDownloadTemplate}
+            onClick={handleDownloadTemplate}
             className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             title="Descargar Plantilla"
           >
@@ -317,6 +337,7 @@ export function ProductosTotales() {
           </button>
         </div>
       </div>
+
       {/* Tabla con paginación mejorada */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <table className="w-full">
@@ -409,6 +430,38 @@ export function ProductosTotales() {
             </div>
           </div>
         )}
+      </div>
+    </>
+  );
+
+  return (
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-semibold text-gray-900">Inventario</h1>
+      </div>
+      
+      <div className="bg-white rounded-lg border border-gray-200">
+        <div className="border-b border-gray-200">
+          <nav className="flex space-x-8 px-6">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === tab.id
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+        
+        <div className="p-6">
+          {renderContent()}
+        </div>
       </div>
 
       <ReporteMermas 
@@ -572,6 +625,198 @@ export function ProductosTotales() {
           </div>
         </div>
       </Modal>
+    </div>
+  );
+}
+
+// Componente de Códigos de Barra
+function CodigosBarra({ productos }) {
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+  const [barcodeFormat, setBarcodeFormat] = useState('EAN13');
+  const [printSize, setPrintSize] = useState('small');
+  
+  const handleSelectProduct = (productId: string, checked: boolean) => {
+    setSelectedProducts(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(productId);
+      } else {
+        newSet.delete(productId);
+      }
+      return newSet;
+    });
+  };
+
+  const generateBarcode = (codigo: string, format: string) => {
+    // Simulación de código de barra - en producción usarías una librería como JsBarcode
+    return `data:image/svg+xml;base64,${btoa(`
+      <svg width="200" height="80" xmlns="http://www.w3.org/2000/svg">
+        <rect width="200" height="80" fill="white"/>
+        <g fill="black">
+          ${Array.from({length: 20}, (_, i) => 
+            `<rect x="${i * 8 + 20}" y="10" width="${Math.random() > 0.5 ? 2 : 1}" height="50"/>`
+          ).join('')}
+        </g>
+        <text x="100" y="75" text-anchor="middle" font-family="Arial" font-size="10">${codigo}</text>
+      </svg>
+    `)}`;
+  };
+
+  const handlePrintBarcodes = () => {
+    const selectedProductsList = productos.filter(p => selectedProducts.has(p.id));
+    
+    if (selectedProductsList.length === 0) {
+      alert('Por favor selecciona al menos un producto');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Códigos de Barra</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          .barcode-grid { display: grid; grid-template-columns: repeat(${printSize === 'small' ? '4' : printSize === 'medium' ? '3' : '2'}, 1fr); gap: 20px; }
+          .barcode-item { text-align: center; border: 1px solid #ccc; padding: 10px; }
+          .barcode-item img { max-width: 100%; height: auto; }
+          .product-name { font-weight: bold; margin-bottom: 5px; }
+          .product-price { color: #666; }
+          @media print { body { margin: 0; } }
+        </style>
+      </head>
+      <body>
+        <h1>Códigos de Barra - ${new Date().toLocaleDateString('es-CL')}</h1>
+        <div class="barcode-grid">
+          ${selectedProductsList.map(producto => `
+            <div class="barcode-item">
+              <div class="product-name">${producto.nombre}</div>
+              <img src="${generateBarcode(producto.codigo_barras || producto.codigo, barcodeFormat)}" alt="Código de barra"/>
+              <div class="product-price">$${(producto.precio || 0).toLocaleString('es-CL')}</div>
+            </div>
+          `).join('')}
+        </div>
+        <script>
+          window.onload = function() {
+            window.print();
+            window.onafterprint = function() {
+              window.close();
+            };
+          };
+        </script>
+      </body>
+      </html>
+    `;
+    
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-medium text-gray-900">Generar Códigos de Barra</h2>
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium text-gray-700">Formato:</label>
+            <select
+              value={barcodeFormat}
+              onChange={(e) => setBarcodeFormat(e.target.value)}
+              className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+            >
+              <option value="EAN13">EAN-13</option>
+              <option value="CODE128">Code 128</option>
+              <option value="CODE39">Code 39</option>
+            </select>
+          </div>
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium text-gray-700">Tamaño:</label>
+            <select
+              value={printSize}
+              onChange={(e) => setPrintSize(e.target.value)}
+              className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+            >
+              <option value="small">Pequeño (4 por fila)</option>
+              <option value="medium">Mediano (3 por fila)</option>
+              <option value="large">Grande (2 por fila)</option>
+            </select>
+          </div>
+          <button
+            onClick={handlePrintBarcodes}
+            disabled={selectedProducts.size === 0}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            Imprimir {selectedProducts.size} códigos
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-10">
+                <input
+                  type="checkbox"
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedProducts(new Set(productos.map(p => p.id)));
+                    } else {
+                      setSelectedProducts(new Set());
+                    }
+                  }}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Producto
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                SKU
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Código de Barra
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Precio
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Vista Previa
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {productos.map((producto) => (
+              <tr key={producto.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 text-sm text-gray-900">
+                  <input
+                    type="checkbox"
+                    checked={selectedProducts.has(producto.id)}
+                    onChange={(e) => handleSelectProduct(producto.id, e.target.checked)}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-900">{producto.nombre}</td>
+                <td className="px-6 py-4 text-sm text-gray-900">{producto.codigo}</td>
+                <td className="px-6 py-4 text-sm text-gray-900">
+                  {producto.codigo_barras || 'Sin código'}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-900">
+                  ${(producto.precio || 0).toLocaleString('es-CL')}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-900">
+                  <img 
+                    src={generateBarcode(producto.codigo_barras || producto.codigo, barcodeFormat)} 
+                    alt="Código de barra" 
+                    className="h-8"
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
