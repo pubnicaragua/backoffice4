@@ -67,10 +67,15 @@
 - El editar producto no funciona,el endpoint genera error 409 en todos los casos de prueba
 - Actualizar inventario masivo,descargar (los dos botones) no tienen sus funcionalidades
 
+---
+
 ### 8) Promociones
 
 - **Panel agregar promociones**:
   - Al agregar una promocion el nombre,la descripcion y el precio deberian de ser unicos (un solo ingreso) y los productos deberian de ir acumulandose
+
+---
+---
 
 #### CORRECCIONES SOLVENDO POS ####
 
@@ -110,6 +115,7 @@
 
 - "La funcionalidad de despachar esta rota por completo",revisar el componente de manera general
 
+---
 ---
 
 #### GENERAL ####
