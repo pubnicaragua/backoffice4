@@ -159,7 +159,7 @@ export function ProductosTotales() {
   };
 
   const handleDownloadReport = () => {
-    console.log('📊 INVENTARIO: Generando reporte completo CSV');
+    console.log('📊 INVENTARIO: Generando reporte completo de productos');
     const headers = ['Producto', 'Stock', 'Categoria', 'SKU', 'Costo', 'Precio', 'Margen', 'Disponible', 'Codigo_Barras', 'Activo'];
     const csvContent = [
       headers.join(','),

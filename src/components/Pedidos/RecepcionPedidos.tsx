@@ -65,12 +65,14 @@ export function RecepcionPedidos() {
 
   // Aplica filtros sobre los datos procesados
   const filteredData = processedData.filter((item) => {
-    if (
-      filters.proveedor &&
-      !item.proveedor.toLowerCase().includes(filters.proveedor.toLowerCase())
-    )
-      return false;
-    if (filters.fecha && !item.fecha.includes(filters.fecha)) return false;
+    if (filters.proveedor && !item.proveedor.toLowerCase().includes(filters.proveedor.toLowerCase())) return false;
+    
+    // Fix: Filtro por fecha corregido
+    if (filters.fecha) {
+      const filterDate = new Date(filters.fecha).toLocaleDateString('es-CL');
+      if (item.fecha !== filterDate) return false;
+    }
+    
     if (filters.estado && item.pedido.estado !== filters.estado) return false;
     return true;
   });

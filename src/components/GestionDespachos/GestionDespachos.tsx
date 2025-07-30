@@ -51,18 +51,16 @@ export function GestionDespachos() {
   const processedData = filteredDespachos.map((despacho) => ({
     id: despacho.id,
     fecha: new Date(despacho.fecha || despacho.created_at),
-    entregado_por:
-      usuarios?.find((u) => u.id === despacho.entregado_por)?.nombres ||
-      "Emilio Aguilera",
+    entregado_por: usuarios?.find((u) => u.id === despacho.entregado_por)?.nombres || "Emilio Aguilera",
     folio_factura: despacho.folio || `DESP-${despacho.id?.slice(0, 8)}` || "N/A",
     fechaDisplay: new Date(
       despacho.fecha || despacho.created_at
     ).toLocaleDateString("es-CL"),
-    monto_total: `$${(despacho.monto_total || Math.floor(Math.random() * 50000 + 10000)).toLocaleString("es-CL")}`,
+    monto_total: `$${(despacho.monto_total || 204000).toLocaleString("es-CL")}`,
     estado: despacho.estado === "pendiente" ? "Pendiente" : 
             despacho.estado === "entregado" ? "Entregado" : 
             despacho.estado === "cancelado" ? "Cancelado" : "Pendiente",
-    sucursal_destino: despacho.direccion || despacho.sucursal_destino || "Jr. Santiago de Chile 193",
+    sucursal_destino: despacho.direccion || "Jr. Santiago de Chile 193",
     despacho: despacho,
   }));
 

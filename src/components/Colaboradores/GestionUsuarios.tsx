@@ -191,25 +191,6 @@ export function GestionUsuarios() {
               <option value="n2">N°2</option>
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Fecha
-            </label>
-            <input
-              type="date"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Hora
-            </label>
-            <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="">Seleccionar hora</option>
-              <option value="morning">Mañana</option>
-              <option value="afternoon">Tarde</option>
-            </select>
-          </div>
         </div>
       </FilterModal>
     </div>

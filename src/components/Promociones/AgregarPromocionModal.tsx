@@ -68,22 +68,6 @@ export function AgregarPromocionModal({
   };
 
   const handleAgregarOtroProducto = () => {
-    if (!formData.nombre.trim()) {
-      alert("Por favor ingresa el nombre de la promoción");
-      return;
-    }
-    if (!formData.descripcion.trim()) {
-      alert("Por favor ingresa la descripción de la promoción");
-      return;
-    }
-    if (!formData.sucursal) {
-      alert("Por favor selecciona una sucursal");
-      return;
-    }
-    if (!formData.tipo) {
-      alert("Por favor selecciona un tipo de promoción");
-      return;
-    }
     if (!formData.producto_seleccionado) {
       alert("Por favor selecciona un producto");
       return;
@@ -101,7 +85,7 @@ export function AgregarPromocionModal({
     const nuevoProducto: ProductoAgregado = {
       id: formData.producto_seleccionado.id,
       nombre: formData.producto_seleccionado.nombre,
-      descripcion: formData.descripcion,
+      descripcion: formData.producto_seleccionado.descripcion || formData.descripcion,
       precio_promocion: parseFloat(formData.precio_promocion),
       sku: formData.sku,
       sucursal: formData.sucursal,
@@ -116,7 +100,7 @@ export function AgregarPromocionModal({
         p.sku === nuevoProducto.sku && p.sucursal === nuevoProducto.sucursal
     );
     if (yaExiste) {
-      alert("Este producto ya está agregado para la sucursal seleccionada");
+      alert("Este producto ya está agregado para esta sucursal. Si quieres cambiar el precio, elimínalo primero y vuelve a agregarlo.");
       return;
     }
 
@@ -152,37 +136,32 @@ export function AgregarPromocionModal({
       alert("Por favor agrega al menos un producto.");
       return;
     }
-    const productosFinal =
-      productosAgregados.length > 0
-        ? productosAgregados
-        : [
-            {
-              id: formData.producto_seleccionado?.id,
-              nombre: formData.producto_seleccionado?.nombre,
-              descripcion: formData.descripcion,
-              precio_promocion: parseFloat(formData.precio_promocion),
-              sku: formData.sku,
-              sucursal: formData.sucursal,
-              sucursalNombre:
-                sucursales?.find((s: any) => s.id === formData.sucursal)
-                  ?.nombre || "Desconocida",
-              producto: formData.producto_seleccionado,
-              precio_real: formData.producto_seleccionado?.precio,
-            },
-          ];
 
-    const productosIds = productosFinal.map((p) => p.id);
+    // Si hay productos agregados, usar esos; si no, usar el producto actual
+    let productosIds = [];
+    let precioPromocion = 0;
+    
+    if (productosAgregados.length > 0) {
+      productosIds = productosAgregados.map((p) => p.id);
+      precioPromocion = productosAgregados[0].precio_promocion; // Usar el precio del primer producto
+    } else if (formData.producto_seleccionado) {
+      productosIds = [formData.producto_seleccionado.id];
+      precioPromocion = parseFloat(formData.precio_promocion);
+    }
 
-    // IMPORTANTE: Siempre enviar array para productos_id, para evitar error "malformed array literal"
-    const productosIdCampo = productosIds;
+    console.log('💾 PROMOCIÓN: Guardando promoción única', {
+      nombre: formData.nombre,
+      productos: productosIds.length,
+      precio: precioPromocion
+    });
 
     const success = await insert({
       nombre: formData.nombre,
       descripcion: formData.descripcion,
       empresa_id: "00000000-0000-0000-0000-000000000001",
       sucursal_id: formData.sucursal,
-      precio_prom: null,
-      productos_id: productosIdCampo, // Siempre array
+      precio_prom: precioPromocion,
+      productos_id: productosIds,
       tipo: formData.tipo,
       activo: true,
     });
@@ -428,11 +407,7 @@ export function AgregarPromocionModal({
               >
                 {loading
                   ? "Guardando..."
-                  : `Guardar ${
-                      productosAgregados.length > 0
-                        ? productosAgregados.length
-                        : 1
-                    } promoción(es)`}
+                  : "Guardar promoción"}
               </button>
             </div>
           </form>

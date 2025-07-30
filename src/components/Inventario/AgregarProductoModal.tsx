@@ -78,10 +78,17 @@ export function AgregarProductoModal({ isOpen, onClose, selectedProduct, onSucce
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('💾 PRODUCTO: Iniciando guardado/actualización', {
+      isEdit: !!selectedProduct,
+      productId: selectedProduct?.id,
+      formData
+    });
+    
     let success;
     
     if (selectedProduct) {
       // Update existing product
+      console.log('✏️ PRODUCTO: Actualizando producto existente', selectedProduct.id);
       success = await update(selectedProduct.id, {
         codigo: formData.sku,
         nombre: formData.producto,
@@ -91,8 +98,10 @@ export function AgregarProductoModal({ isOpen, onClose, selectedProduct, onSucce
         unidad: formData.se_vende_por === 'unidad' ? 'UN' : 'KG',
         stock: parseFloat(formData.agregar_stock) || 0
       });
+      console.log('✅ PRODUCTO: Resultado actualización:', success);
     } else {
       // Create new product
+      console.log('➕ PRODUCTO: Creando nuevo producto');
       success = await insert({
         codigo: formData.sku || `AUTO-${Date.now()}`,
         nombre: formData.producto,
@@ -103,6 +112,7 @@ export function AgregarProductoModal({ isOpen, onClose, selectedProduct, onSucce
         unidad: formData.se_vende_por === 'unidad' ? 'UN' : 'KG',
         stock: parseFloat(formData.agregar_stock) || 0
       });
+      console.log('✅ PRODUCTO: Resultado creación:', success);
     }
 
     if (success) {

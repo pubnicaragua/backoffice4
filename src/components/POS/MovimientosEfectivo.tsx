@@ -12,6 +12,8 @@ export function MovimientosEfectivo() {
   });
   
   const { data: movimientos, loading, error } = useSupabaseData<any>('movimientos_caja', '*');
+  const { data: sucursales } = useSupabaseData<any>('sucursales', '*');
+  const { data: cajas } = useSupabaseData<any>('cajas', '*');
 
   // Apply filters
   const filteredMovimientos = (movimientos || []).filter(movimiento => {
@@ -19,7 +21,7 @@ export function MovimientosEfectivo() {
     const tipoMovimiento = movimiento.tipo;
     
     if (filters.sucursal && movimiento.sucursal_id !== filters.sucursal) return false;
-    if (filters.tipo && tipoMovimiento !== filters.tipo) return false;
+    if (filters.tipo && filters.tipo !== '' && tipoMovimiento !== filters.tipo) return false;
     if (filters.fecha && !fechaMovimiento.includes(filters.fecha)) return false;
     return true;
   });
@@ -78,10 +80,10 @@ export function MovimientosEfectivo() {
                     {new Date(movimiento.fecha).toLocaleString('es-CL')}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    N°1
+                    {sucursales?.find(s => s.id === movimiento.sucursal_id)?.nombre || 'N°1'}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    N°1
+                    {cajas?.find(c => c.sucursal_id === movimiento.sucursal_id)?.nombre || 'N°1'}
                   </td>
                 </tr>
               ))}
@@ -99,7 +101,11 @@ export function MovimientosEfectivo() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Tipo de Movimiento
               </label>
-              <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <select 
+                value={filters.tipo}
+                onChange={(e) => setFilters(prev => ({ ...prev, tipo: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
                 <option value="">Todos los movimientos</option>
                 <option value="ingreso">Ingresos</option>
                 <option value="retiro">Retiros</option>
@@ -128,8 +134,9 @@ export function MovimientosEfectivo() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Todas las sucursales</option>
-                <option value="00000000-0000-0000-0000-000000000001">Sucursal N°1</option>
-                <option value="00000000-0000-0000-0000-000000000002">Sucursal N°2</option>
+                {sucursales?.map(sucursal => (
+                  <option key={sucursal.id} value={sucursal.id}>{sucursal.nombre}</option>
+                ))}
               </select>
             </div>
             
@@ -138,13 +145,13 @@ export function MovimientosEfectivo() {
                 Cajas
               </label>
               <div className="space-y-2">
-                {['Caja N°1', 'Caja N°2', 'Caja N°3', 'Caja N°4'].map(caja => (
+                {cajas?.map(caja => (
                   <label key={caja} className="flex items-center space-x-2">
                     <input
                       type="checkbox"
                       className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                     />
-                    <span className="text-sm text-gray-700">{caja}</span>
+                    <span className="text-sm text-gray-700">{caja.nombre}</span>
                   </label>
                 ))}
               </div>
