@@ -89,6 +89,13 @@ export function AgregarProductoModal({ isOpen, onClose, selectedProduct, onSucce
     if (selectedProduct) {
       // Update existing product
       console.log('✏️ PRODUCTO: Actualizando producto existente', selectedProduct.id);
+      
+      // Verificar que todos los campos requeridos estén presentes
+      if (!formData.producto || !formData.precio_unitario) {
+        alert('Por favor completa todos los campos obligatorios');
+        return;
+      }
+      
       success = await update(selectedProduct.id, {
         codigo: formData.sku,
         nombre: formData.producto,
@@ -98,6 +105,13 @@ export function AgregarProductoModal({ isOpen, onClose, selectedProduct, onSucce
         unidad: formData.se_vende_por === 'unidad' ? 'UN' : 'KG',
         stock: parseFloat(formData.agregar_stock) || 0
       });
+      
+      if (!success) {
+        console.error('❌ PRODUCTO: Error 409 - Posible conflicto de datos');
+        alert('Error 409: Conflicto al actualizar. Verifica que el SKU no esté duplicado.');
+        return;
+      }
+      
       console.log('✅ PRODUCTO: Resultado actualización:', success);
     } else {
       // Create new product

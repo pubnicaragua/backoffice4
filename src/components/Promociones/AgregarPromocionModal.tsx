@@ -94,13 +94,12 @@ export function AgregarPromocionModal({
       precio_real: formData.producto_seleccionado.precio,
     };
 
-    // Evitar duplicados por sku y sucursal
+    // Evitar duplicados por producto ID
     const yaExiste = productosAgregados.some(
-      (p) =>
-        p.sku === nuevoProducto.sku && p.sucursal === nuevoProducto.sucursal
+      (p) => p.id === nuevoProducto.id
     );
     if (yaExiste) {
-      alert("Este producto ya está agregado para esta sucursal. Si quieres cambiar el precio, elimínalo primero y vuelve a agregarlo.");
+      alert("Este producto ya está agregado a la promoción. Si quieres cambiar el precio, elimínalo primero y vuelve a agregarlo.");
       return;
     }
 

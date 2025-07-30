@@ -63,6 +63,7 @@ export function DocumentosEmitidos() {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-medium text-gray-900">Documentos emitidos</h2>
         <div className="flex items-center space-x-4">
+          {/* Barra de búsqueda por folio */}
           <div className="relative">
             <input
               type="text"
@@ -173,6 +174,19 @@ export function DocumentosEmitidos() {
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
+              Monto total mínimo
+            </label>
+            <input
+              type="number"
+              value={filters.monto}
+              onChange={(e) => setFilters(prev => ({ ...prev, monto: e.target.value }))}
+              placeholder="Monto mínimo..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Sucursal
             </label>
             <select 
@@ -181,8 +195,9 @@ export function DocumentosEmitidos() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Todas las sucursales</option>
-              <option value="n1">N°1</option>
-              <option value="n2">N°2</option>
+              {sucursales?.map(sucursal => (
+                <option key={sucursal.id} value={sucursal.id}>{sucursal.nombre}</option>
+              ))}
             </select>
           </div>
           

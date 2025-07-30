@@ -13,6 +13,7 @@ import { RecepcionPedidos } from './components/Pedidos/RecepcionPedidos';
 import { GestionDespachos } from './components/GestionDespachos/GestionDespachos';
 import { POSInfo } from './components/POS/POSInfo';
 import { NotificacionesView } from './components/Notificaciones/NotificacionesView';
+import { StatusPOS } from './components/StatusMonitor/StatusPOS';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -34,6 +35,10 @@ function AppContent() {
     return <LoginForm />;
   }
 
+  // Check for status route
+  if (window.location.pathname === '/protect/status-pos') {
+    return <StatusPOS />;
+  }
   const renderContent = () => {
     switch (currentView) {
       case 'general':

@@ -181,19 +181,19 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
 
   const downloadTemplate = () => {
     console.log('📊 INVENTARIO: Generando plantilla CSV');
-    const headers = ['Nombre', 'Cantidad', 'Costo', 'Precio', 'Categoria', 'SKU'];
+    const headers = ['Producto', 'Stock', 'Categoria', 'SKU', 'Costo', 'Precio'];
     const csvContent = [
       headers.join(','),
-      'Coca Cola 500ml,50,1000,1500,Bebidas,PROD001',
-      'Pan Hallulla,25,500,800,Alimentos,PROD002',
-      'Leche 1L,30,800,1200,Lacteos,PROD003'
+      'Ejemplo Producto,10,Bebidas,PROD001,1000,1500',
+      'Otro Producto,25,Alimentos,PROD002,500,800',
+      'Tercer Producto,15,Lacteos,PROD003,800,1200'
     ].join('\n');
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `plantilla_inventario_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `plantilla_productos_stock_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     console.log('✅ INVENTARIO: Plantilla descargada');
