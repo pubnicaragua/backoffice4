@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, CheckCircle, XCircle, RefreshCw, Database, Code, Link, Bug } from 'lucide-react';
-import { useSupabaseData } from '../hooks/useSupabaseData';
+import { useSupabaseData } from '../../hooks/useSupabaseData';
 import { supabase } from '../lib/supabase';
 
 interface StatusCheck {
