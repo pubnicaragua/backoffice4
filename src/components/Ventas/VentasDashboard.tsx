@@ -466,8 +466,7 @@ export function VentasDashboard() {
             className="group flex flex-col items-center text-blue-600 hover:text-blue-800 transition-colors p-1 rounded-lg hover:bg-blue-50 text-center"
             title="Actualizar"
           >
-            <RefreshCw className="w-4 h-4" />
-            <span className="text-[10px] mt-1">Actualizar</span>
+            <RefreshCw className="w-5 h-5" />
           </button>
           <div className="flex items-center space-x-2 text-sm text-blue-600">
             <div className="text-center">
