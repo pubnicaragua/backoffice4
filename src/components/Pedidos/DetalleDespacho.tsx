@@ -203,14 +203,14 @@ export function DetalleDespacho({ onBack, despacho }: DetalleDespachoProps) {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Entregado por:
                   </label>
-                  <span className="text-sm text-gray-900">Emilio Aguilera</span>
+                  <span className="text-sm text-gray-900">{despacho?.entregado_por || 'Emilio Aguilera'}</span>
                 </div>
                 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Folio:
                   </label>
-                  <span className="text-sm text-gray-900">8949564506</span>
+                  <span className="text-sm text-gray-900">{despacho?.folio_factura || '8949564506'}</span>
                 </div>
                 
                 <div>

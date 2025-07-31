@@ -36,8 +36,8 @@ export function DocumentosEmitidos() {
     folio: venta.folio || `V-${venta.id?.slice(0, 8)}`,
     fecha: new Date(venta.fecha).toLocaleString('es-CL'),
     monto: `$${parseFloat(venta.total || 0).toLocaleString('es-CL')}`,
-    sucursal: venta.sucursales?.nombre || 'N°1',
-    caja: venta.cajas?.nombre || 'N°1',
+    sucursal: venta.sucursales?.nombre || 'Principal',
+    caja: venta.cajas?.nombre || 'Caja 1',
     venta: venta
   }));
 

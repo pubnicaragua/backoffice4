@@ -90,13 +90,7 @@ export function AgregarProductoModal({ isOpen, onClose, selectedProduct, onSucce
       // Update existing product
       console.log('✏️ PRODUCTO: Actualizando producto existente', selectedProduct.id);
       
-      // Verificar que todos los campos requeridos estén presentes
-      if (!formData.producto || !formData.precio_unitario) {
-        alert('Por favor completa todos los campos obligatorios');
-        return;
-      }
-      
-      success = await update(selectedProduct.id, {
+      const updateData = {
         codigo: formData.sku,
         nombre: formData.producto,
         descripcion: formData.descripcion,
@@ -104,11 +98,14 @@ export function AgregarProductoModal({ isOpen, onClose, selectedProduct, onSucce
         costo: parseFloat(formData.costo) || 0,
         unidad: formData.se_vende_por === 'unidad' ? 'UN' : 'KG',
         stock: parseFloat(formData.agregar_stock) || 0
-      });
+      };
+      
+      console.log('📝 PRODUCTO: Datos a actualizar:', updateData);
+      success = await update(selectedProduct.id, updateData);
       
       if (!success) {
-        console.error('❌ PRODUCTO: Error 409 - Posible conflicto de datos');
-        alert('Error 409: Conflicto al actualizar. Verifica que el SKU no esté duplicado.');
+        console.error('❌ PRODUCTO: Error al actualizar');
+        alert('Error al actualizar producto. Intenta con un SKU diferente.');
         return;
       }
       

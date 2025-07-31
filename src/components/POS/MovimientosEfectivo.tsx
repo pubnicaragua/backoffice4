@@ -80,10 +80,10 @@ export function MovimientosEfectivo() {
                     {new Date(movimiento.fecha).toLocaleString('es-CL')}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    {sucursales?.find(s => s.id === movimiento.sucursal_id)?.nombre || 'N°1'}
+                    {sucursales?.find(s => s.id === movimiento.sucursal_id)?.nombre || 'Sucursal Principal'}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    {cajas?.find(c => c.sucursal_id === movimiento.sucursal_id)?.nombre || 'N°1'}
+                    {cajas?.find(c => c.sucursal_id === movimiento.sucursal_id)?.nombre || 'Caja Principal'}
                   </td>
                 </tr>
               ))}
