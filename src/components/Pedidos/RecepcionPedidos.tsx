@@ -68,13 +68,8 @@ export function RecepcionPedidos() {
     if (filters.proveedor && !item.proveedor.toLowerCase().includes(filters.proveedor.toLowerCase())) return false;
     
     if (filters.fecha) {
-      const filterDate = new Date(filters.fecha);
-      const itemDate = new Date(item.pedido.fecha || item.pedido.created_at);
-      
-      // Comparar solo la fecha (sin hora)
-      const filterDateStr = filterDate.toISOString().split('T')[0];
-      const itemDateStr = itemDate.toISOString().split('T')[0];
-      
+      const filterDateStr = filters.fecha;
+      const itemDateStr = new Date(item.pedido.fecha || item.pedido.created_at).toISOString().split('T')[0];
       if (filterDateStr !== itemDateStr) return false;
     }
     
