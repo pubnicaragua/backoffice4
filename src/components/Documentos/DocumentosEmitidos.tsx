@@ -22,6 +22,7 @@ export function DocumentosEmitidos() {
     'ventas', 
     '*, sucursales(nombre), cajas(nombre)'
   );
+  const { data: sucursales } = useSupabaseData<any>('sucursales');
 
   const handleViewDetalle = (documento) => {
     console.log('📄 DOCUMENTOS: Abriendo detalle', documento);
