@@ -1,4 +1,4 @@
-#### CORRECCIONES SOLVENDO POS 02/8 AM
+#### CORRECCIONES BACKOFFICE 4 02/8 AM
 
 ### 1) Recepción de Pedidos
 
@@ -24,6 +24,23 @@
 
 - El modal "Reporte de mermas" al seleccionar un producto no cierra el panel de seleccion
 
+----
+
 ### 5) General
 
 - Los datos de (100%) no se cargan de la BD,asumo que estan en duro
+
+---
+
+#### CORRECCIONES BACKOFFICE 4 02/8 AM
+
+### 1) General
+
+- "Inicio" -> "Clientes" al seleccionar un cliente se despliegan 2 toast en lugar de uno
+- Descuento redondea hacia arriba,deberia ser en decimal mas exacto o hacia abajo
+
+---
+
+### 2) Reportes
+
+- "Filtros" -> los numeros de caja los esta trayendo de manera estatica
