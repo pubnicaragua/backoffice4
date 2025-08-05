@@ -124,9 +124,6 @@ export function AgregarUsuarioModal({
         pass: "",
       });
 
-      // Solo llamar onSuccess para refrescar la lista de usuarios
-      onSuccess?.();
-
       // Cerrar modal después de un breve delay
       setTimeout(() => {
         onClose();
