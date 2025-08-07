@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginForm } from './components/Auth/LoginForm';
 import { Sidebar } from './components/Layout/Sidebar';
@@ -14,6 +14,9 @@ import { GestionDespachos } from './components/GestionDespachos/GestionDespachos
 import { POSInfo } from './components/POS/POSInfo';
 import { NotificacionesView } from './components/Notificaciones/NotificacionesView';
 import { StatusPOS } from './components/StatusMonitor/StatusPOS';
+import { EstadoCajas } from './components/Cajas/EstadoCajas';
+import GestionCaja from './components/Cajas/GestionCaja';
+// Importación de supabase eliminada ya que usamos el hook useAuth para acceder al usuario
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -35,10 +38,13 @@ function AppContent() {
     return <LoginForm />;
   }
 
-  // Check for status route
+  // Check for status routes
   if (window.location.pathname === '/protect/status-pos') {
     return <StatusPOS />;
   }
+  
+  const isAdmin = user?.user_metadata?.role === 'admin' || user?.user_metadata?.role === 'superadmin';
+  
   const renderContent = () => {
     switch (currentView) {
       case 'general':
@@ -51,6 +57,10 @@ function AppContent() {
         return <RecepcionPedidos />;
       case 'despachos':
         return <GestionDespachos />;
+      case 'cajas':
+        // Si el usuario es administrador, mostrar el panel de control de cajas
+        // De lo contrario, mostrar la interfaz de gestión de caja para cajeros
+        return isAdmin ? <EstadoCajas /> : <GestionCaja />;
       case 'pos':
         return <POSInfo />;
       case 'documentos':

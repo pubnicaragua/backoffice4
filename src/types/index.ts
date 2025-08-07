@@ -1,3 +1,10 @@
+export interface UserMetadata {
+  role?: string;
+  full_name?: string;
+  avatar_url?: string;
+  [key: string]: any;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -8,6 +15,8 @@ export interface User {
   direccion?: string;
   activo: boolean;
   created_at: string;
+  user_metadata?: UserMetadata;
+  role?: string; // Para compatibilidad con código existente
 }
 
 export interface Empresa {

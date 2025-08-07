@@ -1,3 +1,15 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Import Flowbite after Tailwind */
+@import 'flowbite/dist/flowbite.css';
+
+/* Base styles */
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-white;
+  }
+}
+
+/* Custom styles */

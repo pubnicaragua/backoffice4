@@ -10,7 +10,8 @@ import {
   Tag,
   Send,
   Monitor,
-  Bell
+  Bell,
+  ShoppingBasket
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -26,6 +27,7 @@ const menuItems = [
   { id: 'inventario', label: 'Inventario', icon: Package },
   { id: 'pedidos', label: 'Recepción de pedidos', icon: Truck },
   { id: 'despachos', label: 'Gestión de despachos', icon: Send },
+  { id: 'cajas', label: 'Gestión de Cajas', icon: ShoppingBasket },
   { id: 'pos', label: 'Información de POS', icon: Monitor },
   { id: 'documentos', label: 'Documentos', icon: FileText },
   { id: 'promociones', label: 'Promociones', icon: Tag },

@@ -9,11 +9,19 @@ export default defineConfig(({ mode }) => {
   
   return {
     plugins: [react()],
+    server: {
+      port: 5173,
+      strictPort: true,
+      hmr: {
+        protocol: 'ws',
+        host: 'localhost',
+      },
+    },
     optimizeDeps: {
       exclude: ['lucide-react'],
+      include: ['react', 'react-dom', 'react-router-dom'],
     },
     define: {
-      // Hacer que las variables de entorno estén disponibles en el cliente
       'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL),
       'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY)
     },
