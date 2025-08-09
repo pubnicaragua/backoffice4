@@ -7,7 +7,6 @@ import { useAuth } from "../../contexts/AuthContext";
 
 export function DocumentosEmitidos() {
   const { empresaId } = useAuth();
-  const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [showDetalle, setShowDetalle] = useState(false);

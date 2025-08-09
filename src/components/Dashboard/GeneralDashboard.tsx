@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { MessageCircle, TrendingUp, HelpCircle } from "lucide-react";
 import { useSupabaseData } from "../../hooks/useSupabaseData";
 import { SolvIAChat } from "./SolvIAChat";
@@ -104,35 +104,74 @@ function DonutChart({ title, data }: DonutChartProps) {
   );
 }
 
+interface Sucursal {
+  id: string;
+  nombre: string;
+}
+
 export default function GeneralDashboard() {
   const { empresaId } = useAuth();
-  const [showChat, setShowChat] = useState(false);
-  const [showPreviousPeriod, setShowPreviousPeriod] = useState(false);
+  const [showChat, setShowChat] = React.useState(false);
+  const [showPreviousPeriod, setShowPreviousPeriod] = React.useState(false);
+  const [sucursalId, setSucursalId] = React.useState<string>("");
 
-  // Filtrar todas las consultas por empresa
+  // Hook para cargar sucursales de la empresa
+  const [sucursales, setSucursales] = React.useState<Sucursal[]>([]);
+  React.useEffect(() => {
+    if (!empresaId) return;
+    (async () => {
+      const { data, error } = await fetchSucursales(empresaId);
+      if (!error && data) {
+        setSucursales(data);
+      }
+    })();
+  }, [empresaId]);
+
+  // Función para obtener sucursales (puedes reemplazar con tu hook o supabase directo)
+  async function fetchSucursales(
+    empresaId: string
+  ): Promise<{ data: Sucursal[]; error: any }> {
+    try {
+      const { data, error } = await import("../../lib/supabase").then(
+        ({ supabase }) =>
+          supabase
+            .from("sucursales")
+            .select("id, nombre")
+            .eq("empresa_id", empresaId)
+            .order("nombre", { ascending: true })
+      );
+      return { data: data || [], error };
+    } catch (err) {
+      return { data: [], error: err };
+    }
+  }
+
+  // Construir filtro común para las consultas según empresaId y sucursalId
+  const commonFilter = React.useMemo(() => {
+    if (!empresaId) return undefined;
+    if (sucursalId) return { empresa_id: empresaId, sucursal_id: sucursalId };
+    return { empresa_id: empresaId };
+  }, [empresaId, sucursalId]);
+
   const { data: ventas, loading: ventasLoading } = useSupabaseData<any>(
     "ventas",
     "*",
-    empresaId ? { empresa_id: empresaId } : undefined
+    commonFilter
   );
 
   const { data: ventaItems } = useSupabaseData<any>(
     "venta_items",
     "*, ventas!inner(empresa_id)",
-    empresaId ? { "ventas.empresa_id": empresaId } : undefined
+    commonFilter ? { "ventas.empresa_id": commonFilter.empresa_id } : undefined
   );
 
   const { data: asistencias, loading: asistenciasLoading } =
-    useSupabaseData<any>(
-      "asistencias",
-      "*",
-      empresaId ? { empresa_id: empresaId } : undefined
-    );
+    useSupabaseData<any>("asistencias", "*", commonFilter);
 
   const { data: mermas, loading: mermasLoading } = useSupabaseData<any>(
     "mermas",
     "*",
-    empresaId ? { empresa_id: empresaId } : undefined
+    commonFilter
   );
 
   const { data: productos } = useSupabaseData<any>(
@@ -141,7 +180,6 @@ export default function GeneralDashboard() {
     empresaId ? { empresa_id: empresaId } : undefined
   );
 
-  // Validación de empresa
   if (!empresaId) {
     return (
       <div className="text-center py-4">
@@ -150,7 +188,6 @@ export default function GeneralDashboard() {
     );
   }
 
-  // Calculate real metrics from filtered data
   const calculateMetrics = () => {
     if (ventasLoading || !ventas) return null;
 
@@ -160,7 +197,6 @@ export default function GeneralDashboard() {
     const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1;
     const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear;
 
-    // Filtrar ventas del mes actual y anterior
     const ventasActuales = ventas.filter((v) => {
       const ventaDate = new Date(v.fecha);
       return (
@@ -192,7 +228,6 @@ export default function GeneralDashboard() {
     const ticketPromedio =
       numeroVentas > 0 ? totalVentasActual / numeroVentas : 0;
 
-    // Calculate margin based on cost vs price
     const totalCosto =
       ventaItems?.reduce((sum, item) => {
         const producto = productos?.find((p) => p.id === item.producto_id);
@@ -200,7 +235,6 @@ export default function GeneralDashboard() {
       }, 0) || 0;
     const margen = totalVentasActual - totalCosto;
 
-    // Calcular cambios porcentuales reales
     const calcularCambio = (actual: number, anterior: number) => {
       if (anterior === 0) return actual > 0 ? "+100%" : "0%";
       const cambio = ((actual - anterior) / anterior) * 100;
@@ -215,7 +249,7 @@ export default function GeneralDashboard() {
       ticketPromedio: ticketPromedio,
       cambioVentas: calcularCambio(totalVentasActual, totalVentasAnterior),
       cambioMargen: calcularCambio(margen, totalVentasAnterior - totalCosto),
-      cambioUnidades: calcularCambio(totalUnidades, 0), // Necesitarías datos históricos
+      cambioUnidades: calcularCambio(totalUnidades, 0),
       cambioNumeroVentas: calcularCambio(numeroVentas, ventasAnteriores.length),
       cambioTicket: calcularCambio(
         ticketPromedio,
@@ -270,7 +304,6 @@ export default function GeneralDashboard() {
         isPositive: true,
       });
 
-  // Process real attendance data from empresa
   const processAttendanceData = () => {
     if (!asistencias || asistenciasLoading) {
       return [{ name: "Cargando...", value: 0, color: "#6B7280" }];
@@ -291,7 +324,6 @@ export default function GeneralDashboard() {
     ];
   };
 
-  // Process real mermas data from empresa
   const processLossData = () => {
     if (!mermas || mermasLoading) {
       return [{ name: "Cargando...", value: 0, color: "#6B7280" }];
@@ -319,6 +351,29 @@ export default function GeneralDashboard() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Selector sucursal */}
+      <div className="mb-4 max-w-xs">
+        <label
+          htmlFor="sucursal-select"
+          className="block mb-1 font-medium text-gray-700"
+        >
+          Filtrar por Sucursal
+        </label>
+        <select
+          id="sucursal-select"
+          value={sucursalId}
+          onChange={(e) => setSucursalId(e.target.value)}
+          className="w-full rounded border border-gray-300 px-3 py-2"
+        >
+          <option value="">Todas las sucursales</option>
+          {sucursales.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.nombre}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {/* Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {metricsData.map((metric, index) => (
@@ -332,7 +387,6 @@ export default function GeneralDashboard() {
           title="Asistencias / Inasistencias totales"
           data={assistanceData}
         />
-
         <DonutChart title="Mermas reportadas" data={lossData} />
       </div>
 

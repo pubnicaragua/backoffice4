@@ -1,22 +1,25 @@
-import React, { useState } from 'react';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { LoginForm } from './components/Auth/LoginForm';
-import { Sidebar } from './components/Layout/Sidebar';
-import { Header } from './components/Layout/Header';
-import GeneralDashboard from './components/Dashboard/GeneralDashboard';
-import { Documentos } from './components/Documentos/Documentos';
-import { Promociones } from './components/Promociones/Promociones';
-import { Colaboradores } from './components/Colaboradores/Colaboradores';
-import { VentasDashboard } from './components/Ventas/VentasDashboard';
-import { ProductosTotales } from './components/Inventario/ProductosTotales';
-import { RecepcionPedidos } from './components/Pedidos/RecepcionPedidos';
-import { GestionDespachos } from './components/GestionDespachos/GestionDespachos';
-import { POSInfo } from './components/POS/POSInfo';
-import { NotificacionesView } from './components/Notificaciones/NotificacionesView';
+import { useState } from "react";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { LoginForm } from "./components/Auth/LoginForm";
+import { Sidebar } from "./components/Layout/Sidebar";
+import { Header } from "./components/Layout/Header";
+import GeneralDashboard from "./components/Dashboard/GeneralDashboard";
+import { Documentos } from "./components/Documentos/Documentos";
+import { Promociones } from "./components/Promociones/Promociones";
+import { Colaboradores } from "./components/Colaboradores/Colaboradores";
+import { VentasDashboard } from "./components/Ventas/VentasDashboard";
+import { ProductosTotales } from "./components/Inventario/ProductosTotales";
+import { RecepcionPedidos } from "./components/Pedidos/RecepcionPedidos";
+import { GestionDespachos } from "./components/GestionDespachos/GestionDespachos";
+import { POSInfo } from "./components/POS/POSInfo";
+import { NotificacionesView } from "./components/Notificaciones/NotificacionesView";
+// import { StatusPOS } from './components/StatusMonitor/StatusPOS';
+import EstadoCajas from "./components/Cajas/EstadoCaja";
+import GestionCaja from "./components/Cajas/GestionCaja";
 
 function AppContent() {
   const { user, loading } = useAuth();
-  const [currentView, setCurrentView] = useState('general');
+  const [currentView, setCurrentView] = useState("general");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (loading) {
@@ -34,27 +37,40 @@ function AppContent() {
     return <LoginForm />;
   }
 
+  // // Check for status routes
+  // if (window.location.pathname === '/protect/status-pos') {
+  //   return <StatusPOS />;
+  // }
+
+  const isAdmin =
+    user?.user_metadata?.role === "admin" ||
+    user?.user_metadata?.role === "superadmin";
+
   const renderContent = () => {
     switch (currentView) {
-      case 'general':
+      case "general":
         return <GeneralDashboard />;
-      case 'ventas':
+      case "ventas":
         return <VentasDashboard />;
-      case 'inventario':
+      case "inventario":
         return <ProductosTotales />;
-      case 'pedidos':
+      case "pedidos":
         return <RecepcionPedidos />;
-      case 'despachos':
+      case "despachos":
         return <GestionDespachos />;
-      case 'pos':
+      case "cajas":
+        // Si el usuario es administrador, mostrar el panel de control de cajas
+        // De lo contrario, mostrar la interfaz de gestión de caja para cajeros
+        return isAdmin ? <EstadoCajas /> : <GestionCaja />;
+      case "pos":
         return <POSInfo />;
-      case 'documentos':
+      case "documentos":
         return <Documentos />;
-      case 'promociones':
+      case "promociones":
         return <Promociones />;
-      case 'colaboradores':
+      case "colaboradores":
         return <Colaboradores />;
-      case 'notificaciones':
+      case "notificaciones":
         return <NotificacionesView />;
       default:
         return <GeneralDashboard />;
@@ -70,16 +86,14 @@ function AppContent() {
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
       />
-      
+
       {/* Main content area - Full width, no offset */}
       <div className="w-full">
-        <Header 
-          onMenuToggle={() => setSidebarOpen(!sidebarOpen)} 
+        <Header
+          onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
           currentView={currentView}
         />
-        <main className="bg-gray-50">
-          {renderContent()}
-        </main>
+        <main className="bg-gray-50">{renderContent()}</main>
       </div>
     </div>
   );

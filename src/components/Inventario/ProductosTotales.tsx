@@ -1,32 +1,68 @@
-import React, { useState } from "react";
-
-import { FilterModal } from "../Common/FilterModal";
+import React, { useState, useEffect } from "react";
 import {
   Filter,
+  Download,
   Plus,
   Search,
   AlertTriangle,
   Edit,
   Trash2,
   Package,
-  Download,
   FileDown,
+  X as XIcon,
 } from "lucide-react";
 import { useSupabaseData } from "../../hooks/useSupabaseData";
+import { useAuth } from "../../contexts/AuthContext";
+import toast from "react-hot-toast";
+import { FilterModal } from "../Common/FilterModal";
 import { ReporteMermas } from "./ReporteMermas";
 import { ActualizarInventario } from "./ActualizarInventario";
 import { AgregarProductoModal } from "./AgregarProductoModal";
 import { Modal } from "../Common/Modal";
 import { supabase } from "../../lib/supabase";
-import { useSupabaseInsert } from "../../hooks/useSupabaseData";
-import { useAuth } from "../../contexts/AuthContext";
+
+interface Producto {
+  id: string;
+  nombre: string;
+  stock: number;
+  categoria_id: string;
+  descripcion?: string;
+  codigo: string;
+  costo: number;
+  precio: number;
+  empresa_id: string;
+}
+
+interface Sucursal {
+  id: string;
+  nombre: string;
+}
+
+interface Categoria {
+  id: string;
+  nombre: string;
+}
+
+interface Inventario {
+  id: string;
+  producto_id: string;
+  sucursal_id: string;
+  stock_final: number;
+}
+
+interface FilterState {
+  sucursal: string;
+  categoria: string;
+  disponibilidad: string;
+}
 
 export function ProductosTotales() {
   const { empresaId } = useAuth();
+
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<FilterState>({
     sucursal: "",
     categoria: "",
     disponibilidad: "",
@@ -35,25 +71,64 @@ export function ProductosTotales() {
   const [showInventarioModal, setShowInventarioModal] = useState(false);
   const [showProductoModal, setShowProductoModal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState<Producto | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(
     new Set()
   );
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [inventarios, setInventarios] = useState<Inventario[]>([]);
+  const [inventariosLoading, setInventariosLoading] = useState(false);
 
   const {
-    data: productos,
-    loading,
+    data: productos = [],
+    loading: productosLoading,
     refetch,
-  } = useSupabaseData<any>(
+  } = useSupabaseData<Producto>(
     "productos",
     "*",
     empresaId ? { empresa_id: empresaId } : undefined
   );
-  const { data: sucursales } = useSupabaseData<any>("sucursales", "*");
-  const { data: categorias } = useSupabaseData<any>("categorias", "*");
-  const { insert: insertNotification } = useSupabaseInsert("notificaciones");
+
+  const { data: sucursales = [] } = useSupabaseData<Sucursal>(
+    "sucursales",
+    "*",
+    empresaId ? { empresa_id: empresaId } : undefined
+  );
+
+  const { data: categorias = [] } = useSupabaseData<Categoria>(
+    "categorias",
+    "*"
+  );
+
+  const insertNotification = useSupabaseData("notificaciones", "*");
+
+  // >>> Carga inventarios manualmente con filtro según sucursal y stock_final > 0, porque el hook no soporta gt ///
+  useEffect(() => {
+    async function cargarInventarios() {
+      if (!empresaId) {
+        setInventarios([]);
+        return;
+      }
+      setInventariosLoading(true);
+      let query = supabase.from("inventario").select("*");
+      if (filters.sucursal) {
+        query = query.eq("sucursal_id", filters.sucursal);
+      }
+      query = query.gt("stock_final", 0);
+      query = query.order("producto_id", { ascending: true });
+
+      const { data, error } = await query;
+      if (error) {
+        console.error("Error cargando inventario:", error);
+        setInventarios([]);
+      } else {
+        setInventarios(data ?? []);
+      }
+      setInventariosLoading(false);
+    }
+    cargarInventarios();
+  }, [empresaId, filters.sucursal]);
 
   const columns = [
     { key: "checkbox", label: "", width: "40px" },
@@ -69,10 +144,21 @@ export function ProductosTotales() {
     { key: "acciones", label: "Acciones" },
   ];
 
-  // Aplicar filtros
-  const filteredProductos = (productos || []).filter((producto) => {
-    if (filters.sucursal && filters.sucursal !== "") {
-      // Aplicar filtro de sucursal
+  // Mapa de productoId a stock_final para inventarios cargados
+  const stockPorProductoId: Record<string, number> = React.useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const inv of inventarios) {
+      map[inv.producto_id] = inv.stock_final;
+    }
+    return map;
+  }, [inventarios]);
+
+  // Filtrar productos segun filtro y stock en sucursal si aplica
+  const filteredProductos = productos.filter((producto) => {
+    // filtro sucursal: si hay sucursal seleccionada, mostrar sólo si tiene stock en inventario > 0
+    if (filters.sucursal) {
+      const stockSucursal = stockPorProductoId[producto.id] ?? 0;
+      if (stockSucursal <= 0) return false;
     }
     if (filters.categoria && filters.categoria !== "") {
       const categoria = categorias.find(
@@ -80,21 +166,29 @@ export function ProductosTotales() {
       );
       if (categoria && producto.categoria_id !== categoria.id) return false;
     }
+    // Filtro disponibilidad aplicado con stock global (en productos)
     if (filters.disponibilidad === "disponibles" && (producto.stock || 0) <= 0)
       return false;
     if (filters.disponibilidad === "agotados" && (producto.stock || 0) > 0)
       return false;
+
+    // Filtro texto en búsqueda
+    if (
+      searchTerm &&
+      !producto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) &&
+      !producto.codigo.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+      return false;
+
     return true;
   });
 
-  const handleEditProduct = (producto) => {
-    console.log("✏️ EDITANDO PRODUCTO:", producto.nombre);
+  const handleEditProduct = (producto: Producto) => {
     setSelectedProduct(producto);
     setShowProductoModal(true);
   };
 
-  const handleDeleteProduct = (producto) => {
-    console.log("🗑️ ELIMINANDO PRODUCTO:", producto.nombre);
+  const handleDeleteProduct = (producto: Producto) => {
     setSelectedProduct(producto);
     setShowDeleteModal(true);
   };
@@ -102,69 +196,47 @@ export function ProductosTotales() {
   const handleSelectProduct = (productId: string, checked: boolean) => {
     setSelectedProducts((prev) => {
       const newSet = new Set(prev);
-      if (checked) {
-        newSet.add(productId);
-      } else {
-        newSet.delete(productId);
-      }
+      if (checked) newSet.add(productId);
+      else newSet.delete(productId);
       return newSet;
     });
   };
 
   const handleBulkDelete = () => {
-    if (selectedProducts.size > 0) {
-      setShowBulkDeleteModal(true);
-    }
+    if (selectedProducts.size > 0) setShowBulkDeleteModal(true);
   };
 
   const confirmBulkDelete = async () => {
-    console.log(
-      "🗑️ PRODUCTOS: Eliminación masiva",
-      selectedProducts.size,
-      "productos"
-    );
-
     for (const productId of selectedProducts) {
       const { error } = await supabase
         .from("productos")
         .delete()
         .eq("id", productId);
-
-      if (error) {
-        console.error("❌ PRODUCTO: Error eliminando", productId, error);
-      }
+      if (error) console.error("Error eliminando producto", productId, error);
     }
-
-    console.log("✅ PRODUCTOS: Eliminación masiva completada");
     setShowBulkDeleteModal(false);
     setSelectedProducts(new Set());
     refetch();
   };
 
   const confirmDelete = async () => {
-    if (selectedProduct) {
-      console.log("🗑️ PRODUCTO: Eliminando producto", selectedProduct.nombre);
-      const { data, error } = await supabase
-        .from("productos")
-        .delete()
-        .eq("id", selectedProduct.id);
-
-      if (!error) {
-        console.log("✅ PRODUCTO: Eliminado exitosamente");
-        setShowDeleteModal(false);
-        setSelectedProduct(null);
-        refetch();
-      } else {
-        console.error("❌ PRODUCTO: Error eliminando", error);
-      }
+    if (!selectedProduct) return;
+    const { error } = await supabase
+      .from("productos")
+      .delete()
+      .eq("id", selectedProduct.id);
+    if (!error) {
+      setShowDeleteModal(false);
+      setSelectedProduct(null);
+      refetch();
+    } else {
+      console.error("Error eliminando producto", error);
     }
   };
 
   const handleDownloadTemplate = () => {
-    console.log("📊 INVENTARIO: Generando plantilla Producto/Stock");
     const headers = ["Producto", "Stock"];
     const csvContent = headers.join(",") + "\n";
-
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -174,11 +246,10 @@ export function ProductosTotales() {
     }.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    console.log("✅ INVENTARIO: Plantilla CSV descargada");
+    toast.success("Plantilla de productos y stock descargada.");
   };
 
   const handleDownloadReport = () => {
-    console.log("📊 INVENTARIO: Generando reporte completo CSV");
     const headers = [
       "Producto",
       "Stock",
@@ -189,6 +260,7 @@ export function ProductosTotales() {
       "Margen",
       "Disponible",
     ];
+    const filteredData = processedData;
     const csvContent = [
       headers.join(","),
       ...filteredData.map((row) =>
@@ -204,7 +276,6 @@ export function ProductosTotales() {
         ].join(",")
       ),
     ].join("\n");
-
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -214,60 +285,70 @@ export function ProductosTotales() {
     }.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    console.log("✅ INVENTARIO: Reporte CSV descargado");
+    toast.success("Reporte CSV descargado");
   };
 
-  const processedData = filteredProductos.map((producto) => ({
-    id: producto.id,
-    producto: producto.nombre,
-    stock: producto.stock?.toString() || "0",
-    categoria:
-      categorias.find((c) => c.id === producto.categoria_id)?.nombre ||
-      "Sin categoría",
-    descripcion: producto.descripcion || "",
-    sku: producto.codigo,
-    costo: `$${Math.round(producto.costo || 0).toLocaleString("es-CL")}`,
-    precio: `$${Math.round(producto.precio || 0).toLocaleString("es-CL")}`,
-    margen: `${Math.round(
-      (((producto.precio || 0) - (producto.costo || 0)) /
-        (producto.precio || 1)) *
-        100
-    )}%`,
-    disponible: producto.stock > 0 ? "Disponible" : "Agotado",
-    checkbox: (
-      <input
-        type="checkbox"
-        checked={selectedProducts.has(producto.id)}
-        onChange={(e) => handleSelectProduct(producto.id, e.target.checked)}
-        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-      />
-    ),
-    acciones: (
-      <div className="flex items-center space-x-2">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleEditProduct(producto);
-          }}
-          className="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 transition-colors"
-          title="Editar producto"
-        >
-          <Edit className="w-5 h-5" />
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleDeleteProduct(producto);
-          }}
-          className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-colors"
-          title="Eliminar producto"
-        >
-          <Trash2 className="w-5 h-5" />
-        </button>
-      </div>
-    ),
-  }));
+  // Mapear stock mostrado según filtro sucursal y stock inventario o stock global producto
+  const processedData = filteredProductos.map((producto) => {
+    const stockReal = filters.sucursal
+      ? stockPorProductoId[producto.id] ?? 0
+      : producto.stock ?? 0;
 
+    return {
+      id: producto.id,
+      producto: producto.nombre,
+      stock: stockReal.toString(),
+      categoria:
+        categorias.find((c) => c.id === producto.categoria_id)?.nombre ||
+        "Sin categoría",
+      descripcion: producto.descripcion || "",
+      sku: producto.codigo,
+      costo: `$${Math.round(producto.costo || 0).toLocaleString("es-CL")}`,
+      precio: `$${Math.round(producto.precio || 0).toLocaleString("es-CL")}`,
+      margen: `${Math.round(
+        (((producto.precio || 0) - (producto.costo || 0)) /
+          (producto.precio || 1)) *
+          100
+      )}%`,
+      disponible: stockReal > 0 ? "Disponible" : "Agotado",
+      checkbox: (
+        <input
+          type="checkbox"
+          checked={selectedProducts.has(producto.id)}
+          onChange={(e) => handleSelectProduct(producto.id, e.target.checked)}
+          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+        />
+      ),
+      acciones: (
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEditProduct(producto);
+            }}
+            className="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 transition-colors"
+            title="Editar producto"
+            type="button"
+          >
+            <Edit className="w-5 h-5" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteProduct(producto);
+            }}
+            className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-colors"
+            title="Eliminar producto"
+            type="button"
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
+        </div>
+      ),
+    };
+  });
+
+  // Filtrar tabla paginada por búsqueda texto en producto o SKU
   const filteredData = processedData.filter(
     (item) =>
       searchTerm === "" ||
@@ -275,13 +356,13 @@ export function ProductosTotales() {
       item.sku.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Paginación
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedData = filteredData.slice(
     startIndex,
     startIndex + itemsPerPage
   );
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -301,6 +382,7 @@ export function ProductosTotales() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 pr-4 py-2 w-64 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            autoComplete="off"
           />
         </div>
 
@@ -309,69 +391,66 @@ export function ProductosTotales() {
             <button
               onClick={handleBulkDelete}
               className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              type="button"
             >
               <Trash2 className="w-4 h-4" />
               <span>Eliminar {selectedProducts.size}</span>
             </button>
           )}
           <button
-            onClick={() => handleDownloadReport}
+            onClick={handleDownloadReport}
             className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             title="Descargar Reporte"
+            type="button"
           >
             <Download className="w-4 h-4" />
           </button>
           <button
-            onClick={() => handleDownloadTemplate}
+            onClick={handleDownloadTemplate}
             className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             title="Descargar Plantilla"
+            type="button"
           >
             <FileDown className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => {
-              console.log("🔍 FILTROS: Abriendo panel de filtros");
-              setShowFilters(true);
-            }}
+          {/* <button
+            onClick={() => setShowFilters(true)}
             className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             title="Filtros"
+            type="button"
           >
             <Filter className="w-4 h-4" />
-          </button>
+          </button> */}
           <button
             onClick={() => {
-              console.log("➕ PRODUCTO: Abriendo modal agregar");
               setSelectedProduct(null);
               setShowProductoModal(true);
             }}
             className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             title="Agregar"
+            type="button"
           >
             <Plus className="w-4 h-4" />
           </button>
           <button
-            onClick={() => {
-              console.log("📊 INVENTARIO: Abriendo actualización masiva");
-              setShowInventarioModal(true);
-            }}
+            onClick={() => setShowInventarioModal(true)}
             className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             title="Actualizar inventario"
+            type="button"
           >
             <Package className="w-4 h-4" />
           </button>
           <button
-            onClick={() => {
-              console.log("⚠️ MERMAS: Abriendo reporte");
-              setShowMermasModal(true);
-            }}
+            onClick={() => setShowMermasModal(true)}
             className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             title="Mermas"
+            type="button"
           >
             <AlertTriangle className="w-4 h-4" />
           </button>
         </div>
       </div>
-      {/* Tabla con paginación mejorada */}
+
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
@@ -388,14 +467,14 @@ export function ProductosTotales() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {paginatedData.map((row, index) => (
-              <tr key={index} className="hover:bg-gray-50">
+            {paginatedData.map((row) => (
+              <tr key={row.id} className="hover:bg-gray-50">
                 {columns.map((column) => (
                   <td
                     key={column.key}
                     className="px-6 py-4 text-sm text-gray-900"
                   >
-                    {row[column.key]}
+                    {row[column.key as keyof typeof row]}
                   </td>
                 ))}
               </tr>
@@ -403,10 +482,8 @@ export function ProductosTotales() {
           </tbody>
         </table>
 
-        {/* Paginación personalizada */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-6 py-3 border-t border-gray-200 bg-gray-50">
-            {/* Selector de items por página */}
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-600">Mostrar:</span>
               <select
@@ -430,33 +507,34 @@ export function ProductosTotales() {
                 {filteredData.length} productos
               </span>
             </div>
+
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
                 className="px-3 py-1 rounded-md text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                type="button"
               >
                 Anterior
               </button>
 
-              <div className="flex items-center space-x-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  const page = i + 1;
-                  return (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-1 rounded-md text-sm ${
-                        currentPage === page
-                          ? "bg-blue-600 text-white"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  );
-                })}
-              </div>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                const page = i + 1;
+                return (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`px-3 py-1 rounded-md text-sm ${
+                      currentPage === page
+                        ? "bg-blue-600 text-white"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                    type="button"
+                  >
+                    {page}
+                  </button>
+                );
+              })}
 
               <button
                 onClick={() =>
@@ -464,6 +542,7 @@ export function ProductosTotales() {
                 }
                 disabled={currentPage === totalPages}
                 className="px-3 py-1 rounded-md text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                type="button"
               >
                 Siguiente
               </button>
@@ -476,7 +555,6 @@ export function ProductosTotales() {
         isOpen={showMermasModal}
         onClose={() => setShowMermasModal(false)}
         onMermaReported={async (mermaData) => {
-          // Crear notificación cuando se reporte una merma
           await insertNotification({
             empresa_id: empresaId,
             tipo: "merma_reportada",
@@ -490,9 +568,7 @@ export function ProductosTotales() {
       <ActualizarInventario
         isOpen={showInventarioModal}
         empresaId={empresaId}
-        onClose={() => {
-          setShowInventarioModal(false);
-        }}
+        onClose={() => setShowInventarioModal(false)}
       />
 
       <AgregarProductoModal
@@ -556,44 +632,9 @@ export function ProductosTotales() {
               <option value="agotados">Agotados</option>
             </select>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Categoría
-            </label>
-            <select
-              value={filters.categoria}
-              onChange={(e) =>
-                setFilters((prev) => ({ ...prev, categoria: e.target.value }))
-              }
-              id="filter-categoria"
-              name="filter-categoria"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Todas las categorías</option>
-              {categorias.map((categoria) => (
-                <option key={categoria.id} value={categoria.nombre}>
-                  {categoria.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex justify-end">
-            <button
-              onClick={() => {
-                console.log("✅ INVENTARIO: Filtros aplicados:", filters);
-                setShowFilters(false);
-              }}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Aplicar filtros
-            </button>
-          </div>
         </div>
       </FilterModal>
 
-      {/* Bulk Delete Modal */}
       <Modal
         isOpen={showBulkDeleteModal}
         onClose={() => setShowBulkDeleteModal(false)}
@@ -609,12 +650,14 @@ export function ProductosTotales() {
             <button
               onClick={() => setShowBulkDeleteModal(false)}
               className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              type="button"
             >
               Cancelar
             </button>
             <button
               onClick={confirmBulkDelete}
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              type="button"
             >
               Eliminar {selectedProducts.size} productos
             </button>
@@ -622,7 +665,6 @@ export function ProductosTotales() {
         </div>
       </Modal>
 
-      {/* Delete Modal */}
       <Modal
         isOpen={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
@@ -638,12 +680,14 @@ export function ProductosTotales() {
             <button
               onClick={() => setShowDeleteModal(false)}
               className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              type="button"
             >
               Cancelar
             </button>
             <button
               onClick={confirmDelete}
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              type="button"
             >
               Eliminar
             </button>
