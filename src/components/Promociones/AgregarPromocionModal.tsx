@@ -51,7 +51,11 @@ export function AgregarPromocionModal({
     "*",
     empresaId ? { empresa_id: empresaId } : undefined
   );
-  const { data: sucursales } = useSupabaseData<any>("sucursales", "*");
+  const { data: sucursales } = useSupabaseData<any>(
+    "sucursales",
+    "*",
+    empresaId ? { empresa_id: empresaId } : undefined
+  );
 
   // Filtrado productos
   const filteredProductos = (productos || []).filter(

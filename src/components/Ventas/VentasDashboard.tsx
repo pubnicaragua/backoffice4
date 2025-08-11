@@ -513,7 +513,7 @@ export function VentasDashboard() {
               </select>
             </div>
 
-            <div>
+            {/* <div>
               <label
                 htmlFor="producto-input"
                 className="block text-sm font-medium text-gray-700 mb-2"
@@ -563,7 +563,7 @@ export function VentasDashboard() {
                   </div>
                 )}
               </div>
-            </div>
+            </div> */}
           </div>
 
           <div className="pt-4 border-t border-gray-200">

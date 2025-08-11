@@ -103,7 +103,7 @@ export function ProductosTotales() {
 
   const insertNotification = useSupabaseData("notificaciones", "*");
 
-  // >>> Carga inventarios manualmente con filtro según sucursal y stock_final > 0, porque el hook no soporta gt ///
+  // Carga inventarios según filtro de sucursal, stock_final > 0
   useEffect(() => {
     async function cargarInventarios() {
       if (!empresaId) {
@@ -134,7 +134,6 @@ export function ProductosTotales() {
     { key: "checkbox", label: "", width: "40px" },
     { key: "producto", label: "Producto" },
     { key: "stock", label: "Stock" },
-    { key: "categoria", label: "Categoría" },
     { key: "descripcion", label: "Descripción" },
     { key: "sku", label: "SKU" },
     { key: "costo", label: "Costo" },
@@ -144,20 +143,26 @@ export function ProductosTotales() {
     { key: "acciones", label: "Acciones" },
   ];
 
-  // Mapa de productoId a stock_final para inventarios cargados
+  // Mapa productoId => stock total sumado desde inventarios
   const stockPorProductoId: Record<string, number> = React.useMemo(() => {
     const map: Record<string, number> = {};
     for (const inv of inventarios) {
-      map[inv.producto_id] = inv.stock_final;
+      map[inv.producto_id] =
+        (map[inv.producto_id] || 0) + (inv.stock_final || 0);
     }
     return map;
   }, [inventarios]);
 
-  // Filtrar productos segun filtro y stock en sucursal si aplica
+  // Filtrar productos según filtros
   const filteredProductos = productos.filter((producto) => {
-    // filtro sucursal: si hay sucursal seleccionada, mostrar sólo si tiene stock en inventario > 0
+    // filtro sucursal: mostrar solo si tiene stock en inventario en esa sucursal > 0
     if (filters.sucursal) {
-      const stockSucursal = stockPorProductoId[producto.id] ?? 0;
+      const stockSucursal =
+        inventarios.find(
+          (inv) =>
+            inv.producto_id === producto.id &&
+            inv.sucursal_id === filters.sucursal
+        )?.stock_final ?? 0;
       if (stockSucursal <= 0) return false;
     }
     if (filters.categoria && filters.categoria !== "") {
@@ -166,13 +171,13 @@ export function ProductosTotales() {
       );
       if (categoria && producto.categoria_id !== categoria.id) return false;
     }
-    // Filtro disponibilidad aplicado con stock global (en productos)
-    if (filters.disponibilidad === "disponibles" && (producto.stock || 0) <= 0)
+    // filtro disponibilidad según stock global
+    const stockGlobal = stockPorProductoId[producto.id] ?? producto.stock ?? 0;
+    if (filters.disponibilidad === "disponibles" && stockGlobal <= 0)
       return false;
-    if (filters.disponibilidad === "agotados" && (producto.stock || 0) > 0)
-      return false;
+    if (filters.disponibilidad === "agotados" && stockGlobal > 0) return false;
 
-    // Filtro texto en búsqueda
+    // filtro texto en búsqueda por nombre o código
     if (
       searchTerm &&
       !producto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) &&
@@ -182,6 +187,89 @@ export function ProductosTotales() {
 
     return true;
   });
+
+  // Procesar datos para tabla
+  const processedData = filteredProductos.map((producto) => {
+    const stockReal = filters.sucursal
+      ? inventarios.find(
+          (inv) =>
+            inv.producto_id === producto.id &&
+            inv.sucursal_id === filters.sucursal
+        )?.stock_final ?? 0
+      : stockPorProductoId[producto.id] ?? producto.stock ?? 0;
+
+    const margenPercent = Math.round(
+      (((producto.precio || 0) - (producto.costo || 0)) /
+        (producto.precio || 1)) *
+        100
+    );
+
+    return {
+      id: producto.id,
+      producto: producto.nombre,
+      stock: stockReal.toString(),
+      categoria:
+        categorias.find((c) => c.id === producto.categoria_id)?.nombre ||
+        "Sin categoría",
+      descripcion: producto.descripcion || "",
+      sku: producto.codigo,
+      costo: `$${Math.round(producto.costo || 0).toLocaleString("es-CL")}`,
+      precio: `$${Math.round(producto.precio || 0).toLocaleString("es-CL")}`,
+      margen: `${margenPercent}%`,
+      disponible: stockReal > 0 ? "Disponible" : "Agotado",
+      checkbox: (
+        <input
+          type="checkbox"
+          checked={selectedProducts.has(producto.id)}
+          onChange={(e) => handleSelectProduct(producto.id, e.target.checked)}
+          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+        />
+      ),
+      acciones: (
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEditProduct(producto);
+            }}
+            className="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 transition-colors"
+            title="Editar producto"
+            type="button"
+          >
+            <Edit className="w-5 h-5" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteProduct(producto);
+            }}
+            className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-colors"
+            title="Eliminar producto"
+            type="button"
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
+        </div>
+      ),
+    };
+  });
+
+  // Filtrar por búsqueda en tabla
+  const filteredData = processedData.filter(
+    (item) =>
+      searchTerm === "" ||
+      item.producto.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.sku.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedData = filteredData.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
+
+  // Handlers para editar, eliminar y selección múltiple
 
   const handleEditProduct = (producto: Producto) => {
     setSelectedProduct(producto);
@@ -260,10 +348,10 @@ export function ProductosTotales() {
       "Margen",
       "Disponible",
     ];
-    const filteredData = processedData;
+    const filteredDataForReport = processedData;
     const csvContent = [
       headers.join(","),
-      ...filteredData.map((row) =>
+      ...filteredDataForReport.map((row) =>
         [
           row.producto,
           row.stock,
@@ -288,89 +376,16 @@ export function ProductosTotales() {
     toast.success("Reporte CSV descargado");
   };
 
-  // Mapear stock mostrado según filtro sucursal y stock inventario o stock global producto
-  const processedData = filteredProductos.map((producto) => {
-    const stockReal = filters.sucursal
-      ? stockPorProductoId[producto.id] ?? 0
-      : producto.stock ?? 0;
-
-    return {
-      id: producto.id,
-      producto: producto.nombre,
-      stock: stockReal.toString(),
-      categoria:
-        categorias.find((c) => c.id === producto.categoria_id)?.nombre ||
-        "Sin categoría",
-      descripcion: producto.descripcion || "",
-      sku: producto.codigo,
-      costo: `$${Math.round(producto.costo || 0).toLocaleString("es-CL")}`,
-      precio: `$${Math.round(producto.precio || 0).toLocaleString("es-CL")}`,
-      margen: `${Math.round(
-        (((producto.precio || 0) - (producto.costo || 0)) /
-          (producto.precio || 1)) *
-          100
-      )}%`,
-      disponible: stockReal > 0 ? "Disponible" : "Agotado",
-      checkbox: (
-        <input
-          type="checkbox"
-          checked={selectedProducts.has(producto.id)}
-          onChange={(e) => handleSelectProduct(producto.id, e.target.checked)}
-          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-        />
-      ),
-      acciones: (
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleEditProduct(producto);
-            }}
-            className="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 transition-colors"
-            title="Editar producto"
-            type="button"
-          >
-            <Edit className="w-5 h-5" />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDeleteProduct(producto);
-            }}
-            className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-colors"
-            title="Eliminar producto"
-            type="button"
-          >
-            <Trash2 className="w-5 h-5" />
-          </button>
-        </div>
-      ),
-    };
-  });
-
-  // Filtrar tabla paginada por búsqueda texto en producto o SKU
-  const filteredData = processedData.filter(
-    (item) =>
-      searchTerm === "" ||
-      item.producto.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.sku.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedData = filteredData.slice(
-    startIndex,
-    startIndex + itemsPerPage
-  );
-
   return (
     <div className="p-6">
+      {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold text-gray-900">
           Productos totales
         </h1>
       </div>
 
+      {/* Search and actions */}
       <div className="flex items-center justify-between mb-6">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -451,6 +466,7 @@ export function ProductosTotales() {
         </div>
       </div>
 
+      {/* Tabla */}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
@@ -551,18 +567,10 @@ export function ProductosTotales() {
         )}
       </div>
 
+      {/* Modales */}
       <ReporteMermas
         isOpen={showMermasModal}
         onClose={() => setShowMermasModal(false)}
-        onMermaReported={async (mermaData) => {
-          await insertNotification({
-            empresa_id: empresaId,
-            tipo: "merma_reportada",
-            titulo: "Nueva Merma Reportada",
-            mensaje: `Se reportó una merma de ${mermaData.cantidad} unidades por ${mermaData.tipo}`,
-            prioridad: "media",
-          });
-        }}
       />
 
       <ActualizarInventario

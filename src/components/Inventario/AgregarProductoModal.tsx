@@ -1,11 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Modal } from "../Common/Modal";
 import {
   useSupabaseInsert,
   useSupabaseUpdate,
 } from "../../hooks/useSupabaseData";
-
-import { useSupabaseData } from "../../hooks/useSupabaseData";
+import { supabase } from "../../lib/supabase";
 
 interface AgregarProductoModalProps {
   isOpen: boolean;
@@ -24,7 +23,6 @@ export function AgregarProductoModal({
 }: AgregarProductoModalProps) {
   const [formData, setFormData] = useState({
     producto: "",
-    categoria: "",
     descripcion: "",
     se_vende_por: "unidad",
     codigo_unitario: "",
@@ -32,96 +30,64 @@ export function AgregarProductoModal({
     sku: "",
     agregar_stock: "",
     costo: "",
+    sucursal: "", // agregada para seleccionar sucursal
   });
-
   const { insert, loading } = useSupabaseInsert("productos");
   const { update, loading: updating } = useSupabaseUpdate("productos");
-  const { data: sucursales } = useSupabaseData<any>("sucursales", "*");
 
-  // Update form when selectedProduct changes
-  React.useEffect(() => {
+  const [sucursales, setSucursales] = useState<any[]>([]);
+  const [loadingSucursales, setLoadingSucursales] = useState(false);
+
+  // Cargar sucursales cuando cambie empresaId o se abra modal
+  useEffect(() => {
+    if (!empresaId || !isOpen) {
+      setSucursales([]);
+      setFormData((prev) => ({ ...prev, sucursal: "" }));
+      return;
+    }
+    setLoadingSucursales(true);
+    supabase
+      .from("sucursales")
+      .select("*")
+      .eq("empresa_id", empresaId)
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Error cargando sucursales:", error);
+          setSucursales([]);
+        } else {
+          setSucursales(data || []);
+        }
+        setLoadingSucursales(false);
+      });
+  }, [empresaId, isOpen]);
+
+  // Update form when selectedProduct changes or modal opens
+  useEffect(() => {
     if (selectedProduct) {
       setFormData({
         producto: selectedProduct.nombre || "",
-        categoria: selectedProduct.categoria || "",
         descripcion: selectedProduct.descripcion || "",
         se_vende_por: selectedProduct.unidad === "KG" ? "kilogramo" : "unidad",
-        codigo_unitario: selectedProduct.codigo || "", // SKU
-        precio_unitario: selectedProduct.precio?.toString() || "",
+        codigo_unitario: selectedProduct.codigo || "",
+        precio_unitario:
+          selectedProduct.precio !== undefined
+            ? selectedProduct.precio.toString()
+            : "",
         sku: selectedProduct.codigo || "",
-        agregar_stock: selectedProduct.stock?.toString() || "",
-        costo: selectedProduct.costo?.toString() || "",
+        agregar_stock:
+          selectedProduct.stock !== undefined
+            ? selectedProduct.stock.toString()
+            : "",
+        costo:
+          selectedProduct.costo !== undefined
+            ? selectedProduct.costo.toString()
+            : "",
+        sucursal: selectedProduct.sucursal_id || "",
       });
     } else {
       // Reset form completely when no product selected
       setFormData({
         producto: "",
-        categoria: "",
-        descripcion: "",
-        se_vende_por: "unidad",
-        codigo_unitario: "",
-        precio_unitario: "", // Precio de venta
-        sku: "",
-        agregar_stock: "",
-        costo: "",
-      });
-    }
-  }, [selectedProduct, isOpen]); // Add isOpen dependency
-
-  // Reset form when modal closes
-  React.useEffect(() => {
-    if (!isOpen) {
-      console.log("🔄 MODAL: Reseteando formulario al cerrar");
-      setFormData({
-        producto: "",
-        categoria: "",
-        descripcion: "",
-        se_vende_por: "unidad",
-        codigo_unitario: "",
-        precio_unitario: "", // Precio de venta
-        sku: "",
-        agregar_stock: "",
-        costo: "",
-      });
-    }
-  }, [isOpen]);
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    let success;
-
-    if (selectedProduct) {
-      // Update existing product
-      success = await update(selectedProduct.id, {
-        codigo: formData.sku,
-        nombre: formData.producto,
-        descripcion: formData.descripcion,
-        precio: parseFloat(formData.precio_unitario),
-        costo: parseFloat(formData.costo) || 0,
-        unidad: formData.se_vende_por === "unidad" ? "UN" : "KG",
-        stock: parseFloat(formData.agregar_stock) || 0,
-        empresa_id: empresaId,
-      });
-    } else {
-      // Create new product
-      success = await insert({
-        codigo: formData.sku || `AUTO-${Date.now()}`,
-        nombre: formData.producto,
-        descripcion: formData.descripcion,
-        precio: parseFloat(formData.precio_unitario),
-        costo: parseFloat(formData.costo) || 0,
-        tipo: "producto",
-        unidad: formData.se_vende_por === "unidad" ? "UN" : "KG",
-        stock: parseFloat(formData.agregar_stock) || 0,
-        empresa_id: empresaId,
-      });
-    }
-
-    if (success) {
-      // Reset form data
-      setFormData({
-        producto: "",
-        categoria: "",
         descripcion: "",
         se_vende_por: "unidad",
         codigo_unitario: "",
@@ -129,6 +95,93 @@ export function AgregarProductoModal({
         sku: "",
         agregar_stock: "",
         costo: "",
+        sucursal: "",
+      });
+    }
+  }, [selectedProduct, isOpen]);
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setFormData({
+        producto: "",
+        descripcion: "",
+        se_vende_por: "unidad",
+        codigo_unitario: "",
+        precio_unitario: "",
+        sku: "",
+        agregar_stock: "",
+        costo: "",
+        sucursal: "",
+      });
+    }
+  }, [isOpen]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!empresaId) {
+      alert("Error: No se ha definido la empresa.");
+      return;
+    }
+
+    // Validar sucursal seleccionada
+    if (!formData.sucursal) {
+      alert("Por favor, seleccione una sucursal.");
+      return;
+    }
+
+    const precioParsed = parseFloat(formData.precio_unitario);
+    if (isNaN(precioParsed) || precioParsed < 0) {
+      alert("Por favor, ingrese un precio válido.");
+      return;
+    }
+
+    const costoParsed = parseFloat(formData.costo) || 0;
+    const stockParsed = parseFloat(formData.agregar_stock) || 0;
+
+    let success;
+
+    if (selectedProduct) {
+      // Update existing product
+      success = await update(selectedProduct.id, {
+        codigo: formData.sku || formData.codigo_unitario,
+        nombre: formData.producto,
+        descripcion: formData.descripcion,
+        precio: precioParsed,
+        costo: costoParsed,
+        unidad: formData.se_vende_por === "unidad" ? "UN" : "KG",
+        stock: stockParsed,
+        empresa_id: empresaId,
+        sucursal_id: formData.sucursal,
+      });
+    } else {
+      // Create new product
+      success = await insert({
+        codigo: formData.sku || `AUTO-${Date.now()}`,
+        nombre: formData.producto,
+        descripcion: formData.descripcion,
+        precio: precioParsed,
+        costo: costoParsed,
+        tipo: "producto",
+        unidad: formData.se_vende_por === "unidad" ? "UN" : "KG",
+        stock: stockParsed,
+        empresa_id: empresaId,
+        sucursal_id: formData.sucursal,
+      });
+    }
+
+    if (success) {
+      setFormData({
+        producto: "",
+        descripcion: "",
+        se_vende_por: "unidad",
+        codigo_unitario: "",
+        precio_unitario: "",
+        sku: "",
+        agregar_stock: "",
+        costo: "",
+        sucursal: "",
       });
 
       if (onSuccess) {
@@ -165,26 +218,6 @@ export function AgregarProductoModal({
             placeholder="Producto"
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor="producto-categoria"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Categoría
-          </label>
-          <input
-            id="producto-categoria"
-            name="producto-categoria"
-            type="text"
-            value={formData.categoria}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, categoria: e.target.value }))
-            }
-            placeholder="Categoría"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
@@ -280,12 +313,13 @@ export function AgregarProductoModal({
           <select
             id="sucursal-select"
             name="sucursal-select"
-            value={formData.sucursal || ""}
+            value={formData.sucursal}
             onChange={(e) =>
               setFormData((prev) => ({ ...prev, sucursal: e.target.value }))
             }
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
+            disabled={loadingSucursales}
           >
             <option value="">Seleccionar sucursal</option>
             {sucursales.map((sucursal) => (
@@ -294,6 +328,9 @@ export function AgregarProductoModal({
               </option>
             ))}
           </select>
+          {loadingSucursales && (
+            <p className="mt-1 text-sm text-gray-500">Cargando sucursales...</p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -314,6 +351,8 @@ export function AgregarProductoModal({
               }
               placeholder="Costo del producto"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              min="0"
+              step="any"
             />
           </div>
           <div>
@@ -337,6 +376,8 @@ export function AgregarProductoModal({
               placeholder="Precio de venta"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
+              min="0"
+              step="any"
             />
           </div>
         </div>
@@ -361,6 +402,8 @@ export function AgregarProductoModal({
             }
             placeholder="Agregar stock actual / adicional"
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            min="0"
+            step="any"
           />
         </div>
 
