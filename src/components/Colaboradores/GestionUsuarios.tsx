@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Search, Plus, Mail, Clock, Filter } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { AgregarUsuarioModal } from "./AgregarUsuarioModal";
@@ -181,6 +181,8 @@ export function GestionUsuarios() {
       </div>
 
       <AgregarUsuarioModal
+        loading={loading}
+        setLoading={setLoading}
         isOpen={showAgregarModal}
         onClose={() => {
           setShowAgregarModal(false);

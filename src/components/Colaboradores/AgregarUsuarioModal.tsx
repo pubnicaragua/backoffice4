@@ -1,20 +1,24 @@
-import React, { useState } from "react";
+import React, { SetStateAction, useState } from "react";
 import { Modal } from "../Common/Modal";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../contexts/AuthContext";
 
 interface AgregarUsuarioModalProps {
+  loading: boolean;
+  setLoading: React.Dispatch<SetStateAction<boolean>>;
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
 }
 
 export function AgregarUsuarioModal({
+  loading,
+  setLoading,
   isOpen,
   onClose,
   onSuccess,
 }: AgregarUsuarioModalProps) {
-  const { empresaId } = useAuth();
+  const { empresaId, sucursalId } = useAuth();
   const [formData, setFormData] = useState({
     nombres: "",
     apellidos: "",
@@ -25,7 +29,6 @@ export function AgregarUsuarioModal({
     fecha_nacimiento: "",
     pass: "",
   });
-  const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState<{
     texto: string;
     tipo: "error" | "success" | null;
@@ -39,6 +42,10 @@ export function AgregarUsuarioModal({
   const crearUsuario = async (datosUsuario: any) => {
     try {
       setLoading(true);
+
+      // Guardar la sesión actual ANTES de crear el nuevo usuario
+      const { data: sesionActual } = await supabase.auth.getSession();
+      const usuarioActual = sesionActual?.session?.user || null;
 
       // Validar RUT único
       const validarRutUnico = async (rut: string) => {
@@ -59,8 +66,8 @@ export function AgregarUsuarioModal({
         return;
       }
 
-      // Crear el usuario en auth - el trigger se encarga de crear en usuarios
-      const { data: authUser, error: authError } = await supabase.auth.signUp({
+      // Crear el usuario en auth - esto cambiará temporalmente la sesión
+      const { error: authError } = await supabase.auth.signUp({
         email: datosUsuario.email,
         password: datosUsuario.pass,
         options: {
@@ -70,44 +77,26 @@ export function AgregarUsuarioModal({
             rut: datosUsuario.rut,
             telefono: datosUsuario.telefono,
             direccion: datosUsuario.direccion,
+            empresa_id: empresaId,
+            sucursal_id: sucursalId,
           },
         },
       });
 
       if (authError) throw authError;
 
-      // Esperar para que el trigger procese
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Esperar un momento para que el trigger procese
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Buscar el usuario creado por el trigger
-      const { data: usuarioCreado, error: buscarError } = await supabase
-        .from("usuarios")
-        .select("id")
-        .eq("email", datosUsuario.email)
-        .single();
-
-      if (buscarError) {
-        console.error("Error buscando usuario creado:", buscarError);
-        throw new Error("No se pudo encontrar el usuario creado");
-      }
-
-      if (usuarioCreado && empresaId) {
-        // Crear relación usuario-empresa
-        const { error: empresaError } = await supabase
-          .from("usuario_empresa")
-          .insert({
-            usuario_id: usuarioCreado.id,
-            empresa_id: empresaId,
-            activo: true,
-          });
-
-        if (empresaError) {
-          console.error(
-            "Error creando relación usuario-empresa:",
-            empresaError
-          );
-          throw empresaError;
+      // RESTAURAR la sesión original
+      if (usuarioActual && sesionActual?.session) {
+        const { error: restoreError } = await supabase.auth.setSession(sesionActual.session);
+        if (restoreError) {
+          console.warn('Error restaurando sesión:', restoreError);
+          await supabase.auth.refreshSession();
         }
+      } else {
+        await supabase.auth.signOut();
       }
 
       setMensaje({ texto: "Usuario creado correctamente.", tipo: "success" });
@@ -128,12 +117,21 @@ export function AgregarUsuarioModal({
       setTimeout(() => {
         onClose();
       }, 1000);
+
     } catch (error: any) {
       console.error("Error creando usuario:", error);
+
+      try {
+        const { data: sesionActual } = await supabase.auth.getSession();
+        if (sesionActual?.session) {
+          await supabase.auth.setSession(sesionActual.session);
+        }
+      } catch (restoreError) {
+        console.warn('Error restaurando sesión después de error:', restoreError);
+      }
+
       setMensaje({
-        texto:
-          error.message ||
-          "Error al crear el usuario. Por favor intenta nuevamente.",
+        texto: error.message || "Error al crear el usuario. Por favor intenta nuevamente.",
         tipo: "error",
       });
     } finally {
@@ -340,11 +338,10 @@ export function AgregarUsuarioModal({
         {/* Mensaje de estado */}
         {mensaje.tipo && (
           <div
-            className={`p-2 rounded ${
-              mensaje.tipo === "error"
-                ? "bg-red-100 text-red-700"
-                : "bg-green-100 text-green-700"
-            }`}
+            className={`p-2 rounded ${mensaje.tipo === "error"
+              ? "bg-red-100 text-red-700"
+              : "bg-green-100 text-green-700"
+              }`}
             role="alert"
           >
             {mensaje.texto}
