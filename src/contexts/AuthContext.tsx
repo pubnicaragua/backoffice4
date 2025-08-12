@@ -11,6 +11,7 @@ import type { User } from "../types";
 interface AuthContextType {
   user: User | null;
   empresaId: string | null;
+  sucursalId: string | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -22,6 +23,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [empresaId, setEmpresaId] = useState<string | null>(null);
+  const [sucursalId, setSucursalId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Ref para evitar llamadas simultáneas a fetchUserProfile
@@ -70,18 +72,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Solo buscar empresa si hay usuario válido
       if (finalUser?.id) {
-        console.log("🏢 Buscando empresa del usuario...");
+        console.log(":office: Buscando empresa y sucursal del usuario...");
         const { data: usuarioEmpresa, error: empresaError } = await supabase
           .from("usuario_empresa")
-          .select("empresa_id")
+          .select("empresa_id, sucursal_id")
           .eq("usuario_id", finalUser.id)
           .eq("activo", true)
           .single();
 
-        console.log("🏢 Resultado empresa:", { usuarioEmpresa, empresaError });
+        console.log(":office: Resultado empresa y sucursal:", { usuarioEmpresa, empresaError });
+
         setEmpresaId(usuarioEmpresa?.empresa_id || null);
+        setSucursalId(usuarioEmpresa?.sucursal_id || null);
       } else {
         setEmpresaId(null);
+        setSucursalId(null);
       }
 
       console.log("✅ fetchUserProfile completado exitosamente");

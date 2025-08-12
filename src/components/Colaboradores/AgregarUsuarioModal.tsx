@@ -14,7 +14,7 @@ export function AgregarUsuarioModal({
   onClose,
   onSuccess,
 }: AgregarUsuarioModalProps) {
-  const { empresaId } = useAuth();
+  const { empresaId, sucursalId } = useAuth();
   const [formData, setFormData] = useState({
     nombres: "",
     apellidos: "",
@@ -70,6 +70,8 @@ export function AgregarUsuarioModal({
             rut: datosUsuario.rut,
             telefono: datosUsuario.telefono,
             direccion: datosUsuario.direccion,
+            empresa_id: empresaId,
+            sucursal_id: sucursalId,
           },
         },
       });
@@ -340,11 +342,10 @@ export function AgregarUsuarioModal({
         {/* Mensaje de estado */}
         {mensaje.tipo && (
           <div
-            className={`p-2 rounded ${
-              mensaje.tipo === "error"
-                ? "bg-red-100 text-red-700"
-                : "bg-green-100 text-green-700"
-            }`}
+            className={`p-2 rounded ${mensaje.tipo === "error"
+              ? "bg-red-100 text-red-700"
+              : "bg-green-100 text-green-700"
+              }`}
             role="alert"
           >
             {mensaje.texto}
