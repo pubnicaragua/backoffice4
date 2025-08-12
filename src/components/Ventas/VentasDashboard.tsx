@@ -40,14 +40,12 @@ function MetricsCard({ label, value, change, isPositive }: KpiCardProps) {
         </div>
         <div className="flex items-center space-x-1">
           <TrendingUp
-            className={`w-4 h-4 ${
-              isPositive ? "text-green-500" : "text-red-500"
-            }`}
+            className={`w-4 h-4 ${isPositive ? "text-green-500" : "text-red-500"
+              }`}
           />
           <span
-            className={`text-sm ${
-              isPositive ? "text-green-500" : "text-red-500"
-            }`}
+            className={`text-sm ${isPositive ? "text-green-500" : "text-red-500"
+              }`}
           >
             {change}
           </span>
@@ -284,9 +282,9 @@ export function VentasDashboard() {
           dayMap.set(
             ventaDateStr,
             dayMap.get(ventaDateStr)! +
-              (typeof venta.total === "string"
-                ? parseFloat(venta.total)
-                : venta.total)
+            (typeof venta.total === "string"
+              ? parseFloat(venta.total)
+              : venta.total)
           );
         }
       });
@@ -389,9 +387,8 @@ export function VentasDashboard() {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = `reporte_ventas_${
-                  new Date().toISOString().split("T")[0]
-                }.csv`;
+                a.download = `reporte_ventas_${new Date().toISOString().split("T")[0]
+                  }.csv`;
                 a.click();
                 URL.revokeObjectURL(url);
                 toast.success("Reporte de ventas descargado.");

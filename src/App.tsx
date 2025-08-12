@@ -37,10 +37,10 @@ function AppContent() {
     return <LoginForm />;
   }
 
-  // // Check for status routes
-  // if (window.location.pathname === '/protect/status-pos') {
-  //   return <StatusPOS />;
-  // }
+  // Check for status routes
+  if (window.location.pathname === '/protect/status-pos') {
+    return <POSInfo />;
+  }
 
   const isAdmin =
     user?.user_metadata?.role === "admin" ||
