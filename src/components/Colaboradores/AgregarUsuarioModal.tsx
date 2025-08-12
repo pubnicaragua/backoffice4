@@ -1,15 +1,19 @@
-import React, { useState } from "react";
+import React, { SetStateAction, useState } from "react";
 import { Modal } from "../Common/Modal";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../contexts/AuthContext";
 
 interface AgregarUsuarioModalProps {
+  loading: boolean;
+  setLoading: React.Dispatch<SetStateAction<boolean>>;
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
 }
 
 export function AgregarUsuarioModal({
+  loading,
+  setLoading,
   isOpen,
   onClose,
   onSuccess,
@@ -25,7 +29,6 @@ export function AgregarUsuarioModal({
     fecha_nacimiento: "",
     pass: "",
   });
-  const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState<{
     texto: string;
     tipo: "error" | "success" | null;
@@ -60,7 +63,7 @@ export function AgregarUsuarioModal({
       }
 
       // Crear el usuario en auth - el trigger se encarga de crear en usuarios
-      const { data: authUser, error: authError } = await supabase.auth.signUp({
+      const { error: authError } = await supabase.auth.signUp({
         email: datosUsuario.email,
         password: datosUsuario.pass,
         options: {
@@ -91,25 +94,6 @@ export function AgregarUsuarioModal({
       if (buscarError) {
         console.error("Error buscando usuario creado:", buscarError);
         throw new Error("No se pudo encontrar el usuario creado");
-      }
-
-      if (usuarioCreado && empresaId) {
-        // Crear relación usuario-empresa
-        const { error: empresaError } = await supabase
-          .from("usuario_empresa")
-          .insert({
-            usuario_id: usuarioCreado.id,
-            empresa_id: empresaId,
-            activo: true,
-          });
-
-        if (empresaError) {
-          console.error(
-            "Error creando relación usuario-empresa:",
-            empresaError
-          );
-          throw empresaError;
-        }
       }
 
       setMensaje({ texto: "Usuario creado correctamente.", tipo: "success" });

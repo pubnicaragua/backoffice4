@@ -210,12 +210,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       user,
       empresaId,
+      sucursalId,
       loading,
       signIn,
       signOut,
       refetchUserProfile,
     }),
-    [user, empresaId, loading]
+    [user, empresaId, sucursalId, loading]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
