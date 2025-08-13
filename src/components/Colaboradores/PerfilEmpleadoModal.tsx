@@ -20,10 +20,9 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({
   const [showTareaModal, setShowTareaModal] = useState(false);
   const [showPermisoModal, setShowPermisoModal] = useState(false);
 
-  // Fetch user details, permissions, and tasks for the selected user
   const { data: userDetails, loading: userLoading } = useSupabaseData<any>(
     "usuarios",
-    "*, roles(nombre, permisos)", // Fetch role and its permissions
+    "*",
     selectedUser?.id ? { id: selectedUser.id } : null
   );
 
@@ -37,6 +36,9 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({
     selectedUser?.id ? { usuario_id: selectedUser.id } : null
   );
 
+  const { data: allPermissions, loading: allPermissionsLoading } =
+    useSupabaseData<any>("permisos", "*", null);
+
   const {
     data: userTasks,
     loading: tasksLoading,
@@ -47,11 +49,10 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({
     selectedUser?.id ? { usuario_id: selectedUser.id } : null
   );
 
-  const empleado = userDetails[0] || selectedUser; // Use fetched details or fallback to passed prop
+  const empleado = userDetails?.[0] || selectedUser;
   const permisos = userPermissions || [];
   const tareas = userTasks || [];
 
-  // Prevent rendering if no user is selected
   if (!selectedUser && (!userDetails || userDetails.length === 0)) {
     return null;
   }
@@ -59,10 +60,7 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({
   return (
     <>
       <Modal isOpen={isOpen} onClose={onClose} title="" size="lg">
-        {" "}
-        {/* Title is empty as it's handled inside */}
         <div className="space-y-6">
-          {/* Header del perfil */}
           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
             <div className="flex items-center space-x-4">
               <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center">
@@ -94,7 +92,6 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Datos personales */}
             <div className="bg-white p-4 rounded-lg border border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                 <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
@@ -116,7 +113,6 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({
               </div>
             </div>
 
-            {/* Información de contacto */}
             <div className="bg-white p-4 rounded-lg border border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                 <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
@@ -139,29 +135,27 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({
             </div>
           </div>
 
-          {/* Botones de acción */}
           <div className="flex justify-center space-x-4 py-4">
             <button
-              onClick={() => setShowTareaModal(true)} // Pass selectedUser to modal
+              onClick={() => setShowTareaModal(true)}
               className="px-6 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               Tareas
             </button>
             <button
-              onClick={() => setShowTurnoModal(true)} // Pass selectedUser to modal
+              onClick={() => setShowTurnoModal(true)}
               className="px-6 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               Turnos
             </button>
             <button
-              onClick={() => setShowPermisoModal(true)} // Pass selectedUser to modal
+              onClick={() => setShowPermisoModal(true)}
               className="px-6 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               Permisos
             </button>
           </div>
 
-          {/* Martes (Hoy) */}
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center">
@@ -169,7 +163,7 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({
                 Tareas Asignadas (Hoy)
               </h3>
               <button
-                onClick={() => setShowTareaModal(true)} // Pass selectedUser to modal
+                onClick={() => setShowTareaModal(true)}
                 className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 Agregar tarea
@@ -188,10 +182,10 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-gray-900">
-                        {tarea.nombre}
+                        {tarea.tareas?.nombre || tarea.nombre}
                       </p>
                       <p className="text-sm text-gray-600">
-                        {tarea.descripcion}
+                        {tarea.tareas?.descripcion || tarea.descripcion}
                       </p>
                       <p className="text-xs text-blue-600">
                         Asignado para hoy -{" "}
@@ -208,7 +202,6 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({
             </div>
           </div>
 
-          {/* Rol actual */}
           <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center">
@@ -218,13 +211,13 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({
               </h3>
               <div className="flex space-x-3">
                 <button
-                  onClick={() => setShowPermisoModal(true)} // Pass selectedUser to modal
+                  onClick={() => setShowPermisoModal(true)}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
                   Editar permisos
                 </button>
                 <button
-                  onClick={() => setShowPermisoModal(true)} // Pass selectedUser to modal
+                  onClick={() => setShowPermisoModal(true)}
                   className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
                   Asignar permisos
@@ -244,13 +237,11 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({
                     </p>
                     <div
                       className={`w-4 h-4 mx-auto rounded ${
-                        permiso.estado === "permitido"
-                          ? "bg-green-500"
-                          : "bg-red-500"
+                        permiso.otorgado ? "bg-green-500" : "bg-red-500"
                       } flex items-center justify-center`}
                     >
                       <span className="text-white text-xs">
-                        {permiso.estado === "permitido" ? "✓" : "✗"}
+                        {permiso.otorgado ? "✓" : "✗"}
                       </span>
                     </div>
                     <p className="text-xs text-gray-400 mt-1">
@@ -282,6 +273,9 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({
       <AsignarPermisoModal
         isOpen={showPermisoModal}
         onClose={() => setShowPermisoModal(false)}
+        selectedUser={empleado}
+        availablePermissions={allPermissions || []}
+        onSuccess={() => refetchPermissions()}
       />
     </>
   );
