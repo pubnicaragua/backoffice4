@@ -1,6 +1,11 @@
-# backoffice4
+# backoffice 4
 
-[Edit in StackBlitz next generation editor ⚡️](https://stackblitz.com/~/github.com/pubnicaragua/backoffice4)
+Como generar el build de electron
 
-ORDENAR EN LA GESTION DE DESPACHO
-EN LA CANTIDAD DEDATOS QUE DESEA VER 25-50-100 NO FUNCIONA BIEN
+npm install
+
+npm run build
+
+npm run electron-build 
+
+el .exe se genera dentro de /dist-electron/win-unpacked
