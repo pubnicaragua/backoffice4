@@ -15,9 +15,9 @@ export function DetalleDespacho({ onBack, despacho }: DetalleDespachoProps) {
     estado: despacho?.estado || 'pendiente',
     direccion: despacho?.sucursal_destino || 'Jr. Santiago de Chile 193'
   });
-  
+
   const { update, loading } = useSupabaseUpdate('despachos');
-  
+
   const productos = [
     { nombre: 'Pola - cola 500ml', sku: '9520401', cantidad: 20, costo: '$125' },
     { nombre: 'Pola - cola 1L', sku: '9520401', cantidad: 15, costo: '$25' },
@@ -28,13 +28,13 @@ export function DetalleDespacho({ onBack, despacho }: DetalleDespachoProps) {
 
   const handleEditSubmit = async () => {
     console.log('💾 DESPACHO: Guardando cambios', editData);
-    
+
     if (despacho?.despacho?.id) {
       const success = await update(despacho.despacho.id, {
         estado: editData.estado,
         direccion: editData.direccion
       });
-      
+
       if (success) {
         console.log('✅ DESPACHO: Actualizado exitosamente');
         setShowEditModal(false);
@@ -113,7 +113,7 @@ export function DetalleDespacho({ onBack, despacho }: DetalleDespachoProps) {
         </body>
         </html>
       `;
-      
+
       const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -138,7 +138,7 @@ export function DetalleDespacho({ onBack, despacho }: DetalleDespachoProps) {
         </button>
         <h1 className="text-2xl font-semibold text-gray-900">Gestión de despachos</h1>
       </div>
-      
+
       {/* Botones con más margen */}
       <div className="flex justify-end space-x-4 mb-8">
         <div className="flex items-center space-x-4">
@@ -161,139 +161,139 @@ export function DetalleDespacho({ onBack, despacho }: DetalleDespachoProps) {
         </div>
       </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Lista de productos */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <div className="grid grid-cols-4 gap-4 text-sm font-medium text-gray-500">
-                  <span>Producto</span>
-                  <span>SKU</span>
-                  <span>Cantidad</span>
-                  <span>Costo unit</span>
-                </div>
-              </div>
-              <div className="divide-y divide-gray-200">
-                {productos.map((producto, index) => (
-                  <div key={index} className="px-6 py-4">
-                    <div className="grid grid-cols-4 gap-4 text-sm">
-                      <span className="text-gray-900">{producto.nombre}</span>
-                      <span className="text-gray-600">{producto.sku}</span>
-                      <span className="text-gray-600">{producto.cantidad}</span>
-                      <span className="text-gray-900 font-medium">{producto.costo}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-semibold text-gray-900">Total</span>
-                  <span className="text-lg font-semibold text-gray-900">204 $</span>
-                </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Lista de productos */}
+        <div className="lg:col-span-2">
+          <div className="bg-white rounded-lg border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="grid grid-cols-4 gap-4 text-sm font-medium text-gray-500">
+                <span>Producto</span>
+                <span>SKU</span>
+                <span>Cantidad</span>
+                <span>Costo unit</span>
               </div>
             </div>
-          </div>
-
-          {/* Información lateral */}
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Despacho</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Entregado por:
-                  </label>
-                  <span className="text-sm text-gray-900">Emilio Aguilera</span>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Folio:
-                  </label>
-                  <span className="text-sm text-gray-900">8949564506</span>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Fecha:
-                  </label>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-900">{despacho?.fecha ? new Date(despacho.fecha).toLocaleDateString('es-CL') : new Date().toLocaleDateString('es-CL')}</span>
-                    <Calendar className="w-4 h-4 text-gray-400" />
+            <div className="divide-y divide-gray-200">
+              {productos.map((producto, index) => (
+                <div key={index} className="px-6 py-4">
+                  <div className="grid grid-cols-4 gap-4 text-sm">
+                    <span className="text-gray-900">{producto.nombre}</span>
+                    <span className="text-gray-600">{producto.sku}</span>
+                    <span className="text-gray-600">{producto.cantidad}</span>
+                    <span className="text-gray-900 font-medium">{producto.costo}</span>
                   </div>
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Recepcionado por:
-                  </label>
-                  <span className="text-sm text-gray-900">Pedro Hernández</span>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    RUT:
-                  </label>
-                  <span className="text-sm text-gray-900">54658425</span>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Dirección:
-                  </label>
-                  <span className="text-sm text-gray-900">Jr. Santiago de Chile 193</span>
-                </div>
-              </div>
+              ))}
             </div>
-
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-4">Guía de despacho:</h3>
-              <div className="w-full h-64 bg-white border border-gray-200 rounded-lg p-4 text-xs font-mono overflow-y-auto">
-                <div className="text-center mb-4">
-                  <img src="/logo_negro.svg" alt="Solvendo" className="h-8 mx-auto mb-2" />
-                  <div className="text-sm font-bold">ANROLTEC SPA</div>
-                  <div>RUT: 78.168.951-3</div>
-                  <div>Av. Principal 123, Santiago</div>
-                  <div>Tel: +56 9 1234 5678</div>
-                </div>
-                
-                <div className="border-t border-b border-gray-300 py-2 mb-2">
-                  <div className="flex justify-between">
-                    <span>DESPACHO</span>
-                    <span>N° {despacho?.folio_factura || '8949564506'}</span>
-                  </div>
-                  <div>Fecha: {despacho?.fecha || new Date().toLocaleDateString('es-CL')}</div>
-                  <div>Entregado por: {despacho?.entregado_por || 'Emilio Aguilera'}</div>
-                </div>
-                
-                <div className="space-y-1 mb-2">
-                  {productos.slice(0, 3).map((producto, index) => (
-                    <div key={index} className="flex justify-between">
-                      <span>{producto.nombre}</span>
-                      <span>{producto.costo}</span>
-                    </div>
-                  ))}
-                  {productos.length > 3 && (
-                    <div className="text-center text-gray-500">... y {productos.length - 3} más</div>
-                  )}
-                </div>
-                
-                <div className="border-t border-gray-300 pt-2">
-                  <div className="flex justify-between font-bold">
-                    <span>TOTAL:</span>
-                    <span>$204</span>
-                  </div>
-                </div>
-                
-                <div className="text-center mt-4 text-gray-500">
-                  <div>Dirección: Jr. Santiago de Chile 193</div>
-                  <div>www.solvendo.com</div>
-                </div>
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-semibold text-gray-900">Total</span>
+                <span className="text-lg font-semibold text-gray-900">204 $</span>
               </div>
             </div>
           </div>
         </div>
-      
+
+        {/* Información lateral */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Despacho</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Entregado por:
+                </label>
+                <span className="text-sm text-gray-900">Emilio Aguilera</span>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Folio:
+                </label>
+                <span className="text-sm text-gray-900">8949564506</span>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Fecha:
+                </label>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-900">{despacho?.fecha ? new Date(despacho.fecha).toLocaleDateString('es-CL') : new Date().toLocaleDateString('es-CL')}</span>
+                  <Calendar className="w-4 h-4 text-gray-400" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Recepcionado por:
+                </label>
+                <span className="text-sm text-gray-900">Pedro Hernández</span>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  RUT:
+                </label>
+                <span className="text-sm text-gray-900">54658425</span>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Dirección:
+                </label>
+                <span className="text-sm text-gray-900">Jr. Santiago de Chile 193</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h3 className="text-sm font-medium text-gray-700 mb-4">Guía de despacho:</h3>
+            <div className="w-full h-64 bg-white border border-gray-200 rounded-lg p-4 text-xs font-mono overflow-y-auto">
+              <div className="text-center mb-4">
+                <img src="./logo_negro.svg" alt="Solvendo" className="h-8 mx-auto mb-2" />
+                <div className="text-sm font-bold">ANROLTEC SPA</div>
+                <div>RUT: 78.168.951-3</div>
+                <div>Av. Principal 123, Santiago</div>
+                <div>Tel: +56 9 1234 5678</div>
+              </div>
+
+              <div className="border-t border-b border-gray-300 py-2 mb-2">
+                <div className="flex justify-between">
+                  <span>DESPACHO</span>
+                  <span>N° {despacho?.folio_factura || '8949564506'}</span>
+                </div>
+                <div>Fecha: {despacho?.fecha || new Date().toLocaleDateString('es-CL')}</div>
+                <div>Entregado por: {despacho?.entregado_por || 'Emilio Aguilera'}</div>
+              </div>
+
+              <div className="space-y-1 mb-2">
+                {productos.slice(0, 3).map((producto, index) => (
+                  <div key={index} className="flex justify-between">
+                    <span>{producto.nombre}</span>
+                    <span>{producto.costo}</span>
+                  </div>
+                ))}
+                {productos.length > 3 && (
+                  <div className="text-center text-gray-500">... y {productos.length - 3} más</div>
+                )}
+              </div>
+
+              <div className="border-t border-gray-300 pt-2">
+                <div className="flex justify-between font-bold">
+                  <span>TOTAL:</span>
+                  <span>$204</span>
+                </div>
+              </div>
+
+              <div className="text-center mt-4 text-gray-500">
+                <div>Dirección: Jr. Santiago de Chile 193</div>
+                <div>www.solvendo.com</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Modal de Edición */}
       <Modal
         isOpen={showEditModal}
@@ -315,7 +315,7 @@ export function DetalleDespacho({ onBack, despacho }: DetalleDespachoProps) {
               <option value="entregado">Entregado</option>
             </select>
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Dirección
@@ -327,7 +327,7 @@ export function DetalleDespacho({ onBack, despacho }: DetalleDespachoProps) {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          
+
           <div className="flex justify-end space-x-3">
             <button
               onClick={() => setShowEditModal(false)}

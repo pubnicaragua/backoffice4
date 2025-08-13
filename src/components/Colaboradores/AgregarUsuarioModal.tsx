@@ -28,6 +28,7 @@ export function AgregarUsuarioModal({
     direccion: "",
     fecha_nacimiento: "",
     pass: "",
+    rol: "empleado", // Agregado para rol
   });
   const [mensaje, setMensaje] = useState<{
     texto: string;
@@ -39,69 +40,47 @@ export function AgregarUsuarioModal({
     if (mensaje.tipo) setMensaje({ texto: "", tipo: null });
   };
 
-  const crearUsuario = async (datosUsuario: any) => {
+  const crearUsuario = async (datosUsuario: typeof formData) => {
     try {
       setLoading(true);
 
-      // Guardar la sesión actual ANTES de crear el nuevo usuario
-      const { data: sesionActual } = await supabase.auth.getSession();
-      const usuarioActual = sesionActual?.session?.user || null;
+      // Validar si existe usuario con mismo rut
+      const { data: existingUser } = await supabase
+        .from("usuarios")
+        .select("id")
+        .eq("rut", datosUsuario.rut)
+        .single();
 
-      // Validar RUT único
-      const validarRutUnico = async (rut: string) => {
-        const { data, error } = await supabase
-          .from("usuarios")
-          .select("id")
-          .eq("rut", rut)
-          .single();
-        return !data;
-      };
-
-      const rutExiste = await validarRutUnico(datosUsuario.rut);
-      if (!rutExiste) {
+      if (existingUser) {
         setMensaje({
           texto: "Error: Ya existe un usuario con este RUT",
           tipo: "error",
         });
+        setLoading(false);
         return;
       }
 
-      // Crear el usuario en auth - esto cambiará temporalmente la sesión
-      const { error: authError } = await supabase.auth.signUp({
-        email: datosUsuario.email,
-        password: datosUsuario.pass,
-        options: {
-          data: {
-            nombres: datosUsuario.nombres,
-            apellidos: datosUsuario.apellidos,
-            rut: datosUsuario.rut,
-            telefono: datosUsuario.telefono,
-            direccion: datosUsuario.direccion,
-            empresa_id: empresaId,
-            sucursal_id: sucursalId,
-          },
-        },
+      // Llamar función RPC para crear usuario (debes crearla en BD, ejemplo abajo)
+      const { data, error } = await supabase.rpc("crear_usuario_con_password", {
+        p_nombres: datosUsuario.nombres,
+        p_apellidos: datosUsuario.apellidos,
+        p_rut: datosUsuario.rut,
+        p_email: datosUsuario.email,
+        p_telefono: datosUsuario.telefono,
+        p_direccion: datosUsuario.direccion,
+        p_fecha_nacimiento: datosUsuario.fecha_nacimiento || null,
+        p_password: datosUsuario.pass,
+        p_empresa_id: empresaId,
+        p_sucursal_id: sucursalId,
+        p_rol: datosUsuario.rol || "empleado",
       });
 
-      if (authError) throw authError;
-
-      // Esperar un momento para que el trigger procese
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // RESTAURAR la sesión original
-      if (usuarioActual && sesionActual?.session) {
-        const { error: restoreError } = await supabase.auth.setSession(sesionActual.session);
-        if (restoreError) {
-          console.warn('Error restaurando sesión:', restoreError);
-          await supabase.auth.refreshSession();
-        }
-      } else {
-        await supabase.auth.signOut();
+      if (error) {
+        throw error;
       }
 
       setMensaje({ texto: "Usuario creado correctamente.", tipo: "success" });
 
-      // Reset form
       setFormData({
         nombres: "",
         apellidos: "",
@@ -111,27 +90,21 @@ export function AgregarUsuarioModal({
         direccion: "",
         fecha_nacimiento: "",
         pass: "",
+        rol: "empleado",
       });
+
+      if (onSuccess) onSuccess();
 
       // Cerrar modal después de un breve delay
       setTimeout(() => {
         onClose();
       }, 1000);
-
     } catch (error: any) {
       console.error("Error creando usuario:", error);
-
-      try {
-        const { data: sesionActual } = await supabase.auth.getSession();
-        if (sesionActual?.session) {
-          await supabase.auth.setSession(sesionActual.session);
-        }
-      } catch (restoreError) {
-        console.warn('Error restaurando sesión después de error:', restoreError);
-      }
-
       setMensaje({
-        texto: error.message || "Error al crear el usuario. Por favor intenta nuevamente.",
+        texto:
+          error.message ||
+          "Error al crear el usuario. Por favor intenta nuevamente.",
         tipo: "error",
       });
     } finally {
@@ -338,10 +311,11 @@ export function AgregarUsuarioModal({
         {/* Mensaje de estado */}
         {mensaje.tipo && (
           <div
-            className={`p-2 rounded ${mensaje.tipo === "error"
-              ? "bg-red-100 text-red-700"
-              : "bg-green-100 text-green-700"
-              }`}
+            className={`p-2 rounded ${
+              mensaje.tipo === "error"
+                ? "bg-red-100 text-red-700"
+                : "bg-green-100 text-green-700"
+            }`}
             role="alert"
           >
             {mensaje.texto}

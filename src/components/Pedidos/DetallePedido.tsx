@@ -86,7 +86,7 @@ export function DetallePedido({ onBack, pedido }: DetallePedidoProps) {
         </body>
         </html>
       `;
-      
+
       const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -110,7 +110,7 @@ export function DetallePedido({ onBack, pedido }: DetallePedidoProps) {
           <span>Volver</span>
         </button>
         <h1 className="text-2xl font-semibold text-gray-900">Recepción de pedidos</h1>
-        
+
         {/* Botones con más margen */}
         <div className="ml-auto flex space-x-4">
           <button
@@ -166,14 +166,14 @@ export function DetallePedido({ onBack, pedido }: DetallePedidoProps) {
                 </label>
                 <span className="text-sm text-gray-900">Pola - cola</span>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Folio:
                 </label>
                 <span className="text-sm text-gray-900">8949564506</span>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Fecha:
@@ -183,7 +183,7 @@ export function DetallePedido({ onBack, pedido }: DetallePedidoProps) {
                   <Calendar className="w-4 h-4 text-gray-400" />
                 </div>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Recepcionado por:
@@ -197,13 +197,13 @@ export function DetallePedido({ onBack, pedido }: DetallePedidoProps) {
             <h3 className="text-sm font-medium text-gray-700 mb-4">Guía de despacho</h3>
             <div className="w-full h-64 bg-white border border-gray-200 rounded-lg p-4 text-xs font-mono overflow-y-auto">
               <div className="text-center mb-4">
-                <img src="/logo_negro.svg" alt="Solvendo" className="h-8 mx-auto mb-2" />
+                <img src="./logo_negro.svg" alt="Solvendo" className="h-8 mx-auto mb-2" />
                 <div className="text-sm font-bold">ANROLTEC SPA</div>
                 <div>RUT: 78.168.951-3</div>
                 <div>Av. Principal 123, Santiago</div>
                 <div>Tel: +56 9 1234 5678</div>
               </div>
-              
+
               <div className="border-t border-b border-gray-300 py-2 mb-2">
                 <div className="flex justify-between">
                   <span>GUÍA DE DESPACHO</span>
@@ -212,7 +212,7 @@ export function DetallePedido({ onBack, pedido }: DetallePedidoProps) {
                 <div>Fecha: {new Date().toLocaleDateString('es-CL')}</div>
                 <div>Proveedor: Pola - cola</div>
               </div>
-              
+
               <div className="space-y-1 mb-2">
                 {productos.slice(0, 3).map((producto, index) => (
                   <div key={index} className="flex justify-between">
@@ -224,14 +224,14 @@ export function DetallePedido({ onBack, pedido }: DetallePedidoProps) {
                   <div className="text-center text-gray-500">... y {productos.length - 3} más</div>
                 )}
               </div>
-              
+
               <div className="border-t border-gray-300 pt-2">
                 <div className="flex justify-between font-bold">
                   <span>TOTAL:</span>
                   <span>$204</span>
                 </div>
               </div>
-              
+
               <div className="text-center mt-4 text-gray-500">
                 <div>Entregado por: Emilio Aguilera</div>
                 <div>www.solvendo.com</div>

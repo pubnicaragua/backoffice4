@@ -3,17 +3,41 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "main": "src/electron/main.js",
+  "main": "src/electron/main.cjs",
+  "description": "Solvendo BackOffice - Sistema de gestión empresarial",
+  "author": "Solvendo",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "electron": "electron .",
     "electron-dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
+    "electron-prod": "cross-env NODE_ENV=production electron .",
     "electron-build": "npm run build && electron-builder",
     "dist": "npm run build && electron-builder --publish=never"
   },
+  "build": {
+    "appId": "com.solvendo.backoffice",
+    "productName": "Solvendo BackOffice",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "dist/**/*",
+      "src/electron/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.business"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
+    "cross-env": "^10.0.0",
     "electron-is-dev": "^3.0.1",
     "file-saver": "^2.0.5",
     "flowbite": "^3.1.2",

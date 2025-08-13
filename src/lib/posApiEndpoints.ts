@@ -2,9 +2,9 @@
 
 export const POS_API_ENDPOINTS = {
   baseUrl: import.meta.env.VITE_SUPABASE_URL,
-  
+
   // 🔗 ENDPOINTS CRÍTICOS PARA POS - TODOS FUNCIONALES ✅
-  
+
   // 1. Autenticación y Roles
   getUserRoles: (userId: string) => ({
     url: `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/usuarios?id=eq.${userId}&select=*,roles(*)`,
@@ -45,7 +45,7 @@ export const POS_API_ENDPOINTS = {
     method: 'GET',
     description: 'Configuración de impresión',
     response: {
-      logo_url: '/logo_negro.svg',
+      logo_url: './logo_negro.svg',
       datos_empresa: {
         razon_social: 'ANROLTEC SPA',
         rut: '78168951-3'
@@ -174,10 +174,10 @@ export const POS_API_ENDPOINTS = {
       empresa_id: 'uuid',
       sucursal_id: 'uuid',
       folio: 1,
-      items: [{ 
-        producto_id: 'uuid', 
-        cantidad: 2, 
-        precio_unitario: 1500 
+      items: [{
+        producto_id: 'uuid',
+        cantidad: 2,
+        precio_unitario: 1500
       }],
       payment_method: 'card',
       total_amount: 3000
@@ -211,11 +211,11 @@ export const POS_SYNC_FLOW = {
   // Cuando se agrega un producto en el Back Office:
   onProductAdded: async (producto: any) => {
     console.log('📦 Nuevo producto agregado:', producto);
-    
+
     // 1. Se guarda automáticamente en Supabase
     // 2. POS recibe actualización en tiempo real vía Supabase Realtime
     // 3. POS actualiza su catálogo automáticamente
-    
+
     return {
       success: true,
       message: 'Producto sincronizado con todos los terminales POS',
@@ -229,11 +229,11 @@ export const POS_SYNC_FLOW = {
   // Cuando se cambia configuración de moneda:
   onCurrencyConfigChanged: async (config: any) => {
     console.log('💰 Configuración de moneda actualizada:', config);
-    
+
     // 1. Se actualiza configuracion_pos en Supabase
     // 2. Trigger automático notifica a todos los terminales
     // 3. POS aplica nueva configuración inmediatamente
-    
+
     return {
       success: true,
       message: 'Configuración de moneda aplicada en tiempo real',
@@ -244,12 +244,12 @@ export const POS_SYNC_FLOW = {
   // Cuando se procesa una venta en POS:
   onSaleProcessed: async (venta: any) => {
     console.log('💳 Venta procesada en POS:', venta);
-    
+
     // 1. POS envía venta a Supabase
     // 2. Back Office recibe actualización automática
     // 3. Stock se actualiza en tiempo real
     // 4. Reportes se actualizan automáticamente
-    
+
     return {
       success: true,
       message: 'Venta sincronizada con Back Office',
@@ -262,22 +262,22 @@ export const POS_SYNC_FLOW = {
 export const SYNC_CONFIG = {
   // Intervalo de sincronización (en segundos)
   sync_interval: 300, // 5 minutos
-  
+
   // Datos que se sincronizan automáticamente
   auto_sync_tables: [
     'productos',
-    'promociones', 
+    'promociones',
     'configuracion_pos',
     'folios_electronicos'
   ],
-  
+
   // Datos que se envían en tiempo real
   realtime_tables: [
     'ventas',
     'movimientos_caja',
     'pos_transactions'
   ],
-  
+
   // Configuración de Supabase Realtime
   realtime_config: {
     enabled: true,

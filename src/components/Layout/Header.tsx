@@ -13,7 +13,7 @@ export function Header({ onMenuToggle, currentView }: HeaderProps) {
   const { user, signOut } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showNotifications, setShowNotifications] = useState(false);
-  
+
   const { data: notificaciones, loading: notifLoading, refetch: refetchNotifications } = useSupabaseData<any>('notificaciones', '*', { leida: false });
 
   // Update time every second
@@ -41,11 +41,11 @@ export function Header({ onMenuToggle, currentView }: HeaderProps) {
   };
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('es-CL', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('es-CL', {
+      hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
-      hour12: false 
+      hour12: false
     });
   };
 
@@ -60,19 +60,19 @@ export function Header({ onMenuToggle, currentView }: HeaderProps) {
           >
             <Menu className="w-5 h-5 text-gray-700" />
           </button>
-          
+
           <h1 className="text-xl font-semibold text-gray-900">{getViewTitle(currentView)}</h1>
         </div>
-        
+
         {/* Center - Logo */}
         <div className="absolute left-1/2 transform -translate-x-1/2">
-          <img 
-            src="/logo_negro.svg" 
-            alt="Solvendo" 
+          <img
+            src="./logo_negro.svg"
+            alt="Solvendo"
             className="h-8"
           />
         </div>
-        
+
         {/* Right side - Time and User */}
         <div className="flex items-center space-x-6 flex-1 justify-end">
           {/* Notifications */}
@@ -88,23 +88,23 @@ export function Header({ onMenuToggle, currentView }: HeaderProps) {
                 </span>
               )}
             </button>
-            
+
             {showNotifications && (
-              <NotificationsPanel 
+              <NotificationsPanel
                 notifications={notificaciones}
                 onClose={() => setShowNotifications(false)}
                 onRefresh={refetchNotifications}
               />
             )}
           </div>
-          
+
           <div className="flex items-center space-x-2 text-sm text-gray-600">
             <div className="text-center">
               <div className="font-medium">{formatTime(currentTime)}</div>
             </div>
             <Clock className="w-4 h-4" />
           </div>
-          
+
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
               <User className="w-4 h-4 text-gray-600" />

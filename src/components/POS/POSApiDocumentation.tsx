@@ -19,7 +19,7 @@ export function POSApiDocumentation() {
           </div>
         </div>
       </div>
-      
+
       {/* Novedades del Sistema */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
         <h3 className="font-semibold text-blue-900 mb-4">📋 Resumen del Sistema</h3>
@@ -46,7 +46,7 @@ export function POSApiDocumentation() {
 }`}
             </code>
           </div>
-          
+
           <div className="bg-white p-4 rounded border">
             <p className="font-medium text-green-700">✅ GET /config/terminales?empresa_id=${'{empresaId}'}</p>
             <p className="text-gray-600 mb-2">Terminales POS disponibles</p>
@@ -60,14 +60,14 @@ export function POSApiDocumentation() {
 }]`}
             </code>
           </div>
-          
+
           <div className="bg-white p-4 rounded border">
             <p className="font-medium text-green-700">✅ GET /config/impresion?empresa_id=${'{empresaId}'}</p>
             <p className="text-gray-600 mb-2">Configuración de impresión</p>
             <code className="text-xs bg-gray-100 p-2 rounded block">
               {`// Respuesta:
 {
-  logo_url: "/logo_negro.svg",
+  logo_url: "./logo_negro.svg",
   datos_empresa: {
     razon_social: "ANROLTEC SPA",
     rut: "78168951-3"
@@ -79,7 +79,7 @@ export function POSApiDocumentation() {
 }`}
             </code>
           </div>
-          
+
           <div className="bg-white p-4 rounded border">
             <p className="font-medium text-green-700">✅ GET /api/productos?empresa_id=${'{empresaId}'}</p>
             <p className="text-gray-600 mb-2">Productos con stock en tiempo real</p>
@@ -97,7 +97,7 @@ export function POSApiDocumentation() {
 }]`}
             </code>
           </div>
-          
+
           <div className="bg-white p-4 rounded border">
             <p className="font-medium text-green-700">✅ GET /api/promociones?empresa_id=${'{empresaId}'}</p>
             <p className="text-gray-600 mb-2">Promociones activas</p>
@@ -113,7 +113,7 @@ export function POSApiDocumentation() {
 }]`}
             </code>
           </div>
-          
+
           <div className="bg-white p-4 rounded border">
             <p className="font-medium text-green-700">✅ GET /api/clientes?empresa_id=${'{empresaId}'}</p>
             <p className="text-gray-600 mb-2">Clientes registrados</p>
@@ -129,7 +129,7 @@ export function POSApiDocumentation() {
 }]`}
             </code>
           </div>
-          
+
           <div className="bg-white p-4 rounded border">
             <p className="font-medium text-green-700">✅ GET /api/descuentos?empresa_id=${'{empresaId}'}</p>
             <p className="text-gray-600 mb-2">Descuentos disponibles</p>
@@ -144,7 +144,7 @@ export function POSApiDocumentation() {
 }]`}
             </code>
           </div>
-          
+
           <div className="bg-white p-4 rounded border">
             <p className="font-medium text-green-700">✅ GET /api/cupones?empresa_id=${'{empresaId}'}</p>
             <p className="text-gray-600 mb-2">Cupones disponibles</p>
@@ -161,7 +161,7 @@ export function POSApiDocumentation() {
 }]`}
             </code>
           </div>
-          
+
           <div className="bg-white p-4 rounded border">
             <p className="font-medium text-green-700">✅ GET /api/folios?empresa_id=${'{empresaId}'}&tipo_documento=39</p>
             <p className="text-gray-600 mb-2">Folios CAF disponibles</p>
@@ -175,7 +175,7 @@ export function POSApiDocumentation() {
 }`}
             </code>
           </div>
-          
+
           <div className="bg-white p-4 rounded border">
             <p className="font-medium text-green-700">✅ GET /api/sii/config?empresa_id=${'{empresaId}'}</p>
             <p className="text-gray-600 mb-2">Configuración SII</p>
@@ -189,7 +189,7 @@ export function POSApiDocumentation() {
 }`}
             </code>
           </div>
-          
+
           <div className="bg-white p-4 rounded border">
             <p className="font-medium text-green-700">✅ POST /api/transactions</p>
             <p className="text-gray-600 mb-2">Enviar transacción de venta</p>
@@ -211,7 +211,7 @@ export function POSApiDocumentation() {
 }`}
             </code>
           </div>
-          
+
           <div className="bg-white p-4 rounded border">
             <p className="font-medium text-green-700">✅ POST /api/folio/next</p>
             <p className="text-gray-600 mb-2">Obtener siguiente folio disponible</p>
@@ -240,7 +240,7 @@ export function POSApiDocumentation() {
             <Wifi className="w-5 h-5 text-green-600" />
             <h3 className="font-semibold text-gray-900">Endpoints para Terminal POS</h3>
           </div>
-          
+
           <div className="space-y-4 text-sm">
             <div className="border-l-4 border-green-500 pl-4">
               <p className="font-medium text-green-700">POST /auth/terminal</p>
@@ -281,7 +281,7 @@ export function POSApiDocumentation() {
             <CreditCard className="w-5 h-5 text-blue-600" />
             <h3 className="font-semibold text-gray-900">Webhooks de Proveedores</h3>
           </div>
-          
+
           <div className="space-y-4 text-sm">
             <div className="border-l-4 border-yellow-500 pl-4">
               <p className="font-medium text-yellow-700">POST /webhooks/sumup</p>
@@ -309,7 +309,7 @@ export function POSApiDocumentation() {
       {/* Flujo de Integración */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <h3 className="font-semibold text-gray-900 mb-4">🔄 Flujo de Integración POS</h3>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="text-center">
             <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -318,7 +318,7 @@ export function POSApiDocumentation() {
             <h4 className="font-medium text-gray-900 mb-2">Autenticación</h4>
             <p className="text-sm text-gray-600">Terminal se conecta con código único</p>
           </div>
-          
+
           <div className="text-center">
             <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
               <span className="text-green-600 font-bold">2</span>
@@ -326,7 +326,7 @@ export function POSApiDocumentation() {
             <h4 className="font-medium text-gray-900 mb-2">Sincronización</h4>
             <p className="text-sm text-gray-600">Descarga productos, precios y folios CAF</p>
           </div>
-          
+
           <div className="text-center">
             <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
               <span className="text-purple-600 font-bold">3</span>
@@ -343,10 +343,10 @@ export function POSApiDocumentation() {
           <Code className="w-5 h-5 text-gray-600" />
           <h3 className="font-semibold text-gray-900">Ejemplo de Código para Terminal POS</h3>
         </div>
-        
+
         <div className="bg-gray-50 rounded-lg p-4 overflow-x-auto">
           <pre className="text-sm text-gray-800">
-{`// Cliente JavaScript para Terminal POS
+            {`// Cliente JavaScript para Terminal POS
 class SolvendoPOSClient {
   constructor(terminalCode, baseUrl) {
     this.terminalCode = terminalCode;
@@ -446,7 +446,7 @@ async function processSale() {
       {/* Configuración de Red */}
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
         <h3 className="font-semibold text-yellow-900 mb-3">🔗 Integración POS Transbank/SumUp - Guía Completa</h3>
-        
+
         {/* Configuración Modo Integrado */}
         <div className="mb-6">
           <h4 className="font-medium text-yellow-800 mb-3">📋 Configuración Modo Integrado POS:</h4>
@@ -464,7 +464,7 @@ async function processSale() {
                 <li>• El equipo indicará que se está activando modo integrado</li>
               </ul>
             </div>
-            
+
             <div className="border-l-4 border-green-500 pl-3">
               <p className="font-medium text-green-700">2. Configurar IP Fija:</p>
               <ul className="text-gray-700 mt-1 space-y-1">
@@ -480,7 +480,7 @@ async function processSale() {
                 <li>&nbsp;&nbsp;- Gateway: 192.168.1.1</li>
               </ul>
             </div>
-            
+
             <div className="border-l-4 border-purple-500 pl-3">
               <p className="font-medium text-purple-700">3. Configurar Comunicación POS-Caja:</p>
               <ul className="text-gray-700 mt-1 space-y-1">
@@ -492,7 +492,7 @@ async function processSale() {
                 <li>• Configurar velocidad comunicación desde menú INTEGRATED POS</li>
               </ul>
             </div>
-            
+
             <div className="border-l-4 border-red-500 pl-3">
               <p className="font-medium text-red-700">4. Volver a Modo Normal:</p>
               <ul className="text-gray-700 mt-1 space-y-1">
@@ -504,7 +504,7 @@ async function processSale() {
             </div>
           </div>
         </div>
-        
+
         {/* Arquitectura de Conexión */}
         <div className="mb-6">
           <h4 className="font-medium text-yellow-800 mb-3">🏗️ Arquitectura de Conexión:</h4>
@@ -518,7 +518,7 @@ async function processSale() {
                 <p className="text-gray-600">Modo Integrado</p>
                 <p className="text-xs text-gray-500">IP: 192.168.1.100</p>
               </div>
-              
+
               <div className="text-center">
                 <div className="w-16 h-16 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-2">
                   <span className="text-green-600 font-bold">USB</span>
@@ -527,7 +527,7 @@ async function processSale() {
                 <p className="text-gray-600">USB/Serial</p>
                 <p className="text-xs text-gray-500">COM1/COM2</p>
               </div>
-              
+
               <div className="text-center">
                 <div className="w-16 h-16 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-2">
                   <span className="text-purple-600 font-bold">BO</span>
@@ -539,7 +539,7 @@ async function processSale() {
             </div>
           </div>
         </div>
-        
+
         {/* Flujo de Datos */}
         <div className="mb-6">
           <h4 className="font-medium text-yellow-800 mb-3">📊 Flujo de Datos POS ↔ Back Office:</h4>
@@ -562,7 +562,7 @@ async function processSale() {
             </div>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
             <p className="font-medium text-yellow-800">Conexión a Internet:</p>

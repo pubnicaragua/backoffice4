@@ -15,6 +15,7 @@ export interface User {
   direccion?: string;
   activo: boolean;
   created_at: string;
+  empresa_id?: string;
   user_metadata?: UserMetadata;
   role?: string; // Para compatibilidad con código existente
 }

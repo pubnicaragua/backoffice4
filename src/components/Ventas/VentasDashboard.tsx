@@ -174,17 +174,23 @@ export function VentasDashboard() {
   }, [empresaId]);
 
   const filteredVentas = React.useMemo(() => {
+    const fechaInicio = filters.fechaInicio
+      ? new Date(filters.fechaInicio)
+      : null;
+    const fechaFin = filters.fechaFin ? new Date(filters.fechaFin) : null;
+
+    // Ajustar fechaFinal para incluir todo el día (hora 23:59:59)
+    if (fechaFin) {
+      fechaFin.setHours(23, 59, 59, 999);
+    }
+
     return ventas.filter((venta) => {
-      if (
-        filters.fechaInicio &&
-        new Date(venta.fecha) < new Date(filters.fechaInicio)
-      )
-        return false;
-      if (
-        filters.fechaFin &&
-        new Date(venta.fecha) > new Date(filters.fechaFin)
-      )
-        return false;
+      const ventaFecha = new Date(venta.fecha);
+
+      if (fechaInicio && ventaFecha < fechaInicio) return false;
+      if (fechaFin && ventaFecha > fechaFin) return false;
+
+      // Otros filtros
       if (filters.sucursal && venta.sucursal_id !== filters.sucursal)
         return false;
       if (filters.metodo_pago && venta.metodo_pago !== filters.metodo_pago)
@@ -264,24 +270,35 @@ export function VentasDashboard() {
         setLoadingChart(false);
         return;
       }
+
+      // Convertir fechas de filtro a Date
       const startDate = new Date(filters.fechaInicio);
       const endDate = new Date(filters.fechaFin);
+
+      // CORRECIÓN SENCILLA: ajustar startDate restando un día y endDate sumando un día
+      const adjustedStart = new Date(startDate);
+      adjustedStart.setDate(adjustedStart.getDate() - 1);
+
+      const adjustedEnd = new Date(endDate);
+      adjustedEnd.setDate(adjustedEnd.getDate() + 1);
+
       const dayMap = new Map<string, number>();
 
+      // Crear mapa de días entre adjustedStart y adjustedEnd
       for (
-        let d = new Date(startDate);
-        d <= endDate;
+        let d = new Date(adjustedStart);
+        d <= adjustedEnd;
         d.setDate(d.getDate() + 1)
       ) {
         dayMap.set(d.toISOString().slice(0, 10), 0);
       }
 
       filteredVentas.forEach((venta) => {
-        const ventaDateStr = venta.fecha.slice(0, 10);
-        if (dayMap.has(ventaDateStr)) {
+        const ventaFechaStr = venta.fecha.slice(0, 10);
+        if (dayMap.has(ventaFechaStr)) {
           dayMap.set(
-            ventaDateStr,
-            dayMap.get(ventaDateStr)! +
+            ventaFechaStr,
+            dayMap.get(ventaFechaStr)! +
             (typeof venta.total === "string"
               ? parseFloat(venta.total)
               : venta.total)
