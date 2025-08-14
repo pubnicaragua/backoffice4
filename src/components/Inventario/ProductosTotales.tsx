@@ -103,7 +103,6 @@ export function ProductosTotales() {
 
   const insertNotification = useSupabaseData("notificaciones", "*");
 
-  // Carga inventarios según filtro de sucursal, stock_final > 0
   useEffect(() => {
     async function cargarInventarios() {
       if (!empresaId) {
@@ -111,27 +110,38 @@ export function ProductosTotales() {
         return;
       }
       setInventariosLoading(true);
+
       let query = supabase.from("inventario").select("*");
+
       if (filters.sucursal) {
+        console.log(filters.sucursal)
         query = query.eq("sucursal_id", filters.sucursal);
       }
-      query = query.gt("stock_final", 0);
+
+      if (filters.disponibilidad === "disponibles") {
+        query = query.gt("stock_final", 0);
+      } else if (filters.disponibilidad === "agotados") {
+        query = query.eq("stock_final", 0);
+      } else {
+        query = query.gt("stock_final", 0);
+      }
+
       query = query.order("producto_id", { ascending: true });
 
       const { data, error } = await query;
       if (error) {
         console.error("Error cargando inventario:", error);
-        setInventarios([]);
+        setInventarios([])
       } else {
-        setInventarios(data ?? []);
+        setInventarios(data)
       }
       setInventariosLoading(false);
     }
     cargarInventarios();
-  }, [empresaId, filters.sucursal]);
+  }, [empresaId, filters]);
 
   const columns = [
-    { key: "checkbox", label: "", width: "40px" },
+    { key: "|", label: "", width: "40px" },
     { key: "producto", label: "Producto" },
     { key: "stock", label: "Stock" },
     { key: "descripcion", label: "Descripción" },
@@ -143,6 +153,104 @@ export function ProductosTotales() {
     { key: "acciones", label: "Acciones" },
   ];
 
+  const getFilteredProducts = () => {
+    return inventarios
+      // Filtrar inventarios cuyo producto ya no existe
+      .filter((inv) => productos.some((p) => p.id === inv.producto_id))
+
+      // Filtrar por categoría
+      .filter((inv) => {
+        if (filters.categoria) {
+          const producto = productos.find((p) => p.id === inv.producto_id);
+          return producto?.categoria_id === filters.categoria;
+        }
+        return true;
+      })
+
+      // Filtrar por sucursal si aplica
+      .filter((inv) => {
+        if (filters.sucursal) {
+          return inv.sucursal_id === filters.sucursal;
+        }
+        return true;
+      })
+
+      // Filtrar por disponibilidad
+      .filter((inv) => {
+        if (filters.disponibilidad === "disponibles") {
+          return inv.stock_final > 0;
+        }
+        if (filters.disponibilidad === "agotados") {
+          return inv.stock_final === 0;
+        }
+        return true;
+      })
+
+      // Mapear inventario + producto
+      .map((inv) => {
+        const producto = productos.find((p) => p.id === inv.producto_id)!;
+
+        const margenPercent = Math.round(
+          (((producto.precio || 0) - (producto.costo || 0)) /
+            (producto.precio || 1)) *
+          100
+        );
+
+        return {
+          id: producto.id,
+          producto: producto.nombre,
+          stock: inv.stock_final.toString(),
+          categoria:
+            categorias.find((c) => c.id === producto.categoria_id)?.nombre ||
+            "Sin categoría",
+          descripcion: producto.descripcion || "",
+          sku: producto.codigo,
+          costo: `$${Math.round(producto.costo || 0).toLocaleString("es-CL")}`,
+          precio: `$${Math.round(producto.precio || 0).toLocaleString("es-CL")}`,
+          margen: `${margenPercent}%`,
+          disponible: inv.stock_final > 0 ? "Disponible" : "Agotado",
+          checkbox: (
+            <input
+              type="checkbox"
+              checked={selectedProducts.has(producto.id)}
+              onChange={(e) =>
+                handleSelectProduct(producto.id, e.target.checked)
+              }
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+          ),
+          acciones: (
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEditProduct(producto);
+                }}
+                className="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 transition-colors"
+                title="Editar producto"
+                type="button"
+              >
+                <Edit className="w-5 h-5" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteProduct(producto);
+                }}
+                className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-colors"
+                title="Eliminar producto"
+                type="button"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
+          ),
+        };
+      });
+  };
+
+  const filteredProducts = getFilteredProducts()
+
   // Mapa productoId => stock total sumado desde inventarios
   const stockPorProductoId: Record<string, number> = React.useMemo(() => {
     const map: Record<string, number> = {};
@@ -153,109 +261,8 @@ export function ProductosTotales() {
     return map;
   }, [inventarios]);
 
-  // Filtrar productos según filtros
-  const filteredProductos = productos.filter((producto) => {
-    // filtro sucursal: mostrar solo si tiene stock en inventario en esa sucursal > 0
-    if (filters.sucursal) {
-      const stockSucursal =
-        inventarios.find(
-          (inv) =>
-            inv.producto_id === producto.id &&
-            inv.sucursal_id === filters.sucursal
-        )?.stock_final ?? 0;
-      if (stockSucursal <= 0) return false;
-    }
-    if (filters.categoria && filters.categoria !== "") {
-      const categoria = categorias.find(
-        (c) => c.nombre.toLowerCase() === filters.categoria.toLowerCase()
-      );
-      if (categoria && producto.categoria_id !== categoria.id) return false;
-    }
-    // filtro disponibilidad según stock global
-    const stockGlobal = stockPorProductoId[producto.id] ?? producto.stock ?? 0;
-    if (filters.disponibilidad === "disponibles" && stockGlobal <= 0)
-      return false;
-    if (filters.disponibilidad === "agotados" && stockGlobal > 0) return false;
-
-    // filtro texto en búsqueda por nombre o código
-    if (
-      searchTerm &&
-      !producto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      !producto.codigo.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-      return false;
-
-    return true;
-  });
-
-  // Procesar datos para tabla
-  const processedData = filteredProductos.map((producto) => {
-    const stockReal = filters.sucursal
-      ? inventarios.find(
-          (inv) =>
-            inv.producto_id === producto.id &&
-            inv.sucursal_id === filters.sucursal
-        )?.stock_final ?? 0
-      : stockPorProductoId[producto.id] ?? producto.stock ?? 0;
-
-    const margenPercent = Math.round(
-      (((producto.precio || 0) - (producto.costo || 0)) /
-        (producto.precio || 1)) *
-        100
-    );
-
-    return {
-      id: producto.id,
-      producto: producto.nombre,
-      stock: stockReal.toString(),
-      categoria:
-        categorias.find((c) => c.id === producto.categoria_id)?.nombre ||
-        "Sin categoría",
-      descripcion: producto.descripcion || "",
-      sku: producto.codigo,
-      costo: `$${Math.round(producto.costo || 0).toLocaleString("es-CL")}`,
-      precio: `$${Math.round(producto.precio || 0).toLocaleString("es-CL")}`,
-      margen: `${margenPercent}%`,
-      disponible: stockReal > 0 ? "Disponible" : "Agotado",
-      checkbox: (
-        <input
-          type="checkbox"
-          checked={selectedProducts.has(producto.id)}
-          onChange={(e) => handleSelectProduct(producto.id, e.target.checked)}
-          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-        />
-      ),
-      acciones: (
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleEditProduct(producto);
-            }}
-            className="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 transition-colors"
-            title="Editar producto"
-            type="button"
-          >
-            <Edit className="w-5 h-5" />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDeleteProduct(producto);
-            }}
-            className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-colors"
-            title="Eliminar producto"
-            type="button"
-          >
-            <Trash2 className="w-5 h-5" />
-          </button>
-        </div>
-      ),
-    };
-  });
-
   // Filtrar por búsqueda en tabla
-  const filteredData = processedData.filter(
+  const filteredData = filteredProducts.filter(
     (item) =>
       searchTerm === "" ||
       item.producto.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -309,32 +316,26 @@ export function ProductosTotales() {
 
   const confirmDelete = async () => {
     if (!selectedProduct) return;
-    const { error } = await supabase
+
+    const { error: errorProducto } = await supabase
       .from("productos")
       .delete()
       .eq("id", selectedProduct.id);
-    if (!error) {
-      setShowDeleteModal(false);
-      setSelectedProduct(null);
-      refetch();
-    } else {
-      console.error("Error eliminando producto", error);
-    }
-  };
 
-  const handleDownloadTemplate = () => {
-    const headers = ["Producto", "Stock"];
-    const csvContent = headers.join(",") + "\n";
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `plantilla_productos_stock_${
-      new Date().toISOString().split("T")[0]
-    }.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("Plantilla de productos y stock descargada.");
+    if (errorProducto) {
+      console.error("Error eliminando producto", errorProducto);
+      return;
+    }
+
+    // También eliminar inventario relacionado
+    await supabase
+      .from("inventario")
+      .delete()
+      .eq("producto_id", selectedProduct.id);
+
+    setShowDeleteModal(false);
+    setSelectedProduct(null);
+    refetch();
   };
 
   const handleDownloadReport = () => {
@@ -348,7 +349,7 @@ export function ProductosTotales() {
       "Margen",
       "Disponible",
     ];
-    const filteredDataForReport = processedData;
+    const filteredDataForReport = filteredProducts;
     const csvContent = [
       headers.join(","),
       ...filteredDataForReport.map((row) =>
@@ -368,9 +369,8 @@ export function ProductosTotales() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `reporte_inventario_${
-      new Date().toISOString().split("T")[0]
-    }.csv`;
+    a.download = `reporte_inventario_${new Date().toISOString().split("T")[0]
+      }.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success("Reporte CSV descargado");
@@ -421,21 +421,13 @@ export function ProductosTotales() {
             <Download className="w-4 h-4" />
           </button>
           <button
-            onClick={handleDownloadTemplate}
-            className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            title="Descargar Plantilla"
-            type="button"
-          >
-            <FileDown className="w-4 h-4" />
-          </button>
-          {/* <button
             onClick={() => setShowFilters(true)}
             className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             title="Filtros"
             type="button"
           >
             <Filter className="w-4 h-4" />
-          </button> */}
+          </button>
           <button
             onClick={() => {
               setSelectedProduct(null);
@@ -520,7 +512,7 @@ export function ProductosTotales() {
               <span className="text-sm text-gray-700">
                 Mostrando {startIndex + 1} a{" "}
                 {Math.min(startIndex + itemsPerPage, filteredData.length)} de{" "}
-                {filteredData.length} productos
+                {filteredProducts.length} productos
               </span>
             </div>
 
@@ -540,11 +532,10 @@ export function ProductosTotales() {
                   <button
                     key={page}
                     onClick={() => setCurrentPage(page)}
-                    className={`px-3 py-1 rounded-md text-sm ${
-                      currentPage === page
-                        ? "bg-blue-600 text-white"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
+                    className={`px-3 py-1 rounded-md text-sm ${currentPage === page
+                      ? "bg-blue-600 text-white"
+                      : "text-gray-700 hover:bg-gray-100"
+                      }`}
                     type="button"
                   >
                     {page}
@@ -575,14 +566,13 @@ export function ProductosTotales() {
 
       <ActualizarInventario
         isOpen={showInventarioModal}
-        empresaId={empresaId}
         onClose={() => setShowInventarioModal(false)}
       />
 
       <AgregarProductoModal
         isOpen={showProductoModal}
         onClose={() => setShowProductoModal(false)}
-        empresaId={empresaId}
+        empresaId={empresaId!}
         selectedProduct={selectedProduct}
         onSuccess={() => {
           setShowProductoModal(false);
@@ -641,7 +631,31 @@ export function ProductosTotales() {
             </select>
           </div>
         </div>
-      </FilterModal>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Categoría
+          </label>
+          <select
+            value={filters.categoria}
+            onChange={(e) =>
+              setFilters((prev) => ({
+                ...prev,
+                categoria: e.target.value,
+              }))
+            }
+            id="filter-categoria"
+            name="filter-categoria"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Todas las categorías</option>
+            {categorias.map((categoria) => (
+              <option key={categoria.id} value={categoria.id}>
+                {categoria.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+      </FilterModal >
 
       <Modal
         isOpen={showBulkDeleteModal}
@@ -702,6 +716,6 @@ export function ProductosTotales() {
           </div>
         </div>
       </Modal>
-    </div>
+    </div >
   );
 }

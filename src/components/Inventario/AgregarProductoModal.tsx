@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Modal } from "../Common/Modal";
 import {
+  useSupabaseData,
   useSupabaseInsert,
   useSupabaseUpdate,
 } from "../../hooks/useSupabaseData";
@@ -27,6 +28,7 @@ export function AgregarProductoModal({
     se_vende_por: "unidad",
     codigo_unitario: "",
     precio_unitario: "", // Precio de venta
+    categoria_id: '',
     sku: "",
     agregar_stock: "",
     costo: "",
@@ -34,6 +36,8 @@ export function AgregarProductoModal({
   });
   const { insert, loading } = useSupabaseInsert("productos");
   const { update, loading: updating } = useSupabaseUpdate("productos");
+
+  const { data: categorias } = useSupabaseData<any>("categorias", '*')
 
   const [sucursales, setSucursales] = useState<any[]>([]);
   const [loadingSucursales, setLoadingSucursales] = useState(false);
@@ -65,6 +69,7 @@ export function AgregarProductoModal({
   useEffect(() => {
     if (selectedProduct) {
       setFormData({
+        categoria_id: selectedProduct.categoria || '',
         producto: selectedProduct.nombre || "",
         descripcion: selectedProduct.descripcion || "",
         se_vende_por: selectedProduct.unidad === "KG" ? "kilogramo" : "unidad",
@@ -94,6 +99,7 @@ export function AgregarProductoModal({
         precio_unitario: "",
         sku: "",
         agregar_stock: "",
+        categoria_id: '',
         costo: "",
         sucursal: "",
       });
@@ -104,6 +110,7 @@ export function AgregarProductoModal({
   useEffect(() => {
     if (!isOpen) {
       setFormData({
+        categoria_id: "",
         producto: "",
         descripcion: "",
         se_vende_por: "unidad",
@@ -142,6 +149,8 @@ export function AgregarProductoModal({
 
     let success;
 
+    console.log(formData)
+
     if (selectedProduct) {
       // Update existing product
       success = await update(selectedProduct.id, {
@@ -154,6 +163,7 @@ export function AgregarProductoModal({
         stock: stockParsed,
         empresa_id: empresaId,
         sucursal_id: formData.sucursal,
+        categoria_id: formData.categoria_id
       });
     } else {
       // Create new product
@@ -168,6 +178,7 @@ export function AgregarProductoModal({
         stock: stockParsed,
         empresa_id: empresaId,
         sucursal_id: formData.sucursal,
+        categoria_id: formData.categoria_id,
       });
     }
 
@@ -182,6 +193,7 @@ export function AgregarProductoModal({
         agregar_stock: "",
         costo: "",
         sucursal: "",
+        categoria_id: "",
       });
 
       if (onSuccess) {
@@ -314,8 +326,11 @@ export function AgregarProductoModal({
             id="sucursal-select"
             name="sucursal-select"
             value={formData.sucursal}
-            onChange={(e) =>
+            onChange={(e) => {
+              console.log(e.target.value)
               setFormData((prev) => ({ ...prev, sucursal: e.target.value }))
+
+            }
             }
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
@@ -407,6 +422,26 @@ export function AgregarProductoModal({
           />
         </div>
 
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Categoría
+          </label>
+          <select
+            value={formData.categoria_id}
+            onChange={(e) => setFormData(prev => ({ ...prev, categoria_id: e.target.value }))}
+            id="filter-categoria"
+            name="filter-categoria"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Todas las categorías</option>
+            {categorias.map((categoria) => (
+              <option key={categoria.id} value={categoria.id}>
+                {categoria.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="flex justify-center">
           <button
             type="submit"
@@ -416,8 +451,8 @@ export function AgregarProductoModal({
             {loading || updating
               ? "Guardando..."
               : selectedProduct
-              ? "Actualizar producto"
-              : "Guardar producto"}
+                ? "Actualizar producto"
+                : "Guardar producto"}
           </button>
         </div>
       </form>
