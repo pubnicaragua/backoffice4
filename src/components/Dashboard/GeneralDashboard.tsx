@@ -1,7 +1,6 @@
 import React from "react";  
-import { MessageCircle, TrendingUp, HelpCircle, Mic } from "lucide-react";  
+import { TrendingUp, HelpCircle, Mic } from "lucide-react";  
 import { useSupabaseData } from "../../hooks/useSupabaseData";  
-import { SolvIAChat } from "./SolvIAChat";  
 import { VoiceSolvIA } from "./VoiceSolvIA";  
 import { useAuth } from "../../contexts/AuthContext";  
   
@@ -53,7 +52,6 @@ function DonutChart({ title, data }: DonutChartProps) {
         <h3 className="text-lg font-semibold text-gray-900">{title}</h3>  
         <HelpCircle className="w-4 h-4 text-gray-400" />  
       </div>  
-  
       <div className="flex items-center justify-center mb-6">  
         <div className="relative w-48 h-48">  
           <svg className="w-48 h-48 transform -rotate-90" viewBox="0 0 100 100">  
@@ -81,7 +79,6 @@ function DonutChart({ title, data }: DonutChartProps) {
           </svg>  
         </div>  
       </div>  
-  
       <div className="space-y-3">  
         {data.map((item, index) => (  
           <div  
@@ -112,7 +109,6 @@ interface Sucursal {
   
 export default function GeneralDashboard() {  
   const { empresaId } = useAuth();  
-  const [showChat, setShowChat] = React.useState(false);  
   const [showVoiceChat, setShowVoiceChat] = React.useState(false);  
   const [sucursalId, setSucursalId] = React.useState<string>("");  
   
@@ -366,7 +362,7 @@ export default function GeneralDashboard() {
           onChange={(e) => setSucursalId(e.target.value)}  
           className="w-full rounded border border-gray-300 px-3 py-2"  
         >  
-          <option value="">Todas           las sucursales</option>  
+          <option value="">Todas las sucursales</option>  
           {sucursales.map((s) => (  
             <option key={s.id} value={s.id}>  
               {s.nombre}  
@@ -391,47 +387,25 @@ export default function GeneralDashboard() {
         <DonutChart title="Mermas reportadas" data={lossData} />  
       </div>  
   
-      {/* SolvIA Cards - MODIFICADO PARA INCLUIR VOICE */}  
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">  
-        {/* SolvIA Chat Card existente */}  
-        <div  
-          className="bg-blue-600 text-white p-6 rounded-lg relative overflow-hidden cursor-pointer"  
-          onClick={() => setShowChat(true)}  
-        >  
-          <div className="relative z-10">  
-            <h3 className="text-lg font-semibold mb-2">¡Hola, soy SolvIA!</h3>  
-            <p className="text-blue-100 mb-4">  
-              Tu asistente inteligente especializado en gestión empresarial.  
-            </p>  
-          </div>  
-          <div className="absolute bottom-4 right-4">  
-            <div className="w-12 h-12 bg-black bg-opacity-20 rounded-full flex items-center justify-center">  
-              <MessageCircle className="w-6 h-6" />  
-            </div>  
-          </div>  
+      {/* Solo SolvIA Voice Card - Color azul */}  
+      <div  
+        className="bg-blue-600 text-white p-6 rounded-lg relative overflow-hidden cursor-pointer"  
+        onClick={() => setShowVoiceChat(true)}  
+      >  
+        <div className="relative z-10">  
+          <h3 className="text-lg font-semibold mb-2">🎤 ¡Hola, soy SolvIA Voice!</h3>  
+          <p className="text-blue-100 mb-4">  
+            Tu asistente de voz inteligente. Di "Hola SolvIA" para activarme.  
+          </p>  
         </div>  
-  
-        {/* Nueva SolvIA Voice Card */}  
-        <div  
-          className="bg-gradient-to-r from-purple-600 to-purple-800 text-white p-6 rounded-lg relative overflow-hidden cursor-pointer"  
-          onClick={() => setShowVoiceChat(true)}  
-        >  
-          <div className="relative z-10">  
-            <h3 className="text-lg font-semibold mb-2">🎤 SolvIA Voice</h3>  
-            <p className="text-purple-100 mb-4">  
-              Consulta por voz sobre ventas, inventario y reportes.  
-            </p>  
-          </div>  
-          <div className="absolute bottom-4 right-4">  
-            <div className="w-12 h-12 bg-black bg-opacity-20 rounded-full flex items-center justify-center">  
-              <Mic className="w-6 h-6" />  
-            </div>  
+        <div className="absolute bottom-4 right-4">  
+          <div className="w-12 h-12 bg-black bg-opacity-20 rounded-full flex items-center justify-center">  
+            <Mic className="w-6 h-6" />  
           </div>  
         </div>  
       </div>  
   
-      {/* Modales */}  
-      <SolvIAChat isOpen={showChat} onClose={() => setShowChat(false)} />  
+      {/* Solo Modal de Voice */}  
       <VoiceSolvIA isOpen={showVoiceChat} onClose={() => setShowVoiceChat(false)} />  
     </div>  
   );  

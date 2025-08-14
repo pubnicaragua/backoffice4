@@ -520,7 +520,7 @@ export function VoiceSolvIA({ isOpen, onClose }: VoiceSolvIAProps) {
               {voiceState === 'listening' && 'Hablando... suelta para enviar'}
               {voiceState === 'thinking' && 'Procesando tu consulta...'}
               {voiceState === 'speaking' && 'SolvIA está respondiendo...'}
-              {voiceState === 'error' && 'Error de micrófono. Verifica permisos.'}
+              {voiceState === 'error' && error}
             </p>
           </div>
 
