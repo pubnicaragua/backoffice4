@@ -18,11 +18,17 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
   const [processing, setProcessing] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<{ [key: string]: { selected: boolean, cantidad: number, descripcion?: string } }>({});
   const [xmlFiles, setXmlFiles] = useState<Array<{ id: string, name: string, products: any[] }>>([]);
+<<<<<<< HEAD
   const [loading, setLoading] = useState<boolean>(false);
 
   const { insert } = useSupabaseInsert('inventario');
   const { data: sucursales } = useSupabaseData<any>('sucursales', '*');
   const { data: categorias } = useSupabaseData<any>('categorias', '*')
+=======
+
+  const { insert, loading } = useSupabaseInsert('inventario');
+  const { data: sucursales } = useSupabaseData<any>('sucursales', '*');
+>>>>>>> 027d2dc4 (actualizar inventario bugfix)
   const { user, empresaId } = useAuth()
 
   const [sucursalDestino, setSucursalDestino] = useState("");
@@ -30,6 +36,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
   useEffect(() => {
     setSucursalDestino(sucursales[0]?.id)
   }, [sucursales.length > 0])
+<<<<<<< HEAD
 
   const findClosestCategory = (categoriaCsv: string, categorias: any[]) => {
     if (!categoriaCsv || categorias.length === 0) return null;
@@ -48,6 +55,8 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
         .toLowerCase() === normalizedCsv
     ) || null;
   };
+=======
+>>>>>>> 027d2dc4 (actualizar inventario bugfix)
 
   const removeXmlFile = (fileId: string) => {
     setXmlFiles(prev => prev.filter(f => f.id !== fileId));
@@ -135,8 +144,14 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(text, 'text/xml');
 
+<<<<<<< HEAD
         // Seleccionar los nodos <Detalle> del XML del SII
         const detalles = xmlDoc.getElementsByTagName('Detalle');
+=======
+<<<<<<< HEAD
+        // Seleccionar los nodos <producto>
+        const productos = xmlDoc.querySelectorAll('producto');
+>>>>>>> a8f7cd7d (actualizar inventario bugfix)
 
         const processedProducts = Array.from(detalles).map(det => {
           const nombre = det.getElementsByTagName('NmbItem')[0]?.textContent || '';
@@ -145,8 +160,21 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
           const costoConIva = parseFloat(det.getElementsByTagName('PrcItem')[0]?.textContent || '0');
           const codigo = det.getElementsByTagName('VlrCodigo')[0]?.textContent || '';
 
+<<<<<<< HEAD
           // Si tienes una lista de categorías y quieres mapear por nombre
           const categoriaEncontrada = findClosestCategory(nombre, categorias || []);
+=======
+          const categoriaEncontrada = findClosestCategory(categoriaText, categorias || [])
+=======
+        const detalles = xmlDoc.querySelectorAll('Detalle');
+        const processedProducts = Array.from(detalles).map(detalle => {
+          const codigo = detalle.querySelector('CdgItem VlrCodigo')?.textContent || '';
+          const nombre = detalle.querySelector('NmbItem')?.textContent || '';
+          const cantidad = parseInt(detalle.querySelector('QtyItem')?.textContent || '0');
+          const costoBase = parseFloat(detalle.querySelector('PrcItem')?.textContent || '0');
+          const costoConIva = Math.round(costoBase * 1.19); // ✅ IVA 19% aplicado
+>>>>>>> 027d2dc4 (actualizar inventario bugfix)
+>>>>>>> a8f7cd7d (actualizar inventario bugfix)
 
           return {
             nombre,
@@ -231,8 +259,11 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
     try {
       // 1. Se guarda automáticamente en Supabase
       // 2. Crear productos en la tabla productos
+<<<<<<< HEAD
       setLoading(true)
       console.log(productos)
+=======
+>>>>>>> 027d2dc4 (actualizar inventario bugfix)
       for (const producto of productos) {
         try {
           console.log('📦 INVENTARIO: Creando producto', producto.nombre);
@@ -250,7 +281,10 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
               nombre: producto.nombre,
               descripcion: descripcionFinal,
               precio: Math.round(producto.costo * 1.3), // Precio = costo + 30% margen
+<<<<<<< HEAD
               categoria_id: producto.categoria,
+=======
+>>>>>>> 027d2dc4 (actualizar inventario bugfix)
               costo: producto.costo,
               stock: cantidadFinal,
               stock_minimo: 0,
@@ -278,7 +312,10 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
               cantidad: cantidadFinal,
               stock_anterior: 0,
               stock_final: cantidadFinal,
+<<<<<<< HEAD
               categoria_id: newProduct.categoria,
+=======
+>>>>>>> 027d2dc4 (actualizar inventario bugfix)
               referencia: 'Actualización masiva XML/CSV',
               usuario_id: user?.id
             });
@@ -308,8 +345,11 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
     } catch (generalError) {
       console.error('❌ INVENTARIO: Error general en confirmación masiva', generalError);
       toast.error('Error al procesar los productos');
+<<<<<<< HEAD
     } finally {
       setLoading(false)
+=======
+>>>>>>> 027d2dc4 (actualizar inventario bugfix)
     }
   };
   return (
@@ -429,8 +469,12 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
               </select>
             </div>
 
+<<<<<<< HEAD
             {/* Encabezados de productos */}
             <div className="grid grid-cols-5 gap-4 text-sm font-medium text-gray-500 border-b pb-2 mb-2">
+=======
+            <div className="grid grid-cols-4 gap-4 text-sm font-medium text-gray-500 border-b pb-2 mb-2">
+>>>>>>> 027d2dc4 (actualizar inventario bugfix)
               <span>Producto</span>
               <span>Descripción del Producto</span>
               <span>Cantidad</span>
