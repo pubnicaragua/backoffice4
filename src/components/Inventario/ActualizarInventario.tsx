@@ -109,26 +109,27 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
   const processFileContent = async (file: File): Promise<any[]> => {
     try {
       if (file.name.endsWith('.xml')) {
-        console.log('📄 INVENTARIO: Procesando XML DTE');
-        // Process XML DTE file
+        console.log('📄 INVENTARIO: Procesando XML personalizado');
+
         const text = await file.text();
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(text, 'text/xml');
 
-        const detalles = xmlDoc.querySelectorAll('Detalle');
-        const processedProducts = Array.from(detalles).map(detalle => {
-          const codigo = detalle.querySelector('CdgItem VlrCodigo')?.textContent || '';
-          const nombre = detalle.querySelector('NmbItem')?.textContent || '';
-          const cantidad = parseInt(detalle.querySelector('QtyItem')?.textContent || '0');
-          const costoBase = parseFloat(detalle.querySelector('PrcItem')?.textContent || '0');
-          const costoConIva = Math.round(costoBase * 1.19); // ✅ IVA 19% aplicado
+        // Seleccionar los nodos <producto>
+        const productos = xmlDoc.querySelectorAll('producto');
+
+        const processedProducts = Array.from(productos).map(prod => {
+          const nombre = prod.querySelector('nombre')?.textContent || '';
+          const descripcion = prod.querySelector('descripcion')?.textContent || '';
+          const cantidad = parseInt(prod.querySelector('cantidad')?.textContent || '0');
+          const costoConIva = parseFloat(prod.querySelector('costo_con_iva')?.textContent || '0');
 
           return {
             nombre,
-            codigo,
+            codigo: '', // No hay código en este XML
             cantidad,
-            costo: costoConIva, // Costo con IVA incluido
-            descripcion: `Costo con IVA incluido (${costoBase} + 19%)`
+            costo: costoConIva,
+            descripcion
           };
         });
 
