@@ -38,21 +38,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
 
     try {
-      console.log("🔄 fetchUserProfile iniciado para:", userId);
 
-      console.log("📊 Buscando usuario en tabla usuarios...");
       const { data: userData, error: userError } = await supabase
         .from("usuarios")
         .select("*")
         .eq("auth_user_id", userId)
         .single();
 
-      console.log("👤 Resultado usuario:", { userData, userError });
 
       let finalUser = userData;
 
       if (userError || !userData) {
-        console.log("⚠️ Usuario no encontrado, creando usuario básico...");
         // Crear usuario básico como fallback
         finalUser = {
           id: userId,
@@ -72,7 +68,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Solo buscar empresa si hay usuario válido
       if (finalUser?.id) {
-        console.log(":office: Buscando empresa y sucursal del usuario...");
         const { data: usuarioEmpresa, error: empresaError } = await supabase
           .from("usuario_empresa")
           .select("empresa_id, sucursal_id")
@@ -80,7 +75,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq("activo", true)
           .single();
 
-        console.log(":office: Resultado empresa y sucursal:", { usuarioEmpresa, empresaError });
 
         setEmpresaId(usuarioEmpresa?.empresa_id || null);
         setSucursalId(usuarioEmpresa?.sucursal_id || null);
@@ -88,8 +82,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setEmpresaId(null);
         setSucursalId(null);
       }
-
-      console.log("✅ fetchUserProfile completado exitosamente");
     } catch (error) {
       console.error("❌ Error crítico en fetchUserProfile:", error);
 
@@ -158,11 +150,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    console.log("AuthProvider: inicializando auth, seteando loading true");
     setLoading(true);
 
     supabase.auth.getSession().then(({ data: { session }, error }) => {
-      console.log("AuthProvider: sesión obtenida:", session);
 
       if (error) {
         console.error("Error obteniendo sesión", error);
@@ -171,15 +161,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       if (session?.user) {
         fetchUserProfile(session.user.id, session.user.email).finally(() => {
-          console.log(
-            "AuthProvider: loading false tras fetchUserProfile en inicialización"
-          );
           setLoading(false);
         });
       } else {
         setUser(null);
         setEmpresaId(null);
-        console.log("AuthProvider: sin sesión, loading false");
         setLoading(false);
       }
     });
@@ -187,18 +173,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log("AuthProvider: onAuthStateChange, sesión:", session);
       if (session?.user) {
         fetchUserProfile(session.user.id, session.user.email).finally(() => {
-          console.log(
-            "AuthProvider: loading false tras fetchUserProfile en onAuthStateChange"
-          );
           setLoading(false);
         });
       } else {
         setUser(null);
         setEmpresaId(null);
-        console.log("AuthProvider: no hay sesión, loading false");
         setLoading(false);
       }
     });

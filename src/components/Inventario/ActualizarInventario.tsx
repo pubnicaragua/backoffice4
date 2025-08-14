@@ -18,9 +18,11 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
   const [processing, setProcessing] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<{ [key: string]: { selected: boolean, cantidad: number, descripcion?: string } }>({});
   const [xmlFiles, setXmlFiles] = useState<Array<{ id: string, name: string, products: any[] }>>([]);
+  const [loading, setLoading] = useState<boolean>(false);
 
-  const { insert, loading } = useSupabaseInsert('inventario');
+  const { insert } = useSupabaseInsert('inventario');
   const { data: sucursales } = useSupabaseData<any>('sucursales', '*');
+  const { data: categorias } = useSupabaseData<any>('categorias', '*')
   const { user, empresaId } = useAuth()
 
   const [sucursalDestino, setSucursalDestino] = useState("");
@@ -28,6 +30,24 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
   useEffect(() => {
     setSucursalDestino(sucursales[0]?.id)
   }, [sucursales.length > 0])
+
+  const findClosestCategory = (categoriaCsv: string, categorias: any[]) => {
+    if (!categoriaCsv || categorias.length === 0) return null;
+
+    const normalizedCsv = categoriaCsv
+      .trim()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+
+    return categorias.find(cat =>
+      cat.nombre
+        .trim()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase() === normalizedCsv
+    ) || null;
+  };
 
   const removeXmlFile = (fileId: string) => {
     setXmlFiles(prev => prev.filter(f => f.id !== fileId));
@@ -109,26 +129,31 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
   const processFileContent = async (file: File): Promise<any[]> => {
     try {
       if (file.name.endsWith('.xml')) {
-        console.log('📄 INVENTARIO: Procesando XML DTE');
-        // Process XML DTE file
+        console.log('📄 INVENTARIO: Procesando XML personalizado');
+
         const text = await file.text();
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(text, 'text/xml');
 
-        const detalles = xmlDoc.querySelectorAll('Detalle');
-        const processedProducts = Array.from(detalles).map(detalle => {
-          const codigo = detalle.querySelector('CdgItem VlrCodigo')?.textContent || '';
-          const nombre = detalle.querySelector('NmbItem')?.textContent || '';
-          const cantidad = parseInt(detalle.querySelector('QtyItem')?.textContent || '0');
-          const costoBase = parseFloat(detalle.querySelector('PrcItem')?.textContent || '0');
-          const costoConIva = Math.round(costoBase * 1.19); // ✅ IVA 19% aplicado
+        // Seleccionar los nodos <producto>
+        const productos = xmlDoc.querySelectorAll('producto');
+
+        const processedProducts = Array.from(productos).map(prod => {
+          const nombre = prod.querySelector('nombre')?.textContent || '';
+          const descripcion = prod.querySelector('descripcion')?.textContent || '';
+          const cantidad = parseInt(prod.querySelector('cantidad')?.textContent || '0');
+          const costoConIva = parseFloat(prod.querySelector('costo_con_iva')?.textContent || '0');
+          const categoriaText = prod.querySelector('categoria')?.textContent || '';
+
+          const categoriaEncontrada = findClosestCategory(categoriaText, categorias || [])
 
           return {
             nombre,
-            codigo,
+            codigo: '', // No hay código en este XML
             cantidad,
-            costo: costoConIva, // Costo con IVA incluido
-            descripcion: `Costo con IVA incluido (${costoBase} + 19%)`
+            costo: costoConIva,
+            descripcion,
+            categoria: categoriaEncontrada ? categoriaEncontrada.id : null
           };
         });
 
@@ -142,11 +167,16 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
         const processedProducts = lines.slice(1).map(line => {
           const values = line.split(',');
           const costoBase = parseFloat(values[2]) || 0;
+          const categoriaTexto = values[4] || '';
+
+          const categoriaEncontrada = findClosestCategory(categoriaTexto, categorias || []);
+
           return {
             nombre: values[0] || 'Producto',
             cantidad: parseInt(values[1]) || 0,
             costo: Math.round(costoBase * 1.19), // Costo con IVA
-            descripcion: `Costo con IVA incluido`
+            descripcion: `Costo con IVA incluido`,
+            categoria: categoriaEncontrada ? categoriaEncontrada.id : null
           };
         }).filter(p => p.nombre && p.cantidad > 0);
 
@@ -186,7 +216,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
   };
 
   const downloadTemplate = () => {
-    const csvContent = 'Nombre,Cantidad,Costo,Precio\nCoca Cola 500ml,50,1000,1500\nPan Hallulla,25,500,800\nLeche 1L,30,800,1200\n';
+    const csvContent = 'Nombre,Cantidad,Costo,Precio,Categoria\nCoca Cola 500ml,50,1000,1500,Bebidas\nPan Hallulla,25,500,800,Alimentos\nLeche 1L,30,800,1200,Bebidas\n';
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -200,6 +230,8 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
     try {
       // 1. Se guarda automáticamente en Supabase
       // 2. Crear productos en la tabla productos
+      setLoading(true)
+      console.log(productos)
       for (const producto of productos) {
         try {
           console.log('📦 INVENTARIO: Creando producto', producto.nombre);
@@ -217,6 +249,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
               nombre: producto.nombre,
               descripcion: descripcionFinal,
               precio: Math.round(producto.costo * 1.3), // Precio = costo + 30% margen
+              categoria_id: producto.categoria,
               costo: producto.costo,
               stock: cantidadFinal,
               stock_minimo: 0,
@@ -244,6 +277,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
               cantidad: cantidadFinal,
               stock_anterior: 0,
               stock_final: cantidadFinal,
+              categoria_id: newProduct.categoria,
               referencia: 'Actualización masiva XML/CSV',
               usuario_id: user?.id
             });
@@ -273,6 +307,8 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
     } catch (generalError) {
       console.error('❌ INVENTARIO: Error general en confirmación masiva', generalError);
       toast.error('Error al procesar los productos');
+    } finally {
+      setLoading(false)
     }
   };
   return (
@@ -392,50 +428,90 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
               </select>
             </div>
 
-            <div className="grid grid-cols-4 gap-4 text-sm font-medium text-gray-500 border-b pb-2 mb-2">
+            {/* Encabezados de productos */}
+            <div className="grid grid-cols-5 gap-4 text-sm font-medium text-gray-500 border-b pb-2 mb-2">
               <span>Producto</span>
               <span>Descripción del Producto</span>
               <span>Cantidad</span>
               <span>Costo con IVA</span>
+              <span>Categoría</span>
             </div>
+
             <div className="space-y-3 max-h-60 overflow-y-auto">
-              {productos.map((producto, index) => (
-                <div key={index} className="grid grid-cols-4 gap-4 text-sm items-center">
-                  <span className="text-gray-900">{producto.nombre}</span>
-                  <input
-                    type="text"
-                    value={selectedProducts[producto.nombre]?.descripcion || producto.descripcion || ''}
-                    onChange={(e) => {
-                      setSelectedProducts(prev => ({
-                        ...prev, // Keep existing selections
-                        [producto.nombre]: {
-                          selected: true,
-                          cantidad: prev[producto.nombre]?.cantidad || producto.cantidad,
-                          descripcion: e.target.value
-                        }
-                      }));
-                    }}
-                    placeholder="Editar descripción..."
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                  />
-                  <input
-                    type="number"
-                    value={selectedProducts[producto.nombre]?.cantidad || producto.cantidad}
-                    onChange={(e) => {
-                      setSelectedProducts(prev => ({
-                        ...prev, // Keep existing selections
-                        [producto.nombre]: {
-                          selected: true,
-                          cantidad: parseInt(e.target.value) || 0,
-                          descripcion: prev[producto.nombre]?.descripcion || producto.descripcion
-                        }
-                      }));
-                    }}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                  />
-                  <span className="text-gray-600 text-xs">${producto.costo?.toLocaleString('es-CL')}</span>
-                </div>
-              ))}
+              {productos.map((producto, index) => {
+                // Obtener categoría predeterminada
+                const categoriaPredeterminada = findClosestCategory(producto.categoria || '', categorias || []);
+
+                return (
+                  <div key={index} className="grid grid-cols-5 gap-4 text-sm items-center">
+                    {/* Nombre */}
+                    <span className="text-gray-900">{producto.nombre}</span>
+
+                    {/* Descripción */}
+                    <input
+                      type="text"
+                      value={selectedProducts[producto.nombre]?.descripcion || producto.descripcion || ''}
+                      onChange={(e) => {
+                        setSelectedProducts(prev => ({
+                          ...prev,
+                          [producto.nombre]: {
+                            ...prev[producto.nombre],
+                            selected: true,
+                            cantidad: prev[producto.nombre]?.cantidad || producto.cantidad,
+                            descripcion: e.target.value
+                          }
+                        }));
+                      }}
+                      placeholder="Editar descripción..."
+                      className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                    />
+
+                    {/* Cantidad */}
+                    <input
+                      type="number"
+                      value={selectedProducts[producto.nombre]?.cantidad || producto.cantidad}
+                      onChange={(e) => {
+                        setSelectedProducts(prev => ({
+                          ...prev,
+                          [producto.nombre]: {
+                            ...prev[producto.nombre],
+                            selected: true,
+                            cantidad: parseInt(e.target.value) || 0,
+                            descripcion: prev[producto.nombre]?.descripcion || producto.descripcion
+                          }
+                        }));
+                      }}
+                      className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                    />
+
+                    {/* Costo */}
+                    <span className="text-gray-600 text-xs">
+                      ${producto.costo?.toLocaleString('es-CL')}
+                    </span>
+
+                    {/* Select de Categoría */}
+                    <select
+                      value={selectedProducts[producto.nombre]?.categoria || producto.categoria || ''}
+                      onChange={(e) => {
+                        setSelectedProducts(prev => ({
+                          ...prev,
+                          [producto.nombre]: {
+                            ...prev[producto.nombre],
+                            categoria: e.target.value
+                          }
+                        }));
+                      }}
+                    >
+                      <option value="">-- Seleccionar categoría --</option>
+                      {categorias?.map(cat => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )
+              })}
             </div>
 
             {/* Paginación para productos */}
