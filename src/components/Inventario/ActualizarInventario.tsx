@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Upload, FileText, Download, X } from 'lucide-react';
 import { Modal } from '../Common/Modal';
 import { useSupabaseData, useSupabaseInsert } from '../../hooks/useSupabaseData';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 interface ActualizarInventarioProps {
   isOpen: boolean;
@@ -14,34 +16,38 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
   const [file, setFile] = useState<File | null>(null);
   const [productos, setProductos] = useState<any[]>([]);
   const [processing, setProcessing] = useState(false);
-  const [selectedProducts, setSelectedProducts] = useState<{[key: string]: {selected: boolean, cantidad: number, descripcion?: string}}>({});
-  const [xmlFiles, setXmlFiles] = useState<Array<{id: string, name: string, products: any[]}>>([]);
+  const [selectedProducts, setSelectedProducts] = useState<{ [key: string]: { selected: boolean, cantidad: number, descripcion?: string } }>({});
+  const [xmlFiles, setXmlFiles] = useState<Array<{ id: string, name: string, products: any[] }>>([]);
 
   const { insert, loading } = useSupabaseInsert('inventario');
-  const { data: productosExistentes } = useSupabaseData<any>('productos', '*');
   const { data: sucursales } = useSupabaseData<any>('sucursales', '*');
-  
-  const [sucursalDestino, setSucursalDestino] = useState(sucursales[0]?.id || '');
+  const { user, empresaId } = useAuth()
+
+  const [sucursalDestino, setSucursalDestino] = useState("");
+
+  useEffect(() => {
+    setSucursalDestino(sucursales[0]?.id)
+  }, [sucursales.length > 0])
 
   const removeXmlFile = (fileId: string) => {
     setXmlFiles(prev => prev.filter(f => f.id !== fileId));
-    
+
     // Update products and selections after file removal
     setXmlFiles(currentFiles => {
       const remainingFiles = currentFiles.filter(f => f.id !== fileId);
       const remainingProducts = remainingFiles.flatMap(f => f.products);
-      
+
       setProductos(remainingProducts);
-      
+
       // Clear selected products that are no longer in the list
       setSelectedProducts(prev => {
         const newSelection = {};
-        remainingProducts.forEach(p => { 
-          if (prev[p.nombre]) newSelection[p.nombre] = prev[p.nombre]; 
+        remainingProducts.forEach(p => {
+          if (prev[p.nombre]) newSelection[p.nombre] = prev[p.nombre];
         });
         return newSelection;
       });
-      
+
       console.log('🗑️ XML removido y productos actualizados:', fileId, remainingProducts.length);
       return remainingFiles;
     });
@@ -51,7 +57,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
     const uploadedFiles = event.target.files;
     if (uploadedFiles && uploadedFiles.length > 0) {
       console.log(`📁 PROCESANDO ${uploadedFiles.length} ARCHIVO(S) ${uploadMethod.toUpperCase()}`);
-      
+
       // Always process multiple files, even if only one is selected
       // This ensures the xmlFiles state is always an array of processed files
       setFile(uploadedFiles[0]); // Set the first file for single file display
@@ -67,14 +73,14 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
   const processMultipleFiles = async (files: File[]) => {
     setProcessing(true);
     let allProducts: any[] = [];
-    
+
     try {
       for (const file of files) {
         console.log(`📄 PROCESANDO ARCHIVO XML: ${file.name}`);
         const fileProducts = await processFileContent(file);
         allProducts.push({ id: Date.now().toString() + Math.random().toString(36).substr(2, 9), name: file.name, products: fileProducts });
       }
-      
+
       setXmlFiles(allProducts); // Store all processed XML files
       setProductos(allProducts.flatMap(f => f.products)); // Flatten products for display
       console.log(`✅ TOTAL ARCHIVOS XML PROCESADOS: ${allProducts.length}`);
@@ -108,7 +114,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
         const text = await file.text();
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(text, 'text/xml');
-        
+
         const detalles = xmlDoc.querySelectorAll('Detalle');
         const processedProducts = Array.from(detalles).map(detalle => {
           const codigo = detalle.querySelector('CdgItem VlrCodigo')?.textContent || '';
@@ -116,7 +122,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
           const cantidad = parseInt(detalle.querySelector('QtyItem')?.textContent || '0');
           const costoBase = parseFloat(detalle.querySelector('PrcItem')?.textContent || '0');
           const costoConIva = Math.round(costoBase * 1.19); // ✅ IVA 19% aplicado
-          
+
           return {
             nombre,
             codigo,
@@ -125,14 +131,14 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
             descripcion: `Costo con IVA incluido (${costoBase} + 19%)`
           };
         });
-        
+
         console.log('✅ INVENTARIO: XML procesado', processedProducts.length, 'productos');
         return processedProducts;
       } else if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
         console.log('📊 INVENTARIO: Procesando CSV');
         const text = await file.text();
         const lines = text.split('\n');
-        
+
         const processedProducts = lines.slice(1).map(line => {
           const values = line.split(',');
           const costoBase = parseFloat(values[2]) || 0;
@@ -143,7 +149,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
             descripcion: `Costo con IVA incluido`
           };
         }).filter(p => p.nombre && p.cantidad > 0);
-        
+
         console.log('✅ INVENTARIO: CSV procesado', processedProducts.length, 'productos');
         return processedProducts;
       } else if (file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || file.name.endsWith('.xlsx')) {
@@ -191,73 +197,84 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
   };
 
   const handleConfirm = async () => {
-    console.log('🔄 INVENTARIO: Iniciando confirmación masiva');
-    
-    console.log('📊 INVENTARIO: Procesando todos los productos', productos.length);
-    
-    // 1. Se guarda automáticamente en Supabase
-    
-    // 2. Crear productos en la tabla productos
-    for (const producto of productos) {
-      console.log('📦 INVENTARIO: Creando producto', producto.nombre);
-      
-      const descripcionFinal = selectedProducts[producto.nombre]?.descripcion || producto.descripcion || 'Descripción del producto';
-      const cantidadFinal = selectedProducts[producto.nombre]?.cantidad || producto.cantidad || 1;
-      
-      // Crear producto en tabla productos
-      const { data: newProduct, error } = await supabase
-        .from('productos')
-        .insert({
-          codigo: `PROD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          nombre: producto.nombre,
-          descripcion: descripcionFinal,
-          precio: Math.round(producto.costo * 1.3), // Precio = costo + 30% margen
-          costo: producto.costo,
-          stock: cantidadFinal,
-          tipo: 'producto',
-          unidad: 'UN',
-          activo: true
-        })
-        .select()
-        .single();
-      
-      if (!error && newProduct) {
-        console.log('✅ INVENTARIO: Producto creado en BD', newProduct.nombre);
-        // Registrar movimiento de inventario
-        await insert({
-          empresa_id: '00000000-0000-0000-0000-000000000001',
-          sucursal_id: sucursalDestino,
-          producto_id: newProduct.id,
-          movimiento: 'entrada',
-          cantidad: cantidadFinal,
-          stock_anterior: 0,
-          stock_final: cantidadFinal,
-          referencia: 'Actualización masiva XML/CSV',
-          usuario_id: '80ca7f2b-d125-4df6-9f22-a5fe3ada00e4'
-        });
-        
-        console.log('✅ INVENTARIO: Producto sincronizado con POS', {
-          nombre: producto.nombre,
-          stock: cantidadFinal,
-          precio: producto.precio || producto.costo * 1.5,
-          id: newProduct.id
-        });
-        
-      } else {
-        console.error('❌ INVENTARIO: Error creando producto', error);
-      }
-    }
-    
-    // 3. Sincronizar con POS
-    console.log('🔄 INVENTARIO: Sincronizando con terminales POS...');
-    
-    onClose();
-    setXmlFiles([]); // Clear XML files
-    setProductos([]); // Clear products list
-    setSelectedProducts({}); // Clear selections
-    window.location.reload(); // Refresh para mostrar nuevos productos
-  };
+    try {
+      // 1. Se guarda automáticamente en Supabase
+      // 2. Crear productos en la tabla productos
+      for (const producto of productos) {
+        try {
+          console.log('📦 INVENTARIO: Creando producto', producto.nombre);
 
+          const descripcionFinal = selectedProducts[producto.nombre]?.descripcion || producto.descripcion || 'Descripción del producto';
+          const cantidadFinal = selectedProducts[producto.nombre]?.cantidad || producto.cantidad || 1;
+
+          // Crear producto en tabla productos
+          const { data: newProduct, error } = await supabase
+            .from('productos')
+            .insert({
+              empresa_id: empresaId,
+              sucursal_id: sucursalDestino,
+              codigo: `PROD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              nombre: producto.nombre,
+              descripcion: descripcionFinal,
+              precio: Math.round(producto.costo * 1.3), // Precio = costo + 30% margen
+              costo: producto.costo,
+              stock: cantidadFinal,
+              stock_minimo: 0,
+              destacado: false,
+              activo: true,
+              tipo: 'producto',
+              unidad: 'UN'
+            })
+            .select()
+            .single();
+
+          if (error) {
+            console.error('❌ INVENTARIO: Error creando producto', producto.nombre, error);
+            throw error;
+          }
+
+          if (newProduct) {
+            console.log('✅ INVENTARIO: Producto creado en BD', newProduct.nombre);
+            // Registrar movimiento de inventario
+            await insert({
+              empresa_id: empresaId,
+              sucursal_id: sucursalDestino,
+              producto_id: newProduct.id,
+              movimiento: 'entrada',
+              cantidad: cantidadFinal,
+              stock_anterior: 0,
+              stock_final: cantidadFinal,
+              referencia: 'Actualización masiva XML/CSV',
+              usuario_id: user?.id
+            });
+
+            console.log('✅ INVENTARIO: Producto sincronizado con POS', {
+              nombre: producto.nombre,
+              stock: cantidadFinal,
+              precio: producto.precio || producto.costo * 1.5,
+              id: newProduct.id
+            });
+          }
+        } catch (productError) {
+          console.error('❌ INVENTARIO: Error procesando producto', producto.nombre, productError);
+          toast.error('Error procesando producto', producto.nombre)
+          continue;
+        }
+      }
+
+      // 3. Sincronizar con POS
+      console.log('🔄 INVENTARIO: Sincronizando con terminales POS...');
+
+      onClose();
+      setXmlFiles([]); // Clear XML files
+      setProductos([]); // Clear products list
+      setSelectedProducts({}); // Clear selections
+
+    } catch (generalError) {
+      console.error('❌ INVENTARIO: Error general en confirmación masiva', generalError);
+      toast.error('Error al procesar los productos');
+    }
+  };
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Actualizar inventario masivo" size="lg">
       <div className="space-y-6">
@@ -267,11 +284,10 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
             <button
               key={method}
               onClick={() => setUploadMethod(method)}
-              className={`px-3 py-2 text-sm rounded-lg border ${
-                uploadMethod === method
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-              }`}
+              className={`px-3 py-2 text-sm rounded-lg border ${uploadMethod === method
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                }`}
             >
               {method.toUpperCase()}
             </button>
@@ -317,9 +333,9 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
           </div>
           <p className="text-xs text-gray-500 mt-2">
             {uploadMethod === 'xml' ? '📄 XML: Facturas electrónicas SII' :
-             uploadMethod === 'csv' ? '📄 CSV: Formato simple y compatible' :
-             uploadMethod === 'excel' ? '📊 Excel: Soporta .xlsx y .xls' :
-             '📋 PDF: Extrae tablas automáticamente'}
+              uploadMethod === 'csv' ? '📄 CSV: Formato simple y compatible' :
+                uploadMethod === 'excel' ? '📊 Excel: Soporta .xlsx y .xls' :
+                  '📋 PDF: Extrae tablas automáticamente'}
           </p>
         </div>
 
@@ -356,15 +372,18 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
                 <span className="text-sm text-green-600 ml-2">✓ IVA 19% aplicado</span>
               )}
             </h4>
-            
+
             {/* Selector de Sucursal */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Sucursal de destino
               </label>
-              <select 
+              <select
                 value={sucursalDestino}
-                onChange={(e) => setSucursalDestino(e.target.value as string)}
+                onChange={(e) => {
+                  setSucursalDestino(e.target.value as string)
+                  console.log(e.target.value)
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {sucursales.map(sucursal => (
@@ -372,7 +391,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
                 ))}
               </select>
             </div>
-            
+
             <div className="grid grid-cols-4 gap-4 text-sm font-medium text-gray-500 border-b pb-2 mb-2">
               <span>Producto</span>
               <span>Descripción del Producto</span>
@@ -418,7 +437,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
                 </div>
               ))}
             </div>
-            
+
             {/* Paginación para productos */}
             <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
               <div className="flex items-center space-x-2">
