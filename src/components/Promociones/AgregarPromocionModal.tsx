@@ -6,23 +6,13 @@ import {
 } from "../../hooks/useSupabaseData";
 import { X, Search } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import { Producto, ProductoAgregado } from "../../types";
+import { toast } from "react-toastify";
 
 interface AgregarPromocionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
-}
-
-interface ProductoAgregado {
-  id: number;
-  nombre: string;
-  descripcion: string;
-  precio_promocion: number;
-  sku: string;
-  sucursales: string[];
-  sucursalNombre: string;
-  producto: any;
-  precio_real: number;
 }
 
 export function AgregarPromocionModal({
@@ -36,7 +26,7 @@ export function AgregarPromocionModal({
     sucursales: [] as string[],
     precio_promocion: "",
     sku: "",
-    producto_seleccionado: null as any,
+    productos_seleccionados: [] as Producto[],
   });
   const { empresaId } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
@@ -63,6 +53,18 @@ export function AgregarPromocionModal({
       producto.codigo.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleCLose = () => {
+    setFormData({
+      nombre: "",
+      descripcion: "",
+      sucursales: [] as string[],
+      precio_promocion: "",
+      sku: "",
+      productos_seleccionados: [] as Producto[]
+    })
+    onClose()
+  }
+
   const handleSucursalChange = (sucursalId: string) => {
     setFormData(prev => {
       const sucursalesActuales = prev.sucursales || [];
@@ -86,75 +88,14 @@ export function AgregarPromocionModal({
   const handleProductoSelect = (producto: any) => {
     setFormData((prev) => ({
       ...prev,
-      producto_seleccionado: producto,
+      productos_seleccionados: [...prev.productos_seleccionados, producto],
       sku: producto.codigo,
-    }));
-    setSearchTerm(""); // Cierra la lista de búsqueda al seleccionar
-  };
-
-  const handleAgregarOtroProducto = () => {
-    if (!formData.nombre.trim()) {
-      alert("Por favor ingresa el nombre de la promoción");
-      return;
-    }
-    if (!formData.descripcion.trim()) {
-      alert("Por favor ingresa la descripción de la promoción");
-      return;
-    }
-    if (formData.sucursales.length === 0) {
-      alert("Por favor selecciona una sucursal");
-      return;
-    }
-    if (!formData.producto_seleccionado) {
-      alert("Por favor selecciona un producto");
-      return;
-    }
-    if (!formData.precio_promocion) {
-      alert("Por favor ingresa un precio de promoción");
-      return;
-    }
-
-    const sucursalObj = sucursales?.find(
-      (s: any) => s.id === formData.sucursales
-    );
-    const sucursalNombre = sucursalObj ? sucursalObj.nombre : "Desconocida";
-
-    const nuevoProducto: ProductoAgregado = {
-      id: formData.producto_seleccionado.id,
-      nombre: formData.producto_seleccionado.nombre,
-      descripcion: formData.descripcion,
-      precio_promocion: parseFloat(formData.precio_promocion),
-      sku: formData.sku,
-      sucursales: formData.sucursales,
-      sucursalNombre,
-      producto: formData.producto_seleccionado,
-      precio_real: formData.producto_seleccionado.precio,
-    };
-
-    // Evitar duplicados por sku y sucursal
-    const yaExiste = productosAgregados.some(
-      (p) =>
-        p.sku === nuevoProducto.sku && p.sucursales === nuevoProducto.sucursales
-    );
-    if (yaExiste) {
-      alert("Este producto ya está agregado para la sucursal seleccionada");
-      return;
-    }
-
-    setProductosAgregados((prev) => [...prev, nuevoProducto]);
-
-    // Limpiar producto seleccionado, precio promocional y sku
-    setFormData((prev) => ({
-      ...prev,
-      precio_promocion: "",
-      sku: "",
-      producto_seleccionado: null,
     }));
     setSearchTerm("");
   };
 
-  const handleRemoverProducto = (index: number) => {
-    setProductosAgregados((prev) => prev.filter((_, i) => i !== index));
+  const handleRemoverProducto = (id: string | number) => {
+    setProductosAgregados((prev) => prev.filter((p) => p.id !== id));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -163,35 +104,33 @@ export function AgregarPromocionModal({
     if (
       !formData.nombre.trim() ||
       !formData.descripcion.trim() ||
-      !formData.sucursales
+      formData.sucursales.length === 0
     ) {
-      alert("Por favor llena todos los campos obligatorios.");
+      toast.error("Por favor llena todos los campos obligatorios.");
       return;
     }
-    if (productosAgregados.length === 0 && !formData.producto_seleccionado) {
-      alert("Por favor agrega al menos un producto.");
+
+    if (productosAgregados.length === 0 && formData.productos_seleccionados.length === 0) {
+      toast.error("Por favor agrega al menos un producto.");
       return;
     }
+
+    // Construir productosFinal
     const productosFinal =
       productosAgregados.length > 0
         ? productosAgregados
-        : [
-          {
-            id: formData.producto_seleccionado?.id,
-            nombre: formData.producto_seleccionado?.nombre,
-            descripcion: formData.descripcion,
-            precio_promocion: parseFloat(formData.precio_promocion),
-            sku: formData.sku,
-            sucursales: formData.sucursales,
-            producto: formData.producto_seleccionado,
-            precio_real: formData.producto_seleccionado?.precio,
-          },
-        ];
+        : formData.productos_seleccionados.map((producto) => ({
+          id: producto.id,
+          nombre: producto.nombre,
+          descripcion: formData.descripcion,
+          precio_promocion: parseFloat(formData.precio_promocion),
+          sku: producto.codigo,
+          sucursales: formData.sucursales,
+          producto,
+          precio_real: producto.precio,
+        }));
 
     const productosIds = productosFinal.map((p) => p.id);
-
-    // IMPORTANTE: Siempre enviar array para productos_id, para evitar error "malformed array literal"
-    const productosIdCampo = productosIds;
 
     const success = await insert({
       nombre: formData.nombre,
@@ -199,7 +138,7 @@ export function AgregarPromocionModal({
       empresa_id: empresaId,
       sucursales_id: formData.sucursales,
       precio_prom: null,
-      productos_id: productosIdCampo,
+      productos_id: productosIds,
       activo: true,
     });
 
@@ -211,35 +150,28 @@ export function AgregarPromocionModal({
         sucursales: [],
         precio_promocion: "",
         sku: "",
-        producto_seleccionado: null,
+        productos_seleccionados: [],
       });
       setSearchTerm("");
       if (onSuccess) onSuccess();
       else onClose();
     } else {
-      alert("Error guardando la promoción.");
+      toast.error("Error guardando la promoción.");
       console.error("Error en guardar promoción");
     }
   };
-
-  const canAgregar =
-    formData.nombre.trim() !== "" &&
-    formData.descripcion.trim() !== "" &&
-    formData.sucursales.length > 0 &&
-    formData.producto_seleccionado !== null &&
-    formData.precio_promocion.trim() !== "";
 
   const canGuardar =
     !loading &&
     formData.nombre.trim() !== "" &&
     formData.descripcion.trim() !== "" &&
     formData.sucursales.length > 0 &&
-    (productosAgregados.length > 0 || formData.producto_seleccionado !== null);
+    (productosAgregados.length > 0 || formData.productos_seleccionados.length > 0);
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleCLose}
       title="Agregar promoción"
       size="xl"
     >
@@ -347,37 +279,41 @@ export function AgregarPromocionModal({
             </div>
 
             {/* Producto seleccionado */}
-            {formData.producto_seleccionado && (
-              <div className="bg-gray-50 p-3 rounded-lg text-sm space-y-1">
-                <div className="font-medium">
-                  {formData.producto_seleccionado.nombre}
-                </div>
-                <div>
-                  <span className="line-through text-xs mr-1">
-                    $
-                    {formData.producto_seleccionado.precio?.toLocaleString(
-                      "es-CL"
-                    )}
-                  </span>
-                  <span className="text-xs font-semibold mr-2">
-                    -$
-                    {(
-                      formData.producto_seleccionado.precio -
-                      parseFloat(formData.precio_promocion || "0")
-                    ).toLocaleString("es-CL")}
-                  </span>
-                  <span className="text-xs">
-                    Promo: $
-                    {parseFloat(
-                      formData.precio_promocion || "0"
-                    ).toLocaleString("es-CL")}
-                  </span>
-                </div>
-                <div className="text-xs text-gray-600">
-                  Sucursal:{" "}
-                  {sucursales?.find((s: any) => s.id === formData.sucursales)
-                    ?.nombre || "Ninguna"}
-                </div>
+
+            {formData.productos_seleccionados.length > 0 && (
+              <div className="space-y-3">
+                {formData.productos_seleccionados.map((producto) => (
+                  <div
+                    key={producto.id}
+                    className="bg-gray-50 p-3 rounded-lg text-sm space-y-1"
+                  >
+                    <div className="font-medium">{producto.nombre}</div>
+                    <div>
+                      <span className="line-through text-xs mr-1">
+                        $
+                        {producto.precio?.toLocaleString("es-CL")}
+                      </span>
+                      <span className="text-xs font-semibold mr-2">
+                        -$
+                        {(
+                          producto.precio -
+                          parseFloat(formData.precio_promocion || "0")
+                        ).toLocaleString("es-CL")}
+                      </span>
+                      <span className="text-xs">
+                        Promo: $
+                        {parseFloat(formData.precio_promocion || "0").toLocaleString(
+                          "es-CL"
+                        )}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      Sucursal:{" "}
+                      {sucursales?.find((s: any) => s.id === formData.sucursales)?.nombre ||
+                        "Ninguna"}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -404,14 +340,6 @@ export function AgregarPromocionModal({
 
             <div className="flex justify-center space-x-3">
               <button
-                type="button"
-                onClick={handleAgregarOtroProducto}
-                disabled={!canAgregar}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg disabled:opacity-50"
-              >
-                Agregar otro producto
-              </button>
-              <button
                 type="submit"
                 disabled={!canGuardar || loading}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
@@ -433,10 +361,15 @@ export function AgregarPromocionModal({
             <h4 className="font-medium text-gray-900 mb-3">
               📋 Productos agregados ({productosAgregados.length})
             </h4>
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {productosAgregados.map((producto, index) => (
+
+            {/* Contenedor scrollable */}
+            <div
+              className="space-y-2 overflow-y-auto"
+              style={{ height: "384px" }} // Fija altura exacta
+            >
+              {productosAgregados.map((producto) => (
                 <div
-                  key={index}
+                  key={producto.id}
                   className="flex items-center justify-between bg-white p-3 rounded border"
                 >
                   <div>
@@ -444,14 +377,14 @@ export function AgregarPromocionModal({
                     <p className="text-xs text-gray-500">SKU: {producto.sku}</p>
                     <p className="text-xs text-gray-500">
                       Precio promoción: $
-                      {producto.precio_promocion.toLocaleString("es-CL")}
+                      {(producto.precio_promocion ?? 0).toLocaleString("es-CL")}
                     </p>
                     <p className="text-xs text-gray-500">
                       Sucursal: {producto.sucursalNombre}
                     </p>
                   </div>
                   <button
-                    onClick={() => handleRemoverProducto(index)}
+                    onClick={() => handleRemoverProducto(producto.id)}
                     className="text-red-600 hover:text-red-800 p-1 hover:bg-red-50 rounded"
                     title="Eliminar producto"
                   >

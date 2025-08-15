@@ -5,6 +5,9 @@ import {
   useSupabaseUpdate,
   useSupabaseData,
 } from "../../hooks/useSupabaseData";
+import { toast } from "react-toastify";
+import { useAuth } from "../../contexts/AuthContext";
+import { Producto, Promocion } from "../../types";
 
 interface EditarPromocionModalProps {
   isOpen: boolean;
@@ -22,57 +25,47 @@ export function EditarPromocionModal({
   const [formData, setFormData] = useState({
     nombre: "",
     descripcion: "",
-    sucursal: "",
-    precio_unitario: "",
-    tipo: "", // Nuevo campo tipo
+    sucursales_id: [] as string[],
+    precio_promocion: "",
+    productos_seleccionados: [] as Producto[],
   });
 
-  const [productosPromocion, setProductosPromocion] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredProductos, setFilteredProductos] = useState<any[]>([]);
+  const { empresaId } = useAuth()
 
   const { update, loading } = useSupabaseUpdate("promociones");
   const { data: productos } = useSupabaseData<any>("productos", "*");
-  const { data: sucursales } = useSupabaseData<any>("sucursales", "*");
+  const { data: sucursales } = useSupabaseData<any>("sucursales", "*", empresaId ? { empresa_id: empresaId } : undefined)
 
   // Cargar datos al abrir o cuando cambien promocion/productos
   useEffect(() => {
+    console.log(promocion)
     if (promocion) {
-      // Normalizar productos_id a array
-      const productosIdsRaw =
-        promocion.promocion?.productos_id || promocion.productosId || [];
-      const productosIds = Array.isArray(productosIdsRaw)
-        ? productosIdsRaw
-        : [productosIdsRaw];
-
-      // Filtrar productos asociados
-      const productosRelacionados =
-        (productos || []).filter(
-          (p) =>
-            productosIds.includes(p.id) || productosIds.includes(String(p.id))
-        ) || [];
-
-      setProductosPromocion(productosRelacionados);
-
       setFormData({
         nombre: promocion.promocion?.nombre || promocion.nombre || "",
         descripcion:
           promocion.promocion?.descripcion || promocion.descripcion || "",
-        sucursal: promocion.sucursal_id || "",
-        precio_unitario:
-          promocion.promocion?.precio_prom?.toString() ||
-          promocion.precio?.toString() ||
-          "",
-        tipo: promocion.tipo || "", // Cargar tipo existente
+        sucursales_id: promocion.sucursales_id || [],
+        precio_promocion: promocion.precio_prom,
+        productos_seleccionados: promocion.productos_id.map((id: string) => {
+          const producto = productos.find((p) => p.id === id);
+          return producto
+            ? {
+              ...producto,
+              precio_promocion: promocion.precio_prom,
+              precio_real: producto.precio,
+            }
+            : null;
+        }).filter(Boolean),
       });
     } else {
-      setProductosPromocion([]);
       setFormData({
         nombre: "",
         descripcion: "",
-        sucursal: "",
-        precio_unitario: "",
-        tipo: "",
+        sucursales_id: [],
+        precio_promocion: "",
+        productos_seleccionados: [],
       });
     }
     setSearchTerm("");
@@ -94,66 +87,82 @@ export function EditarPromocionModal({
   }, [searchTerm, productos]);
 
   const handleRemoverProducto = (index: number) => {
-    setProductosPromocion((prev) => prev.filter((_, i) => i !== index));
+    setFormData((prev) => ({
+      ...prev,
+      productos_seleccionados: prev.productos_seleccionados.filter(
+        (_, i) => i !== index
+      ),
+    }));
   };
 
+
   const handleAgregarProducto = (producto: any) => {
-    if (productosPromocion.some((p) => p.id === producto.id)) {
-      alert("Este producto ya está en la promoción");
+    if (formData.productos_seleccionados.some((p) => p.id === producto.id)) {
+      toast.error("Este producto ya está en la promoción");
       return;
     }
-    setProductosPromocion((prev) => [...prev, producto]);
+    setFormData((prev) => ({
+      ...prev,
+      productos_seleccionados: [...prev.productos_seleccionados, producto]
+    }))
     setSearchTerm("");
     setFilteredProductos([]);
   };
 
   const handleSucursalChange = (sucursalId: string) => {
-    setFormData((prev) => ({ ...prev, sucursal: sucursalId }));
-  };
+    setFormData(prev => {
+      const sucursalesActuales = prev.sucursales_id || [];
 
-  const handleTipoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setFormData((prev) => ({ ...prev, tipo: e.target.value }));
+      if (sucursalesActuales.includes(sucursalId)) {
+        // Si ya está seleccionada, la removemos
+        return {
+          ...prev,
+          sucursales_id: sucursalesActuales.filter(id => id !== sucursalId)
+        };
+      } else {
+        // Si no está seleccionada, la agregamos
+        return {
+          ...prev,
+          sucursales_id: [...sucursalesActuales, sucursalId]
+        };
+      }
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.nombre.trim()) {
-      alert("Por favor ingresa el nombre de la promoción");
+      toast.error("Por favor ingresa el nombre de la promoción");
       return;
     }
     if (!formData.descripcion.trim()) {
-      alert("Por favor ingresa la descripción de la promoción");
+      toast.error("Por favor ingresa la descripción de la promoción");
       return;
     }
-    if (!formData.sucursal) {
-      alert("Por favor selecciona una sucursal");
+    if (formData.sucursales_id.length === 0) {
+      toast.error("Por favor selecciona al menos una sucursal");
       return;
     }
-    if (!formData.tipo) {
-      alert("Por favor selecciona un tipo de promoción");
-      return;
-    }
-    if (productosPromocion.length === 0) {
-      alert("Por favor agrega al menos un producto a la promoción");
+    if (formData.productos_seleccionados.length === 0) {
+      toast.error("Por favor agrega al menos un producto a la promoción");
       return;
     }
 
     const promocionId = promocion?.promocion?.id || promocion?.id;
     if (!promocionId) {
-      alert("No se pudo determinar la promoción a editar");
+      toast.error("No se pudo determinar la promoción a editar");
       return;
     }
 
-    const productosIds = productosPromocion.map((p) => p.id);
+    const productosIds = formData.productos_seleccionados.map((p) => p.id);
 
     const success = await update(promocionId, {
       nombre: formData.nombre,
       descripcion: formData.descripcion,
-      precio_prom: parseFloat(formData.precio_unitario) || 0,
-      sucursal_id: formData.sucursal,
+      precio_prom: parseFloat(formData.precio_promocion) || 0,
+      sucursales_id: formData.sucursales_id,
       productos_id: productosIds,
-      tipo: formData.tipo, // <-- Guardar tipo seleccionado
       activo: true,
       disponible: true,
     });
@@ -162,20 +171,30 @@ export function EditarPromocionModal({
       setFormData({
         nombre: "",
         descripcion: "",
-        sucursal: "",
-        precio_unitario: "",
-        tipo: "",
+        sucursales_id: [],
+        precio_promocion: "",
+        productos_seleccionados: [],
       });
-      setProductosPromocion([]);
       if (onSuccess) onSuccess();
       else onClose();
     } else {
-      alert("Error actualizando promoción");
+      toast.error("Error actualizando promoción");
     }
   };
 
+  const handleClose = () => {
+    setFormData({
+      nombre: "",
+      descripcion: "",
+      sucursales_id: [],
+      precio_promocion: "",
+      productos_seleccionados: [],
+    });  
+    onClose()
+  }
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Editar promoción" size="xl">
+    <Modal isOpen={isOpen} onClose={handleClose} title="Editar promoción" size="xl">
       <div className="flex space-x-6">
         {/* Formulario principal */}
         <div className="flex-1">
@@ -221,29 +240,9 @@ export function EditarPromocionModal({
                 autoComplete="off"
               />
             </div>
-
-            {/* Tipo de promoción */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tipo de promoción <span className="text-red-600">*</span>
-              </label>
-              <select
-                value={formData.tipo}
-                onChange={handleTipoChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              >
-                <option value="">Selecciona un tipo</option>
-                <option value="2x1">2x1</option>
-                <option value="descuento">Descuento</option>
-                <option value="combo">Combo</option>
-                <option value="oferta">Oferta Especial</option>
-              </select>
-            </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Escoger sucursal <span className="text-red-600">*</span>
+                Escoger sucursales <span className="text-red-600">*</span>
               </label>
               <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
                 {sucursales && sucursales.length > 0 ? (
@@ -253,13 +252,11 @@ export function EditarPromocionModal({
                       className="flex items-center space-x-2 cursor-pointer"
                     >
                       <input
-                        type="radio"
-                        name="sucursal"
+                        type="checkbox"
                         value={s.id}
-                        checked={formData.sucursal === s.id}
+                        checked={formData.sucursales_id.includes(s.id)}
                         onChange={() => handleSucursalChange(s.id)}
                         className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                        required
                       />
                       <span className="text-sm text-gray-700">{s.nombre}</span>
                     </label>
@@ -314,11 +311,11 @@ export function EditarPromocionModal({
               </label>
               <input
                 type="number"
-                value={formData.precio_unitario}
+                value={formData.precio_promocion}
                 onChange={(e) =>
                   setFormData((prev) => ({
                     ...prev,
-                    precio_unitario: e.target.value,
+                    precio_promocion: e.target.value,
                   }))
                 }
                 placeholder="Precio"
@@ -342,15 +339,15 @@ export function EditarPromocionModal({
         {/* Lista productos en promoción */}
         <div className="w-80 bg-gray-50 rounded-lg p-4">
           <h4 className="font-medium text-gray-900 mb-3">
-            📋 Productos en promoción ({productosPromocion.length})
+            📋 Productos en promoción ({formData.productos_seleccionados.length})
           </h4>
           <div className="space-y-2 max-h-60 overflow-y-auto">
-            {productosPromocion.length === 0 && (
+            {formData.productos_seleccionados.length === 0 && (
               <p className="text-center text-gray-500">
                 No hay productos en esta promoción
               </p>
             )}
-            {productosPromocion.map((producto, index) => (
+            {formData.productos_seleccionados.map((producto, index) => (
               <div
                 key={producto.id || index}
                 className="flex items-center justify-between bg-white p-3 rounded border"
@@ -360,9 +357,23 @@ export function EditarPromocionModal({
                   <p className="text-xs text-gray-500">
                     SKU: {producto.codigo}
                   </p>
-                  <p className="text-xs text-gray-500">
-                    Precio: ${producto.precio?.toLocaleString("es-CL")}
-                  </p>
+                  <span className="line-through text-xs mr-1">
+                    $
+                    {producto.precio?.toLocaleString("es-CL")}
+                  </span>
+                  <span className="text-xs font-semibold mr-2">
+                    -$
+                    {(
+                      producto.precio -
+                      parseFloat(formData.precio_promocion || "0")
+                    ).toLocaleString("es-CL")}
+                  </span>
+                  <span className="text-xs">
+                    Promo: $
+                    {parseFloat(formData.precio_promocion || "0").toLocaleString(
+                      "es-CL"
+                    )}
+                  </span>
                 </div>
                 <button
                   onClick={() => handleRemoverProducto(index)}

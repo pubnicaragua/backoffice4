@@ -8,6 +8,7 @@ import { AgregarPromocionModal } from "./AgregarPromocionModal";
 import { EditarPromocionModal } from "./EditarPromocionModal";
 import { Modal } from "../Common/Modal";
 import { useAuth } from "../../contexts/AuthContext";
+import { Producto, Promocion } from "../../types";
 
 export function PromocionesTodas() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -16,11 +17,10 @@ export function PromocionesTodas() {
   const [showEditarModal, setShowEditarModal] = useState(false);
   const [selectedPromocion, setSelectedPromocion] = useState<any>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const { empresaId } = useAuth();
+  const { empresaId, sucursalId } = useAuth();
   const [filters, setFilters] = useState({
     sucursal: "",
     estado: "",
-    tipo: "",
   });
   const {
     data: promociones,
@@ -31,38 +31,28 @@ export function PromocionesTodas() {
     "*",
     empresaId ? { empresa_id: empresaId } : undefined
   );
-  const { data: sucursales } = useSupabaseData<any>("sucursales", "*");
+  const { data: sucursales } = useSupabaseData<any>("sucursales", "*", empresaId ? { empresa_id: empresaId } : undefined)
   const { update: updatePromocion } = useSupabaseUpdate("promociones");
   const { data: productos } = useSupabaseData<any>("productos", "*");
 
   // Filtrar promociones con filtro por tipo incluido
   const filteredPromociones = (promociones || []).filter((promocion) => {
-    if (filters.sucursal && promocion.sucursal_id !== filters.sucursal)
+    if (
+      filters.sucursal &&
+      (!promocion.sucursales_id || !promocion.sucursales_id.includes(filters.sucursal))
+    ) {
       return false;
+    }
+
     if (
       filters.estado &&
       (promocion.activo ? "activo" : "inactivo") !== filters.estado
-    )
+    ) {
       return false;
-    if (filters.tipo && (promocion.tipo || "") !== filters.tipo) return false;
+    }
+
     return true;
   });
-
-  const obtenerNombresProductos = (productosIds: any) => {
-    if (!productosIds || productos.length === 0) return "";
-    const idsArray = Array.isArray(productosIds)
-      ? productosIds
-      : [productosIds];
-    const prodsRelacionados = productos.filter(
-      (p) => idsArray.includes(p.id) || idsArray.includes(String(p.id))
-    );
-    const prodsAMostrar =
-      prodsRelacionados.length > 3
-        ? shuffleArray(prodsRelacionados).slice(0, 3)
-        : prodsRelacionados;
-    const nombres = prodsAMostrar.map((p) => p.nombre).join(", ");
-    return nombres + (prodsRelacionados.length > 3 ? "..." : "");
-  };
 
   const shuffleArray = (array: any[]) => {
     const copy = [...array];
@@ -77,12 +67,12 @@ export function PromocionesTodas() {
     id: promocion.id,
     nombre: promocion.nombre,
     descripcion: promocion.descripcion,
-    sucursal: promocion.sucursales?.nombre || "N°1",
+    sucursales: (promocion.sucursales_id || [])
+    .map((id: string) => sucursales.find((s) => s.id === id)?.nombre || "Desconocida").join(', '),    
     precio: Math.round(promocion.precio_prom || 0),
     disponible: promocion.activo ? "Disponible" : "No disponible",
-    tipo: promocion.tipo || "",
     promocion,
-    productosId: promocion.productos_id,
+    productosId: (promocion.productos_id || []).map((id: string) => productos.find((p) => p.id === id)?.nombre || "Desconocido").join(', '),
   }));
 
   const filteredData = processedData.filter(
@@ -92,7 +82,10 @@ export function PromocionesTodas() {
       item.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleEditPromocion = (promocion: any) => {
+  const handleEditPromocion = (row: any) => {
+
+    const promocion = promociones.find((p: Promocion) => p.id === row.id);
+    
     setSelectedPromocion(promocion);
     setShowEditarModal(true);
   };
@@ -122,10 +115,9 @@ export function PromocionesTodas() {
       const headers = [
         "Promocion",
         "Descripcion",
-        "Sucursal",
+        "Sucursales",
         "Precio",
         "Disponible",
-        "Tipo",
       ];
       const csvContent = [
         headers.join("\t"),
@@ -133,10 +125,9 @@ export function PromocionesTodas() {
           [
             p.nombre,
             p.descripcion,
-            p.sucursal,
+            p.sucursales,
             p.precio,
             p.disponible,
-            p.tipo,
           ].join("\t")
         ),
       ].join("\n");
@@ -222,10 +213,7 @@ export function PromocionesTodas() {
                 Descripción
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Sucursal
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Tipo
+                Sucursales
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Disponible
@@ -243,17 +231,14 @@ export function PromocionesTodas() {
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-900">
                   <div className="text-xs text-gray-600">
-                    {obtenerNombresProductos(row.productosId)}
+                    {row.productosId}
                   </div>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-900">
                   {row.descripcion}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-900">
-                  {row.sucursal}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-900 capitalize">
-                  {row.tipo}
+                  {row.sucursales}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-900">
                   {row.disponible}
@@ -328,26 +313,6 @@ export function PromocionesTodas() {
               ))}
             </select>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Tipo de promoción
-            </label>
-            <select
-              value={filters.tipo}
-              onChange={(e) =>
-                setFilters((prev) => ({ ...prev, tipo: e.target.value }))
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Todos los tipos</option>
-              <option value="2x1">2x1</option>
-              <option value="descuento">Descuento</option>
-              <option value="combo">Combo</option>
-              <option value="oferta">Oferta Especial</option>
-            </select>
-          </div>
-
           <div className="flex justify-end">
             <button
               onClick={() => setShowFilters(false)}

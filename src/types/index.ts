@@ -37,14 +37,46 @@ export interface Empresa {
 
 export interface Producto {
   id: string;
+  empresa_id: string;
   codigo: string;
   nombre: string;
   descripcion?: string;
   precio: number;
-  tipo: string;
-  unidad: string;
+  costo: string;
+  stock: number;
+  stock_minimo: number;
+  destacado: boolean;
   activo: boolean;
-  created_at: string;
+  unidad: string;
+  sucursal_id: string;
+  categoria_id: string;
+}
+
+export interface ProductoAgregado {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  precio_promocion: number;
+  sku: string;
+  sucursales: string[];
+  sucursalNombre: string;
+  producto: Producto;
+  precio_real: number;
+}
+
+export interface Promocion {
+  id: string;
+  empresa_id: string;
+  nombre: string;
+  descripcion: string;
+  precio: number;
+  fecha_inicio: string;
+  fecha_fin: string;
+  activo: boolean;
+  disponible: boolean;
+  precio_prom: number;
+  productos_id: string[];
+  sucursales_id: string[]
 }
 
 export interface Venta {
