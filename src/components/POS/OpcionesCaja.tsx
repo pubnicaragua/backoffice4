@@ -110,7 +110,7 @@ export function OpcionesCaja() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-medium text-gray-900">
-          Opciones de caja (Todas las sucursales y cajas)
+          Opciones de caja
         </h2>
         <button
           onClick={() => setShowFilters(true)}

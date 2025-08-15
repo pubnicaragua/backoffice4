@@ -6,12 +6,12 @@ import {
   useSupabaseUpdate,
 } from "../../hooks/useSupabaseData";
 import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface AgregarProductoModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedProduct?: any;
-  empresaId?: string;
   onSuccess?: () => void;
 }
 
@@ -20,7 +20,6 @@ export function AgregarProductoModal({
   onClose,
   selectedProduct,
   onSuccess,
-  empresaId,
 }: AgregarProductoModalProps) {
   const [formData, setFormData] = useState({
     producto: "",
@@ -35,6 +34,9 @@ export function AgregarProductoModal({
     sucursal: "", // agregada para seleccionar sucursal
   });
   const { insert, loading } = useSupabaseInsert("productos");
+  const { empresaId } = useAuth()
+
+  console.log(empresaId)
   const { update, loading: updating } = useSupabaseUpdate("productos");
 
   const { data: categorias } = useSupabaseData<any>("categorias", '*')
