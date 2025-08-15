@@ -19,7 +19,7 @@ interface ProductoAgregado {
   descripcion: string;
   precio_promocion: number;
   sku: string;
-  sucursal: string;
+  sucursales: string[];
   sucursalNombre: string;
   producto: any;
   precio_real: number;
@@ -33,10 +33,9 @@ export function AgregarPromocionModal({
   const [formData, setFormData] = useState({
     nombre: "",
     descripcion: "",
-    sucursal: "",
+    sucursales: [] as string[],
     precio_promocion: "",
     sku: "",
-    tipo: "",
     producto_seleccionado: null as any,
   });
   const { empresaId } = useAuth();
@@ -64,8 +63,25 @@ export function AgregarPromocionModal({
       producto.codigo.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleSucursalChange = (sucursalId: string) =>
-    setFormData((prev) => ({ ...prev, sucursal: sucursalId }));
+  const handleSucursalChange = (sucursalId: string) => {
+    setFormData(prev => {
+      const sucursalesActuales = prev.sucursales || [];
+
+      if (sucursalesActuales.includes(sucursalId)) {
+        // Si ya está seleccionada, la removemos
+        return {
+          ...prev,
+          sucursales: sucursalesActuales.filter(id => id !== sucursalId)
+        };
+      } else {
+        // Si no está seleccionada, la agregamos
+        return {
+          ...prev,
+          sucursales: [...sucursalesActuales, sucursalId]
+        };
+      }
+    });
+  };
 
   const handleProductoSelect = (producto: any) => {
     setFormData((prev) => ({
@@ -85,12 +101,8 @@ export function AgregarPromocionModal({
       alert("Por favor ingresa la descripción de la promoción");
       return;
     }
-    if (!formData.sucursal) {
+    if (formData.sucursales.length === 0) {
       alert("Por favor selecciona una sucursal");
-      return;
-    }
-    if (!formData.tipo) {
-      alert("Por favor selecciona un tipo de promoción");
       return;
     }
     if (!formData.producto_seleccionado) {
@@ -103,7 +115,7 @@ export function AgregarPromocionModal({
     }
 
     const sucursalObj = sucursales?.find(
-      (s: any) => s.id === formData.sucursal
+      (s: any) => s.id === formData.sucursales
     );
     const sucursalNombre = sucursalObj ? sucursalObj.nombre : "Desconocida";
 
@@ -113,7 +125,7 @@ export function AgregarPromocionModal({
       descripcion: formData.descripcion,
       precio_promocion: parseFloat(formData.precio_promocion),
       sku: formData.sku,
-      sucursal: formData.sucursal,
+      sucursales: formData.sucursales,
       sucursalNombre,
       producto: formData.producto_seleccionado,
       precio_real: formData.producto_seleccionado.precio,
@@ -122,7 +134,7 @@ export function AgregarPromocionModal({
     // Evitar duplicados por sku y sucursal
     const yaExiste = productosAgregados.some(
       (p) =>
-        p.sku === nuevoProducto.sku && p.sucursal === nuevoProducto.sucursal
+        p.sku === nuevoProducto.sku && p.sucursales === nuevoProducto.sucursales
     );
     if (yaExiste) {
       alert("Este producto ya está agregado para la sucursal seleccionada");
@@ -151,8 +163,7 @@ export function AgregarPromocionModal({
     if (
       !formData.nombre.trim() ||
       !formData.descripcion.trim() ||
-      !formData.sucursal ||
-      !formData.tipo
+      !formData.sucursales
     ) {
       alert("Por favor llena todos los campos obligatorios.");
       return;
@@ -165,20 +176,17 @@ export function AgregarPromocionModal({
       productosAgregados.length > 0
         ? productosAgregados
         : [
-            {
-              id: formData.producto_seleccionado?.id,
-              nombre: formData.producto_seleccionado?.nombre,
-              descripcion: formData.descripcion,
-              precio_promocion: parseFloat(formData.precio_promocion),
-              sku: formData.sku,
-              sucursal: formData.sucursal,
-              sucursalNombre:
-                sucursales?.find((s: any) => s.id === formData.sucursal)
-                  ?.nombre || "Desconocida",
-              producto: formData.producto_seleccionado,
-              precio_real: formData.producto_seleccionado?.precio,
-            },
-          ];
+          {
+            id: formData.producto_seleccionado?.id,
+            nombre: formData.producto_seleccionado?.nombre,
+            descripcion: formData.descripcion,
+            precio_promocion: parseFloat(formData.precio_promocion),
+            sku: formData.sku,
+            sucursales: formData.sucursales,
+            producto: formData.producto_seleccionado,
+            precio_real: formData.producto_seleccionado?.precio,
+          },
+        ];
 
     const productosIds = productosFinal.map((p) => p.id);
 
@@ -189,10 +197,9 @@ export function AgregarPromocionModal({
       nombre: formData.nombre,
       descripcion: formData.descripcion,
       empresa_id: empresaId,
-      sucursal_id: formData.sucursal,
+      sucursales_id: formData.sucursales,
       precio_prom: null,
-      productos_id: productosIdCampo, // Siempre array
-      tipo: formData.tipo,
+      productos_id: productosIdCampo,
       activo: true,
     });
 
@@ -201,10 +208,9 @@ export function AgregarPromocionModal({
       setFormData({
         nombre: "",
         descripcion: "",
-        sucursal: "",
+        sucursales: [],
         precio_promocion: "",
         sku: "",
-        tipo: "", // <--- Resetear tipo
         producto_seleccionado: null,
       });
       setSearchTerm("");
@@ -219,8 +225,7 @@ export function AgregarPromocionModal({
   const canAgregar =
     formData.nombre.trim() !== "" &&
     formData.descripcion.trim() !== "" &&
-    formData.sucursal !== "" &&
-    formData.tipo !== "" && // <--- Validar tipo obligatorio
+    formData.sucursales.length > 0 &&
     formData.producto_seleccionado !== null &&
     formData.precio_promocion.trim() !== "";
 
@@ -228,8 +233,7 @@ export function AgregarPromocionModal({
     !loading &&
     formData.nombre.trim() !== "" &&
     formData.descripcion.trim() !== "" &&
-    formData.sucursal !== "" &&
-    formData.tipo !== "" && // <--- Validar tipo obligatorio
+    formData.sucursales.length > 0 &&
     (productosAgregados.length > 0 || formData.producto_seleccionado !== null);
 
   return (
@@ -277,31 +281,9 @@ export function AgregarPromocionModal({
                 required
               />
             </div>
-
-            {/* Campo NUEVO: tipo de promoción */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tipo de promoción <span className="text-red-600">*</span>
-              </label>
-              <select
-                value={formData.tipo}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, tipo: e.target.value }))
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              >
-                <option value="">Selecciona un tipo</option>
-                <option value="2x1">2x1</option>
-                <option value="descuento">Descuento</option>
-                <option value="combo">Combo</option>
-                <option value="oferta">Oferta Especial</option>
-              </select>
-            </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Escoger sucursal <span className="text-red-600">*</span>
+                Escoger sucursales <span className="text-red-600">*</span>
               </label>
               <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
                 {sucursales && sucursales.length > 0 ? (
@@ -311,13 +293,12 @@ export function AgregarPromocionModal({
                       className="flex items-center space-x-2 cursor-pointer"
                     >
                       <input
-                        type="radio"
-                        name="sucursal"
+                        type="checkbox"
+                        name="sucursales" // Cambiado de "sucursal" a "sucursales"
                         value={sucursal.id}
-                        checked={formData.sucursal === sucursal.id}
+                        checked={formData.sucursales?.includes(sucursal.id) || false} // Verificar si está en el array
                         onChange={() => handleSucursalChange(sucursal.id)}
                         className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                        required
                       />
                       <span className="text-sm text-gray-700">
                         {sucursal.nombre}
@@ -394,7 +375,7 @@ export function AgregarPromocionModal({
                 </div>
                 <div className="text-xs text-gray-600">
                   Sucursal:{" "}
-                  {sucursales?.find((s: any) => s.id === formData.sucursal)
+                  {sucursales?.find((s: any) => s.id === formData.sucursales)
                     ?.nombre || "Ninguna"}
                 </div>
               </div>
@@ -437,11 +418,10 @@ export function AgregarPromocionModal({
               >
                 {loading
                   ? "Guardando..."
-                  : `Guardar ${
-                      productosAgregados.length > 0
-                        ? productosAgregados.length
-                        : 1
-                    } promoción(es)`}
+                  : `Guardar ${productosAgregados.length > 0
+                    ? productosAgregados.length
+                    : 1
+                  } promoción(es)`}
               </button>
             </div>
           </form>

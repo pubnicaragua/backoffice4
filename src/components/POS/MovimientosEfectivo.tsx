@@ -11,6 +11,7 @@ export function MovimientosEfectivo() {
     sucursal: "",
     tipo: "",
     fecha: "",
+    caja: [],
   });
 
   // Filtrar movimientos por empresa
@@ -31,6 +32,7 @@ export function MovimientosEfectivo() {
     empresaId ? { empresa_id: empresaId } : undefined
   );
 
+
   // Filtrar cajas por empresa
   const { data: cajas } = useSupabaseData<any>(
     "cajas",
@@ -38,6 +40,7 @@ export function MovimientosEfectivo() {
     empresaId ? { empresa_id: empresaId } : undefined
   );
 
+  console.log(cajas)
   // Validación de empresa
   if (!empresaId) {
     return (
@@ -49,18 +52,21 @@ export function MovimientosEfectivo() {
 
   // Apply filters
   const filteredMovimientos = (movimientos || []).filter((movimiento) => {
-    const fechaMovimiento = new Date(movimiento.fecha).toLocaleDateString(
-      "es-CL"
-    );
+    const fechaMovimiento = new Date(movimiento.fecha).toLocaleDateString("es-CL");
     const tipoMovimiento = movimiento.tipo;
 
     if (filters.sucursal && movimiento.sucursal_id !== filters.sucursal)
       return false;
     if (filters.tipo && filters.tipo !== "" && tipoMovimiento !== filters.tipo)
       return false;
-    if (filters.fecha && !fechaMovimiento.includes(filters.fecha)) return false;
+    if (filters.fecha && !fechaMovimiento.includes(filters.fecha))
+      return false;
+    if (filters.caja.length > 0 && !filters.caja.includes(movimiento.caja_id))
+      return false;
+
     return true;
   });
+
 
   if (loading) {
     return <div className="text-center py-4">Cargando movimientos...</div>;
@@ -118,12 +124,14 @@ export function MovimientosEfectivo() {
                   {new Date(movimiento.fecha).toLocaleString("es-CL")}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-900">
-                  {sucursales?.find((s) => s.id === movimiento.sucursal_id)
-                    ?.nombre || "Sucursal Principal"}
+                  {
+                    sucursales?.find((s) => s.id === movimiento.sucursal_id)?.nombre
+                    ?? "Sin nombre"
+                  }
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-900">
-                  {cajas?.find((c) => c.sucursal_id === movimiento.sucursal_id)
-                    ?.nombre || "Caja Principal"}
+                  {cajas?.find((c) => c.id === movimiento.caja_id)
+                    ?.nombre}
                 </td>
               </tr>
             ))}
@@ -188,21 +196,26 @@ export function MovimientosEfectivo() {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Cajas
-            </label>
-            <div className="space-y-2">
-              {cajas?.map((caja) => (
-                <label key={caja.id} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700">{caja.nombre}</span>
-                </label>
-              ))}
-            </div>
+          <div className="space-y-2">
+            {cajas?.map((caja) => (
+              <label key={caja.id} className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={filters.caja.includes(caja.id)}
+                  onChange={(e) => {
+                    setFilters((prev) => {
+                      if (e.target.checked) {
+                        return { ...prev, caja: [...prev.caja, caja.id] };
+                      } else {
+                        return { ...prev, caja: prev.caja.filter((id) => id !== caja.id) };
+                      }
+                    });
+                  }}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">{caja.nombre}</span>
+              </label>
+            ))}
           </div>
         </div>
       </FilterModal>

@@ -168,7 +168,7 @@ export function AgregarProductoModal({
     } else {
       // Create new product
       success = await insert({
-        codigo: formData.sku || `AUTO-${Date.now()}`,
+        codigo: formData.sku,
         nombre: formData.producto,
         descripcion: formData.descripcion,
         precio: precioParsed,

@@ -310,16 +310,6 @@ export function RecepcionPedidos() {
     );
   };
 
-  const handleDownloadTemplate = () => {
-    const headers = ["Producto", "Stock"];
-    const csvContent = headers.join(",") + "\n";
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    saveAs(
-      blob,
-      `plantilla_productos_stock_${new Date().toISOString().split("T")[0]}.csv`
-    );
-  };
-
   const applyFilters = () => {
     setCurrentPage(1);
     setShowFilters(false);
@@ -368,14 +358,6 @@ export function RecepcionPedidos() {
             title="Descargar Reporte"
           >
             <Download className="w-4 h-4" />
-          </button>
-
-          <button
-            onClick={handleDownloadTemplate}
-            className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            title="Descargar Plantilla"
-          >
-            <FileDown className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -470,11 +452,10 @@ export function RecepcionPedidos() {
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-1 rounded-md text-sm ${
-                        currentPage === page
-                          ? "bg-blue-600 text-white"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
+                      className={`px-3 py-1 rounded-md text-sm ${currentPage === page
+                        ? "bg-blue-600 text-white"
+                        : "text-gray-700 hover:bg-gray-100"
+                        }`}
                     >
                       {page}
                     </button>
@@ -694,11 +675,10 @@ export function RecepcionPedidos() {
                 >
                   {inserting
                     ? "Agregando..."
-                    : `Agregar ${
-                        Object.values(selectedProducts).filter(
-                          (p) => p.selected
-                        ).length
-                      } productos como pedido`}
+                    : `Agregar ${Object.values(selectedProducts).filter(
+                      (p) => p.selected
+                    ).length
+                    } productos como pedido`}
                 </button>
               </div>
             )}

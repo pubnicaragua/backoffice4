@@ -376,6 +376,20 @@ export function ProductosTotales() {
     toast.success("Reporte CSV descargado");
   };
 
+  const handleDownloadTemplate = () => {
+    const headers = ["Producto", "Stock"];
+    const csvContent = headers.join(",") + "\n";
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `plantilla_productos_stock_${new Date().toISOString().split("T")[0]
+      }.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Plantilla de productos y stock descargada.");
+  };
+
   return (
     <div className="p-6">
       {/* Header */}
@@ -412,6 +426,14 @@ export function ProductosTotales() {
               <span>Eliminar {selectedProducts.size}</span>
             </button>
           )}
+          <button
+            onClick={handleDownloadTemplate}
+            className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            title="Descargar Plantilla"
+            type="button"
+          >
+            <FileDown className="w-4 h-4" />
+          </button>
           <button
             onClick={handleDownloadReport}
             className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"

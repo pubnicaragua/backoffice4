@@ -28,7 +28,7 @@ export function PromocionesTodas() {
     refetch,
   } = useSupabaseData<any>(
     "promociones",
-    "*, sucursales(nombre)",
+    "*",
     empresaId ? { empresa_id: empresaId } : undefined
   );
   const { data: sucursales } = useSupabaseData<any>("sucursales", "*");
@@ -148,9 +148,8 @@ export function PromocionesTodas() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `reporte_promociones_${
-        new Date().toISOString().split("T")[0]
-      }.xls`;
+      a.download = `reporte_promociones_${new Date().toISOString().split("T")[0]
+        }.xls`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {

@@ -30,18 +30,18 @@ export function OpcionesCaja() {
   const handleSettingChange = async (key: string, value: boolean) => {
     if (configuracion[0]) {
       await update(configuracion[0].id, { [key]: value });
-      
+
       // Trigger real-time sync to POS terminals
       console.log(`🔄 POS Config Updated: ${key} = ${value}`);
       console.log('📡 Syncing to all POS terminals in real-time...');
-      
+
       // Sync configuration to POS terminals
       try {
         const { data: terminals } = await supabase
           .from('pos_terminals')
           .select('*')
           .eq('status', 'online');
-        
+
         for (const terminal of terminals || []) {
           await supabase.from('pos_sync_log').insert({
             terminal_id: terminal.id,
@@ -65,13 +65,13 @@ export function OpcionesCaja() {
   const handleSaveConfiguration = async () => {
     try {
       console.log('💾 Guardando configuración completa...');
-      
+
       // Sync all configuration to POS terminals
       const { data: terminals } = await supabase
         .from('pos_terminals')
         .select('*')
         .eq('status', 'online');
-      
+
       for (const terminal of terminals || []) {
         await supabase.from('pos_sync_log').insert({
           terminal_id: terminal.id,
@@ -86,7 +86,7 @@ export function OpcionesCaja() {
           }
         });
       }
-      
+
       alert('✅ Configuración guardada y sincronizada con todos los terminales POS');
     } catch (error) {
       console.error('Error saving configuration:', error);
@@ -96,7 +96,7 @@ export function OpcionesCaja() {
   const handleCajaChange = (caja: string, checked: boolean) => {
     setFilters(prev => ({
       ...prev,
-      cajas: checked 
+      cajas: checked
         ? [...prev.cajas, caja]
         : prev.cajas.filter(c => c !== caja)
     }));
@@ -112,35 +112,13 @@ export function OpcionesCaja() {
         <h2 className="text-lg font-medium text-gray-900">
           Opciones de caja (Todas las sucursales y cajas)
         </h2>
-        <button 
+        <button
           onClick={() => setShowFilters(true)}
           className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
           <Filter className="w-4 h-4" />
           <span>Filtros</span>
         </button>
-      </div>
-
-      {/* Opciones de caja */}
-      <div className="space-y-4">
-        <h3 className="font-medium text-gray-900">Opciones de caja</h3>
-        <div className="space-y-3">
-          {[
-            { key: 'deposito', label: 'Depósito' },
-            { key: 'reporte_ventas', label: 'Reporte de ventas' },
-            { key: 'devoluciones', label: 'Devoluciones' },
-          ].map(option => (
-            <label key={option.key} className="flex items-center space-x-3">
-              <input
-                type="checkbox"
-                checked={settings[option.key]}
-                onChange={(e) => handleSettingChange(option.key, e.target.checked)}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <span className="text-gray-700">{option.label}</span>
-            </label>
-          ))}
-        </div>
       </div>
 
       {/* Tipo de moneda */}
@@ -169,8 +147,6 @@ export function OpcionesCaja() {
         <h3 className="font-medium text-gray-900">Integración con POS</h3>
         <div className="space-y-3">
           {[
-            { key: 'mercado_pago', label: 'Mercado Pago' },
-            { key: 'sumup', label: 'SumUp' },
             { key: 'transbank', label: 'Transbank' },
             { key: 'getnet', label: 'GetNet' },
           ].map(option => (
@@ -220,13 +196,10 @@ export function OpcionesCaja() {
       <div className="pt-6 border-t border-gray-200">
         <button
           onClick={handleSaveConfiguration}
-          className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+          className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-900 font-medium"
         >
-          💾 Guardar Configuración y Sincronizar POS
+          Guardar Configuración y Sincronizar POS
         </button>
-        <p className="text-xs text-gray-500 text-center mt-2">
-          ✅ Los cambios se aplicarán automáticamente a todos los terminales POS
-        </p>
       </div>
 
       {/* Modal de Filtros */}

@@ -129,27 +129,28 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
   const processFileContent = async (file: File): Promise<any[]> => {
     try {
       if (file.name.endsWith('.xml')) {
-        console.log('📄 INVENTARIO: Procesando XML personalizado');
+        console.log('📄 INVENTARIO: Procesando XML SII BOLETA');
 
         const text = await file.text();
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(text, 'text/xml');
 
-        // Seleccionar los nodos <producto>
-        const productos = xmlDoc.querySelectorAll('producto');
+        // Seleccionar los nodos <Detalle> del XML del SII
+        const detalles = xmlDoc.getElementsByTagName('Detalle');
 
-        const processedProducts = Array.from(productos).map(prod => {
-          const nombre = prod.querySelector('nombre')?.textContent || '';
-          const descripcion = prod.querySelector('descripcion')?.textContent || '';
-          const cantidad = parseInt(prod.querySelector('cantidad')?.textContent || '0');
-          const costoConIva = parseFloat(prod.querySelector('costo_con_iva')?.textContent || '0');
-          const categoriaText = prod.querySelector('categoria')?.textContent || '';
+        const processedProducts = Array.from(detalles).map(det => {
+          const nombre = det.getElementsByTagName('NmbItem')[0]?.textContent || '';
+          const descripcion = det.getElementsByTagName('DscItem')[0]?.textContent || '';
+          const cantidad = parseInt(det.getElementsByTagName('QtyItem')[0]?.textContent || '0');
+          const costoConIva = parseFloat(det.getElementsByTagName('PrcItem')[0]?.textContent || '0');
+          const codigo = det.getElementsByTagName('VlrCodigo')[0]?.textContent || '';
 
-          const categoriaEncontrada = findClosestCategory(categoriaText, categorias || [])
+          // Si tienes una lista de categorías y quieres mapear por nombre
+          const categoriaEncontrada = findClosestCategory(nombre, categorias || []);
 
           return {
             nombre,
-            codigo: '', // No hay código en este XML
+            codigo,
             cantidad,
             costo: costoConIva,
             descripcion,
