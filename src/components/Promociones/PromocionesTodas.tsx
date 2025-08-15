@@ -68,7 +68,7 @@ export function PromocionesTodas() {
     nombre: promocion.nombre,
     descripcion: promocion.descripcion,
     sucursales: (promocion.sucursales_id || [])
-    .map((id: string) => sucursales.find((s) => s.id === id)?.nombre || "Desconocida").join(', '),    
+      .map((id: string) => sucursales.find((s) => s.id === id)?.nombre || "Desconocida").join(', '),
     precio: Math.round(promocion.precio_prom || 0),
     disponible: promocion.activo ? "Disponible" : "No disponible",
     promocion,
@@ -85,12 +85,14 @@ export function PromocionesTodas() {
   const handleEditPromocion = (row: any) => {
 
     const promocion = promociones.find((p: Promocion) => p.id === row.id);
-    
+
     setSelectedPromocion(promocion);
     setShowEditarModal(true);
   };
 
-  const handleDeletePromocion = (promocion: any) => {
+  const handleDeletePromocion = (row: any) => {
+    const promocion = promociones.find((p: Promocion) => p.id === row.id);
+
     setSelectedPromocion(promocion);
     setShowDeleteModal(true);
   };

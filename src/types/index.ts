@@ -20,6 +20,23 @@ export interface User {
   role?: string; // Para compatibilidad con código existente
 }
 
+export interface Merma {
+  id: string;
+  sucursal_id: string;
+  producto_id: string;
+  tipo?: string | null;
+  cantidad: number;
+  observacion?: string | null;
+  fecha?: string | Date | null;
+  empresa_id?: string | null;
+}
+
+export interface MermaConNombres extends Merma {
+  sucursal_nombre: string;
+  producto_nombre: string;
+}
+
+
 export interface Empresa {
   id: string;
   rut: string;

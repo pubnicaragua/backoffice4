@@ -11,6 +11,7 @@ import {
   Monitor,
   Bell,
   ShoppingBasket,
+  DollarSignIcon,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -24,6 +25,7 @@ const menuItems = [
   { id: "general", label: "General", icon: BarChart3 },
   { id: "ventas", label: "Ventas", icon: ShoppingCart },
   { id: "inventario", label: "Inventario", icon: Package },
+  { id: "mermas", label: "Mermas", icon: DollarSignIcon },
   { id: "pedidos", label: "Recepción de pedidos", icon: Truck },
   { id: "despachos", label: "Gestión de despachos", icon: Send },
   { id: "cajas", label: "Gestión de Cajas", icon: ShoppingBasket },
@@ -87,17 +89,15 @@ export function Sidebar({
                     }}
                     className={`
                       w-full flex items-center space-x-3 px-3 py-3 rounded-lg text-left transition-colors text-sm
-                      ${
-                        isActive
-                          ? "bg-blue-50 text-blue-600"
-                          : "text-gray-700 hover:bg-gray-50"
+                      ${isActive
+                        ? "bg-blue-50 text-blue-600"
+                        : "text-gray-700 hover:bg-gray-50"
                       }
                     `}
                   >
                     <Icon
-                      className={`w-5 h-5 ${
-                        isActive ? "text-blue-600" : "text-gray-500"
-                      }`}
+                      className={`w-5 h-5 ${isActive ? "text-blue-600" : "text-gray-500"
+                        }`}
                     />
                     <span className="font-medium">{item.label}</span>
                   </button>

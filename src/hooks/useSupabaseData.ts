@@ -18,17 +18,17 @@ export function useSupabaseData<T>(
     try {
       setLoading(true);
       setError(null);
-      
+
       let query = supabase.from(table).select(select);
-      
+
       if (filters) {
         Object.entries(filters).forEach(([key, value]) => {
           query = query.eq(key, value);
         });
       }
-      
+
       const { data: result, error } = await query;
-      
+
       if (error) {
         setError(error.message);
         setData([]);
@@ -57,23 +57,23 @@ export function useSupabaseInsert<T>(table: string) {
 
   const insert = async (data: Partial<T>) => {
     const startTime = Date.now();
-    
+
     try {
       setLoading(true);
       setError(null);
-      
+
       console.log(`📝 Inserting into ${table}:`, data);
-      
+
       const { error } = await supabase.from(table).insert(data);
-      
+
       const duration = Date.now() - startTime;
-      
+
       console.log(`✅ Insert ${table}:`, {
         success: !error,
         duration: `${duration}ms`,
         error: error?.message
       });
-      
+
       if (error) {
         setError(error.message);
         return false;
@@ -97,23 +97,23 @@ export function useSupabaseUpdate<T>(table: string) {
 
   const update = async (id: string, data: Partial<T>) => {
     const startTime = Date.now();
-    
+
     try {
       setLoading(true);
       setError(null);
-      
+
       console.log(`✏️ Updating ${table}:`, { id, data });
-      
+
       const { error } = await supabase.from(table).update(data).eq('id', id);
-      
+
       const duration = Date.now() - startTime;
-      
+
       console.log(`✅ Update ${table}:`, {
         success: !error,
         duration: `${duration}ms`,
         error: error?.message
       });
-      
+
       if (error) {
         setError(error.message);
         return false;
@@ -129,4 +129,44 @@ export function useSupabaseUpdate<T>(table: string) {
   };
 
   return { update, loading, error };
+}
+
+export function useSupabaseDelete(table: string) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const remove = async (id: string) => {
+    const startTime = Date.now();
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      console.log(`🗑️ Deleting from ${table}:`, id);
+
+      const { error } = await supabase.from(table).delete().eq("id", id);
+
+      const duration = Date.now() - startTime;
+      console.log(`✅ Delete ${table}:`, {
+        success: !error,
+        duration: `${duration}ms`,
+        error: error?.message,
+      });
+
+      if (error) {
+        setError(error.message);
+        return false;
+      }
+
+      return true;
+    } catch (err: any) {
+      console.error(`❌ Delete ${table} error:`, err.message);
+      setError(err.message);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { delete: remove, loading, error };
 }
