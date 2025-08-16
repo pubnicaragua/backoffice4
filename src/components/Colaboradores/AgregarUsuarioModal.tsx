@@ -1,7 +1,8 @@
 import React, { SetStateAction, useState } from "react";
 import { Modal } from "../Common/Modal";
-import { supabase } from "../../lib/supabase";
+import { supabase, supabaseAnonKey } from "../../lib/supabase";
 import { useAuth } from "../../contexts/AuthContext";
+import { toast } from "react-toastify";
 
 interface AgregarUsuarioModalProps {
   loading: boolean;
@@ -28,7 +29,7 @@ export function AgregarUsuarioModal({
     direccion: "",
     fecha_nacimiento: "",
     pass: "",
-    rol: "empleado", // Agregado para rol
+    rol: "empleado",
   });
   const [mensaje, setMensaje] = useState<{
     texto: string;
@@ -43,6 +44,7 @@ export function AgregarUsuarioModal({
   const crearUsuario = async (datosUsuario: typeof formData) => {
     try {
       setLoading(true);
+      console.log('debug')
 
       // Validar si existe usuario con mismo rut
       const { data: existingUser } = await supabase
@@ -56,29 +58,44 @@ export function AgregarUsuarioModal({
           texto: "Error: Ya existe un usuario con este RUT",
           tipo: "error",
         });
+        toast.error("Ya existe un usuario con ese RUT")
         setLoading(false);
         return;
       }
 
-      // Llamar función RPC para crear usuario (debes crearla en BD, ejemplo abajo)
-      const { data, error } = await supabase.rpc("crear_usuario_con_password", {
-        p_nombres: datosUsuario.nombres,
-        p_apellidos: datosUsuario.apellidos,
-        p_rut: datosUsuario.rut,
-        p_email: datosUsuario.email,
-        p_telefono: datosUsuario.telefono,
-        p_direccion: datosUsuario.direccion,
-        p_fecha_nacimiento: datosUsuario.fecha_nacimiento || null,
-        p_password: datosUsuario.pass,
-        p_empresa_id: empresaId,
-        p_sucursal_id: sucursalId,
-        p_rol: datosUsuario.rol || "empleado",
-      });
+      const resp = await fetch(
+        "https://ujkdekqhoeyfjvtzdtaz.supabase.co/functions/v1/crear_usuario_con_password",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${supabaseAnonKey}`,
+          },
+          body: JSON.stringify({
+            p_nombres: datosUsuario.nombres,
+            p_apellidos: datosUsuario.apellidos,
+            p_rut: datosUsuario.rut,
+            p_email: datosUsuario.email,
+            p_telefono: datosUsuario.telefono,
+            p_direccion: datosUsuario.direccion,
+            p_fecha_nacimiento: datosUsuario.fecha_nacimiento || null,
+            p_password: datosUsuario.pass,
+            p_empresa_id: empresaId,
+            p_sucursal_id: sucursalId,
+            p_rol: datosUsuario.rol || "empleado",
+          }),
+        }
+      );
 
-      if (error) {
-        throw error;
+      const data = await resp.json();
+
+      console.log("📌 Respuesta Edge Function:", data);
+
+      if (!resp.ok || !data.success) {
+        throw new Error(data.error || "Error desconocido al crear usuario");
       }
 
+      toast.success("Usuario creado correctamente");
       setMensaje({ texto: "Usuario creado correctamente.", tipo: "success" });
 
       setFormData({
@@ -101,6 +118,7 @@ export function AgregarUsuarioModal({
       }, 1000);
     } catch (error: any) {
       console.error("Error creando usuario:", error);
+      toast.error("Error al crear el usuario  ")
       setMensaje({
         texto:
           error.message ||
@@ -311,11 +329,10 @@ export function AgregarUsuarioModal({
         {/* Mensaje de estado */}
         {mensaje.tipo && (
           <div
-            className={`p-2 rounded ${
-              mensaje.tipo === "error"
-                ? "bg-red-100 text-red-700"
-                : "bg-green-100 text-green-700"
-            }`}
+            className={`p-2 rounded ${mensaje.tipo === "error"
+              ? "bg-red-100 text-red-700"
+              : "bg-green-100 text-green-700"
+              }`}
             role="alert"
           >
             {mensaje.texto}

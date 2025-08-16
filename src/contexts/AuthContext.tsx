@@ -42,7 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: userData, error: userError } = await supabase
         .from("usuarios")
         .select("*")
-        .eq("auth_user_id", userId)
+        .eq("id", userId)
         .single();
 
 
