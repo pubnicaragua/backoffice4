@@ -9,7 +9,6 @@ import {
   Trash2,
   Package,
   FileDown,
-  X as XIcon,
 } from "lucide-react";
 import { useSupabaseData } from "../../hooks/useSupabaseData";
 import { useAuth } from "../../contexts/AuthContext";
@@ -20,23 +19,8 @@ import { ActualizarInventario } from "./ActualizarInventario";
 import { AgregarProductoModal } from "./AgregarProductoModal";
 import { Modal } from "../Common/Modal";
 import { supabase } from "../../lib/supabase";
-
-interface Producto {
-  id: string;
-  nombre: string;
-  stock: number;
-  categoria_id: string;
-  descripcion?: string;
-  codigo: string;
-  costo: number;
-  precio: number;
-  empresa_id: string;
-}
-
-interface Sucursal {
-  id: string;
-  nombre: string;
-}
+import { Producto } from "../../types";
+import { Sucursal } from "../../types/cajas";
 
 interface Categoria {
   id: string;
@@ -114,7 +98,6 @@ export function ProductosTotales() {
       let query = supabase.from("inventario").select("*");
 
       if (filters.sucursal) {
-        console.log(filters.sucursal)
         query = query.eq("sucursal_id", filters.sucursal);
       }
 
@@ -167,6 +150,12 @@ export function ProductosTotales() {
         return true;
       })
 
+      // Filtrar por si esta activo o no
+      .filter((inv) => {
+        const producto = productos.find((p) => p.id === inv.producto_id);
+        return producto?.activo === true;
+      })
+
       // Filtrar por sucursal si aplica
       .filter((inv) => {
         if (filters.sucursal) {
@@ -191,7 +180,7 @@ export function ProductosTotales() {
         const producto = productos.find((p) => p.id === inv.producto_id)!;
 
         const margenPercent = Math.round(
-          (((producto.precio || 0) - (producto.costo || 0)) /
+          (((producto.precio || 0) - (parseFloat(producto.costo) || 0)) /
             (producto.precio || 1)) *
           100
         );
@@ -205,7 +194,7 @@ export function ProductosTotales() {
             "Sin categoría",
           descripcion: producto.descripcion || "",
           sku: producto.codigo,
-          costo: `$${Math.round(producto.costo || 0).toLocaleString("es-CL")}`,
+          costo: `$${Math.round(parseFloat(producto.costo) || 0).toLocaleString("es-CL")}`,
           precio: `$${Math.round(producto.precio || 0).toLocaleString("es-CL")}`,
           margen: `${margenPercent}%`,
           disponible: inv.stock_final > 0 ? "Disponible" : "Agotado",
@@ -305,8 +294,9 @@ export function ProductosTotales() {
     for (const productId of selectedProducts) {
       const { error } = await supabase
         .from("productos")
-        .delete()
+        .update({ activo: false })
         .eq("id", productId);
+
       if (error) console.error("Error eliminando producto", productId, error);
     }
     setShowBulkDeleteModal(false);
@@ -319,7 +309,7 @@ export function ProductosTotales() {
 
     const { error: errorProducto } = await supabase
       .from("productos")
-      .delete()
+      .update({ activo: false })
       .eq("id", selectedProduct.id);
 
     if (errorProducto) {
@@ -327,16 +317,16 @@ export function ProductosTotales() {
       return;
     }
 
-    // También eliminar inventario relacionado
     await supabase
       .from("inventario")
-      .delete()
+      .update({ activo: false })
       .eq("producto_id", selectedProduct.id);
 
     setShowDeleteModal(false);
     setSelectedProduct(null);
     refetch();
   };
+
 
   const handleDownloadReport = () => {
     const headers = [
