@@ -110,7 +110,6 @@ export default function GeneralDashboard() {
 
   // Hook para cargar sucursales de la empresa  
   const { data: sucursales, error: sucursalesError } = useSupabaseData<Sucursal>("sucursales", "*", empresaId ? { empresa_id: empresaId } : undefined)
-  console.log("sucursales prod:", sucursales, sucursalesError);
 
   // Construir filtro común para las consultas según empresaId y sucursalId  
   const commonFilter = React.useMemo(() => {
