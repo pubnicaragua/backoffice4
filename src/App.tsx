@@ -17,6 +17,7 @@ import { NotificacionesView } from "./components/Notificaciones/NotificacionesVi
 import EstadoCajas from "./components/Cajas/EstadoCaja";
 import GestionCaja from "./components/Cajas/GestionCaja";
 import Mermas from "./components/Mermas/mermas";
+import { Inventario } from "./components/Inventario/inventario";
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -54,9 +55,7 @@ function AppContent() {
       case "ventas":
         return <VentasDashboard />;
       case "inventario":
-        return <ProductosTotales />;
-      case "mermas":
-        return <Mermas />
+        return <Inventario />;
       case "pedidos":
         return <RecepcionPedidos />;
       case "despachos":

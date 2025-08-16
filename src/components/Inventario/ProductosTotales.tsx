@@ -98,7 +98,6 @@ export function ProductosTotales() {
       let query = supabase.from("inventario").select("*");
 
       if (filters.sucursal) {
-        console.log(filters.sucursal)
         query = query.eq("sucursal_id", filters.sucursal);
       }
 
