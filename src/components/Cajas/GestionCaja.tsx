@@ -18,6 +18,7 @@ import { Modal } from "../Common/Modal";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../contexts/AuthContext";
 import "react-toastify/dist/ReactToastify.css";
+import { useSupabaseData } from "../../hooks/useSupabaseData";
 
 type EstadoSesion = "abierta" | "cerrada" | "en_proceso";
 
@@ -137,47 +138,48 @@ const GestionCaja: React.FC = () => {
     []
   );
 
-  const cargarCajasDisponibles = useCallback(async (): Promise<Caja[]> => {
-    if (!user) {
-      showToast("No se pudo obtener usuario autenticado", "error");
-      return [];
-    }
-    const { data: cajas, error } = await supabase
-      .from("cajas")
-      .select("*")
-      .eq("empresa_id", empresaId)
-      .eq("activo", true);
-    if (error) {
-      showToast("Error cargando cajas disponibles", "error");
-      return [];
-    }
-    return cajas || [];
-  }, [empresaId, showToast, user]);
-
-  const cargarSucursalesDisponibles = useCallback(async (): Promise<
-    Sucursal[]
-  > => {
-    if (!user) {
-      showToast("No se pudo obtener usuario autenticado", "error");
-      return [];
-    }
-    const { data: sucursales, error } = await supabase
+  // ✅ 1. cargar sucursales
+  const cargarSucursalesDisponibles = useCallback(async (): Promise<Sucursal[]> => {
+    if (!user) return [];
+    const { data, error } = await supabase
       .from("sucursales")
       .select("*")
       .eq("empresa_id", empresaId);
+
     if (error) {
       showToast("Error cargando sucursales disponibles", "error");
       return [];
     }
-    return sucursales || [];
+    return data || [];
   }, [empresaId, showToast, user]);
 
-  const cargarSesionesActivas = useCallback(async (): Promise<SesionCaja[]> => {
+  // ✅ 2. cargar cajas filtrando por sucursal seleccionada
+  const cargarCajasDisponibles = useCallback(
+    async (sucursalId: string): Promise<Caja[]> => {
+      if (!user || !sucursalId) return [];
+      const { data, error } = await supabase
+        .from("cajas")
+        .select("*")
+        .eq("empresa_id", empresaId)
+        .eq("activo", true)
+        .eq("sucursal_id", sucursalId);
+      if (error) {
+        showToast("Error cargando cajas disponibles", "error");
+        return [];
+      }
+      return data || [];
+    },
+    [empresaId, showToast, user]
+  );
+
+  // ✅ 3. cargar sesiones (igual que tenías)
+  const cargarSesionesActivas = useCallback(async (sucursalId: string): Promise<SesionCaja[]> => {
     if (!user) return [];
     const { data, error } = await supabase
       .from("sesiones_caja")
       .select("*, caja:cajas(*)")
       .eq("usuario_id", user.id)
+      .eq("sucursal_id", sucursalId)
       .eq("estado", "abierta");
     if (error) {
       showToast("Error cargando sesiones activas", "error");
@@ -186,46 +188,28 @@ const GestionCaja: React.FC = () => {
     return data || [];
   }, [showToast, user]);
 
-  const verificarUsuarioEnTablaUsers =
-    useCallback(async (): Promise<boolean> => {
-      if (!user) return false;
-      const { data, error } = await supabase
-        .from("usuarios")
-        .select("id")
-        .eq("id", user.id)
-        .maybeSingle();
-      if (error) {
-        showToast("Error verificando usuario en tabla usuarios", "error");
-        return false;
-      }
-      if (!data) {
-        showToast(
-          "Usuario no está registrado en la tabla usuarios. Contacte al administrador.",
-          "error"
-        );
-        return false;
-      }
-      return true;
-    }, [user, showToast]);
-
+  // ✅ 4. flujo inicial
   const cargarDatosIniciales = useCallback(async () => {
     updateState({ cargando: true });
     try {
-      const [cajasData, sucursalesData, sesionesData] = await Promise.all([
-        cargarCajasDisponibles(),
-        cargarSucursalesDisponibles(),
-        cargarSesionesActivas(),
+      const sucursalesData = await cargarSucursalesDisponibles();
+
+      // set sucursal por defecto
+      const sucursalDefault = sucursalesData.length > 0 ? sucursalesData[0].id : "";
+
+      const [cajasData, sesionesData] = await Promise.all([
+        cargarCajasDisponibles(sucursalDefault),
+        cargarSesionesActivas(sucursalDefault),
       ]);
+
       updateState({
-        cajasDisponibles: cajasData,
         sucursales: sucursalesData,
+        sucursalSeleccionadaId: sucursalDefault,
+        cajasDisponibles: cajasData,
         sesionesActivas: sesionesData,
-        cargando: false,
         cajaSeleccionada: cajasData.length > 0 ? cajasData[0] : null,
-        sucursalSeleccionadaId:
-          sucursalesData.length > 0 ? sucursalesData[0].id : "",
-        sesionSeleccionadaCerrar:
-          sesionesData.length > 0 ? sesionesData[0] : null,
+        sesionSeleccionadaCerrar: sesionesData.length > 0 ? sesionesData[0] : null,
+        cargando: false,
         saldoInicial: "",
         saldoFinal: "",
         observaciones: "",
@@ -233,72 +217,35 @@ const GestionCaja: React.FC = () => {
         montoVuelto: "",
       });
     } catch (error) {
-      const errMsg =
-        error instanceof Error ? error.message : "Error desconocido";
+      const errMsg = error instanceof Error ? error.message : "Error desconocido";
       showToast(`Error cargando datos: ${errMsg}`, "error");
       updateState({ cargando: false, error: errMsg });
     }
-  }, [
-    cargarCajasDisponibles,
-    cargarSucursalesDisponibles,
-    cargarSesionesActivas,
-    showToast,
-    updateState,
-  ]);
+  }, [cargarSucursalesDisponibles, cargarCajasDisponibles, cargarSesionesActivas, showToast, updateState]);
 
   useEffect(() => {
     cargarDatosIniciales();
   }, [cargarDatosIniciales]);
 
-  // Manejo cambios estados y selects
-  const handleCajaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const caja =
-      state.cajasDisponibles.find((c) => c.id === e.target.value) || null;
-    updateState({ cajaSeleccionada: caja });
-  };
-  const handleSucursalChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    updateState({ sucursalSeleccionadaId: e.target.value });
-  };
-  const handleSesionCerrarChange = (
-    e: React.ChangeEvent<HTMLSelectElement>
-  ) => {
-    const sesion =
-      state.sesionesActivas.find((s) => s.id === e.target.value) || null;
-    updateState({ sesionSeleccionadaCerrar: sesion });
-  };
-  const handleMontoVueltoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    updateState({ montoVuelto: e.target.value });
-  };
-  const handleTipoVueltoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    updateState({
-      tipoVueltoSeleccionado: e.target.value as TipoVuelto,
-      montoVuelto: "",
-    });
-  };
-  const handleObservacionesChange = (
-    e: React.ChangeEvent<HTMLTextAreaElement>
-  ) => {
-    updateState({ observaciones: e.target.value });
-  };
-  const handleSaldoInicialChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    updateState({ saldoInicial: e.target.value });
-  };
-  const handleSaldoFinalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    updateState({ saldoFinal: e.target.value });
-  };
-
   const handleAbrirModal = useCallback(() => {
     updateState({
       mostrarModalApertura: true,
-      saldoInicial: "",
-      observaciones: "",
-      procesando: false,
-      cajaSeleccionada:
-        state.cajasDisponibles.length > 0 ? state.cajasDisponibles[0] : null,
-      sucursalSeleccionadaId:
-        state.sucursales.length > 0 ? state.sucursales[0].id : "",
-    });
-  }, [state.cajasDisponibles, state.sucursales, updateState]);
+    })
+  }, [state.cajasDisponibles, state.sucursales, updateState])
+
+  // ✅ 5. cuando cambie sucursal, recargar cajas
+  useEffect(() => {
+    const fetchCajas = async () => {
+      if (state.sucursalSeleccionadaId) {
+        const cajas = await cargarCajasDisponibles(state.sucursalSeleccionadaId);
+        updateState({
+          cajasDisponibles: cajas,
+          cajaSeleccionada: cajas.length > 0 ? cajas[0] : null,
+        });
+      }
+    };
+    fetchCajas();
+  }, [state.sucursalSeleccionadaId, cargarCajasDisponibles, updateState]);
 
   const handleAbrirCaja = async () => {
     if (!state.cajaSeleccionada) {
@@ -310,9 +257,8 @@ const GestionCaja: React.FC = () => {
       (sesion) => sesion.caja_id === state.cajaSeleccionada?.id
     );
     if (estaAbierta) {
-      showToast(
-        "Esta caja ya está abierta. Por favor cierre la sesión existente.",
-        "warning"
+      toast.error(
+        "Esta caja ya está abierta. Por favor cierre la sesión existente."
       );
       return;
     }
@@ -368,15 +314,17 @@ const GestionCaja: React.FC = () => {
       showToast("Usuario no autenticado", "error");
       return;
     }
+    const estaAbierta = state.sesionesActivas.some(
+      (sesion) => sesion.caja_id === state.cajaSeleccionada?.id
+    );
+    if (estaAbierta) {
+      toast.error(
+        "Esta caja ya está abierta. Por favor cierre la sesión existente."
+      );
+      return;
+    }
     try {
       updateState({ procesando: true });
-
-      // Verificar existencia en tabla usuarios para evitar error FK
-      const userValid = await verificarUsuarioEnTablaUsers();
-      if (!userValid) {
-        updateState({ procesando: false });
-        return;
-      }
 
       const now = new Date().toISOString();
 
@@ -402,7 +350,7 @@ const GestionCaja: React.FC = () => {
 
       showToast("Caja abierta correctamente", "success");
 
-      const sesiones = await cargarSesionesActivas();
+      const sesiones = await cargarSesionesActivas(state.sucursalSeleccionadaId);
 
       updateState({
         sesionesActivas: sesiones,
@@ -430,7 +378,6 @@ const GestionCaja: React.FC = () => {
     updateState,
     user,
     cargarSesionesActivas,
-    verificarUsuarioEnTablaUsers,
   ]);
 
   // Confirmar cierre sesión: actualizar solo el campo monto seleccionado con el montoVuelto
@@ -452,6 +399,12 @@ const GestionCaja: React.FC = () => {
       showToast("Por favor ingresa un monto válido para el vuelto", "warning");
       return;
     }
+
+    if (state.sesionSeleccionadaCerrar === null) {
+      handleAbrirCaja()
+      return
+    }
+
     try {
       updateState({ procesando: true });
       const now = new Date().toISOString();
@@ -476,7 +429,7 @@ const GestionCaja: React.FC = () => {
 
       showToast("Caja cerrada correctamente", "success");
 
-      const sesiones = await cargarSesionesActivas();
+      const sesiones = await cargarSesionesActivas(state.sucursalSeleccionadaId);
 
       updateState({
         sesionesActivas: sesiones,
@@ -509,6 +462,28 @@ const GestionCaja: React.FC = () => {
     cargarSesionesActivas,
   ]);
 
+  const handleCajaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const cajaId = e.target.value;
+
+    // buscar la caja dentro de las cajas disponibles
+    const caja = state.cajasDisponibles.find((c) => c.id === cajaId) || null;
+
+    updateState({
+      cajaSeleccionada: caja,
+    });
+  };
+
+  const handleSucursalChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    updateState({ sucursalSeleccionadaId: e.target.value })
+    const sesiones = await cargarSesionesActivas(e.target.value);
+
+    updateState({
+      sesionesActivas: sesiones,
+    });
+
+  }
+
+
   if (state.cargando) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -518,7 +493,7 @@ const GestionCaja: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col space-y-4">
+    <div className="flex flex-col space-y-6 " style={{ padding: '30px' }}>
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Gestión de Caja</h1>
@@ -543,20 +518,19 @@ const GestionCaja: React.FC = () => {
           <div className="flex gap-2 w-full md:w-auto flex-col md:flex-row">
             <select
               className="block w-full md:w-auto p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              value={state.cajaSeleccionada?.id || ""}
-              onChange={handleCajaChange}
+              value={state.sucursalSeleccionadaId}
+              onChange={handleSucursalChange}
               disabled={state.procesando}
             >
-              <option value="">Seleccionar caja</option>
-              {state.cajasDisponibles.map((caja) => (
-                <option key={caja.id} value={caja.id}>
-                  {caja.nombre}
+              {state.sucursales.map((sucursal) => (
+                <option key={sucursal.id} value={sucursal.id}>
+                  {sucursal.nombre}
                 </option>
               ))}
             </select>
             <Button
               color="success"
-              onClick={handleAbrirCaja}
+              onClick={handleAbrirModal}
               disabled={!state.cajaSeleccionada || state.procesando}
             >
               <HiLockOpen className="mr-2 h-5 w-5" />
@@ -637,7 +611,7 @@ const GestionCaja: React.FC = () => {
               min="0"
               step="0.01"
               value={state.saldoInicial}
-              onChange={handleSaldoInicialChange}
+              onChange={(e) => updateState({ saldoInicial: e.target.value })}
               placeholder="0.00"
               required
               className="mt-1"
@@ -696,7 +670,7 @@ const GestionCaja: React.FC = () => {
             <Textarea
               id="observacionesApertura"
               value={state.observaciones}
-              onChange={handleObservacionesChange}
+              onChange={(e) => updateState({ observaciones: e.target.value })}
               placeholder="Observaciones sobre la apertura de caja"
               disabled={state.procesando}
               rows={3}
@@ -755,7 +729,7 @@ const GestionCaja: React.FC = () => {
             <select
               id="tipoVueltoSeleccionado"
               value={state.tipoVueltoSeleccionado}
-              onChange={handleTipoVueltoChange}
+              onChange={(e) => updateState({ tipoVueltoSeleccionado: e.target.value })}
               className="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 mt-1"
               disabled={state.procesando}
             >
@@ -774,7 +748,7 @@ const GestionCaja: React.FC = () => {
               min="0"
               step="0.01"
               value={state.montoVuelto}
-              onChange={handleMontoVueltoChange}
+              onChange={(e) => updateState({ montoVuelto: e.target.value })}
               placeholder="0.00"
               className="mt-1"
               disabled={state.procesando}
@@ -789,7 +763,7 @@ const GestionCaja: React.FC = () => {
               min="0"
               step="0.01"
               value={state.saldoFinal}
-              onChange={handleSaldoFinalChange}
+              onChange={(e) => updateState({ saldoFinal: e.target.value })}
               placeholder="0.00"
               required
               className="mt-1"
@@ -805,7 +779,7 @@ const GestionCaja: React.FC = () => {
               id="observacionesCierre"
               rows={3}
               value={state.observaciones}
-              onChange={handleObservacionesChange}
+              onChange={(e) => updateState({ observaciones: e.target.value })}
               className="mt-1"
               placeholder="Notas sobre el cierre, diferencias, etc."
               disabled={state.procesando}
