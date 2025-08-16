@@ -1,72 +1,130 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Modal } from '../Common/Modal';
 import { Filter } from 'lucide-react';
 import { useSupabaseData, useSupabaseUpdate } from '../../hooks/useSupabaseData';
 import { supabase } from '../../lib/supabase';
+import { Caja, Sucursal } from '../../types/cajas';
+import { useAuth } from '../../contexts/AuthContext';
+import { toast } from 'react-toastify';
 
 export function OpcionesCaja() {
+  const { empresaId } = useAuth()
   const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
-    sucursales: '',
+  const [filters, setFilters] = useState<{
+    sucursales: Sucursal | null;
+    cajas: Caja[];
+  }>({
+    sucursales: null,
     cajas: [],
   });
 
+
   const { data: configuracion, loading } = useSupabaseData<any>('configuracion_pos', '*');
+  const { data: cajas } = useSupabaseData<Caja>(
+    "cajas",
+    "*",
+    empresaId ? { empresa_id: empresaId } : undefined
+  );
+
+  const { data: sucursales } = useSupabaseData<Sucursal>(
+    "sucursales",
+    "*",
+    empresaId ? { empresa_id: empresaId } : undefined
+  );
+
   const { update } = useSupabaseUpdate('configuracion_pos');
 
-  const settings = configuracion[0] || {
-    deposito: true,
-    reporte_ventas: false,
-    devoluciones: true,
+  useEffect(() => {
+    if (filters.sucursales) {
+      setFilters(prev => ({
+        ...prev,
+        cajas: [],
+      }));
+    }
+  }, [filters.sucursales]);
+
+
+  const [settings, setSettings] = useState({
     usd: true,
     clp: false,
-    mercado_pago: false,
-    sumup: true,
     transbank: false,
     getnet: false,
     solicitar_autorizacion: true,
-  };
+  });
 
+  useEffect(() => {
+    if (configuracion && configuracion.length > 0) {
+      setSettings(configuracion[0]);
+    }
+  }, [configuracion]);
+
+  // Guardar y sincronizar solo un cambio de configuración
   const handleSettingChange = async (key: string, value: boolean) => {
-    if (configuracion[0]) {
-      await update(configuracion[0].id, { [key]: value });
+    // ✅ Primero actualizamos el estado local para refrescar la UI
+    setSettings(prev => ({
+      ...prev,
+      [key]: value,
+    }));
 
-      // Trigger real-time sync to POS terminals
-      console.log(`🔄 POS Config Updated: ${key} = ${value}`);
-      console.log('📡 Syncing to all POS terminals in real-time...');
+    try {
+      if (configuracion && configuracion[0]) {
+        await update(configuracion[0].id, { [key]: value });
+      } else {
+        const { data, error } = await supabase
+          .from("configuracion_pos")
+          .insert([{ [key]: value }])
+          .select()
+          .single();
 
-      // Sync configuration to POS terminals
-      try {
-        const { data: terminals } = await supabase
-          .from('pos_terminals')
-          .select('*')
-          .eq('status', 'online');
-
-        for (const terminal of terminals || []) {
-          await supabase.from('pos_sync_log').insert({
-            terminal_id: terminal.id,
-            sync_type: 'configuration',
-            direction: 'to_pos',
-            status: 'success',
-            records_count: 1,
-            sync_data: {
-              action: 'config_updated',
-              config: { [key]: value },
-              timestamp: new Date().toISOString()
-            }
-          });
-        }
-      } catch (error) {
-        console.error('Error syncing to POS:', error);
+        if (error) throw error;
+        if (data) setSettings(data);
       }
+
+      const { data: terminals } = await supabase
+        .from('pos_terminals')
+        .select('*')
+        .eq('status', 'online');
+
+      for (const terminal of terminals || []) {
+        await supabase.from('pos_sync_log').insert({
+          terminal_id: terminal.id,
+          sync_type: 'configuration',
+          direction: 'to_pos',
+          status: 'success',
+          records_count: 1,
+          sync_data: {
+            action: 'config_updated',
+            config: { [key]: value },
+            timestamp: new Date().toISOString()
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error updating configuration:', error);
     }
   };
 
+  // Guardar y sincronizar toda la configuración
   const handleSaveConfiguration = async () => {
     try {
       console.log('💾 Guardando configuración completa...');
 
-      // Sync all configuration to POS terminals
+      if (configuracion && configuracion[0]) {
+        // ✅ Guardamos todo el objeto settings en la BD
+        await update(configuracion[0].id, settings);
+      } else {
+        // ✅ Si no existe configuración, la creamos
+        const { data, error } = await supabase
+          .from("configuracion_pos")
+          .insert([settings])
+          .select()
+          .single();
+
+        if (error) throw error;
+        if (data) setSettings(data);
+      }
+
+      // ✅ Sync all configuration to POS terminals
       const { data: terminals } = await supabase
         .from('pos_terminals')
         .select('*')
@@ -87,18 +145,19 @@ export function OpcionesCaja() {
         });
       }
 
-      alert('✅ Configuración guardada y sincronizada con todos los terminales POS');
+      toast.success('✅ Configuración guardada y sincronizada con todos los terminales POS');
     } catch (error) {
       console.error('Error saving configuration:', error);
-      alert('❌ Error al guardar la configuración');
+      toast.error('❌ Error al guardar la configuración');
     }
   };
-  const handleCajaChange = (caja: string, checked: boolean) => {
+
+  const handleCajaChange = (caja: Caja, checked: boolean) => {
     setFilters(prev => ({
       ...prev,
       cajas: checked
         ? [...prev.cajas, caja]
-        : prev.cajas.filter(c => c !== caja)
+        : prev.cajas.filter(c => c.id !== caja.id),
     }));
   };
 
@@ -112,13 +171,13 @@ export function OpcionesCaja() {
         <h2 className="text-lg font-medium text-gray-900">
           Opciones de caja
         </h2>
-        <button
+        {/* <button
           onClick={() => setShowFilters(true)}
           className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
           <Filter className="w-4 h-4" />
           <span>Filtros</span>
-        </button>
+        </button> */}
       </div>
 
       {/* Tipo de moneda */}
@@ -203,7 +262,7 @@ export function OpcionesCaja() {
       </div>
 
       {/* Modal de Filtros */}
-      <Modal
+      {/* <Modal
         isOpen={showFilters}
         onClose={() => setShowFilters(false)}
         title="Filtros"
@@ -226,13 +285,20 @@ export function OpcionesCaja() {
               Sucursales
             </label>
             <select
-              value={filters.sucursales}
-              onChange={(e) => setFilters(prev => ({ ...prev, sucursales: e.target.value }))}
+              value={filters.sucursales?.id || ""}
+              onChange={(e) => {
+                console.log(sucursales)
+                const sucursal = sucursales?.find(s => s.id === e.target.value) || null;
+                setFilters(prev => ({ ...prev, sucursales: sucursal, cajas: [] }));
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Seleccionar sucursal</option>
-              <option value="sucursal1">Sucursal N°1</option>
-              <option value="sucursal2">Sucursal N°2</option>
+              {sucursales?.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nombre}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -241,17 +307,19 @@ export function OpcionesCaja() {
               Cajas
             </label>
             <div className="space-y-2">
-              {['Caja N°1', 'Caja N°2', 'Caja N°3', 'Caja N°4'].map(caja => (
-                <label key={caja} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={filters.cajas.includes(caja)}
-                    onChange={(e) => handleCajaChange(caja, e.target.checked)}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700">{caja}</span>
-                </label>
-              ))}
+              {cajas
+                ?.filter(c => c.sucursal_id === filters.sucursales?.id)
+                .map(caja => (
+                  <label key={caja.id} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={filters.cajas.some(c => c.id === caja.id)}
+                      onChange={(e) => handleCajaChange(caja, e.target.checked)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">{caja.nombre}</span>
+                  </label>
+                ))}
             </div>
           </div>
 
@@ -264,7 +332,7 @@ export function OpcionesCaja() {
             </button>
           </div>
         </div>
-      </Modal>
+      </Modal> */}
     </div>
   );
 }

@@ -25,7 +25,6 @@ const menuItems = [
   { id: "general", label: "General", icon: BarChart3 },
   { id: "ventas", label: "Ventas", icon: ShoppingCart },
   { id: "inventario", label: "Inventario", icon: Package },
-  { id: "mermas", label: "Mermas", icon: DollarSignIcon },
   { id: "pedidos", label: "Recepción de pedidos", icon: Truck },
   { id: "despachos", label: "Gestión de despachos", icon: Send },
   { id: "cajas", label: "Gestión de Cajas", icon: ShoppingBasket },
