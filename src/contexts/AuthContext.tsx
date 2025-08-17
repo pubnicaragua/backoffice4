@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { supabase } from "../lib/supabase";
 import type { User } from "../types";
+import { toast } from "react-toastify";
 
 interface AuthContextType {
   user: User | null;
@@ -138,6 +139,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         supabase.from("usuario_empresa").select("rol").eq("usuario_id", usuario.id).single()
 
       console.log(usuarioEmpresa)
+
+      if (usuarioEmpresa?.rol === "Empleado" || usuarioEmpresa?.rol === "Cajero") {
+        signOut()
+        toast.error("No cuentas con la autorización para entrar a BackOffice")
+      }
 
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: usuario.email,
