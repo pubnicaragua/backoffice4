@@ -11,15 +11,21 @@ export function OpcionesCaja() {
   const { empresaId } = useAuth()
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<{
-    sucursales: Sucursal | null;
+    sucursal: Sucursal | null;
     cajas: Caja[];
+    selectedCaja: Caja | null;
   }>({
-    sucursales: null,
+    sucursal: null,
     cajas: [],
+    selectedCaja: null
   });
 
+  const { data: configuracion, loading } = useSupabaseData<any>(
+    "configuracion_pos",
+    "*",
+    filters.selectedCaja ? { caja_id: filters.selectedCaja.id } : undefined
+  );
 
-  const { data: configuracion, loading } = useSupabaseData<any>('configuracion_pos', '*');
   const { data: cajas } = useSupabaseData<Caja>(
     "cajas",
     "*",
@@ -35,14 +41,14 @@ export function OpcionesCaja() {
   const { update } = useSupabaseUpdate('configuracion_pos');
 
   useEffect(() => {
-    if (filters.sucursales) {
+    if (filters.sucursal) {
       setFilters(prev => ({
         ...prev,
         cajas: [],
+        selectedCaja: null
       }));
     }
-  }, [filters.sucursales]);
-
+  }, [filters.sucursal]);
 
   const [settings, setSettings] = useState({
     usd: true,
@@ -60,7 +66,6 @@ export function OpcionesCaja() {
 
   // Guardar y sincronizar solo un cambio de configuración
   const handleSettingChange = async (key: string, value: boolean) => {
-    // ✅ Primero actualizamos el estado local para refrescar la UI
     setSettings(prev => ({
       ...prev,
       [key]: value,
@@ -68,11 +73,19 @@ export function OpcionesCaja() {
 
     try {
       if (configuracion && configuracion[0]) {
-        await update(configuracion[0].id, { [key]: value });
+        await update(configuracion[0].id, {
+          [key]: value,
+          sucursal_id: filters.sucursal?.id ?? null,
+          caja_id: filters.selectedCaja?.id ?? null
+        });
       } else {
         const { data, error } = await supabase
           .from("configuracion_pos")
-          .insert([{ [key]: value }])
+          .insert([{
+            [key]: value,
+            sucursal_id: filters.sucursal?.id ?? null,
+            caja_id: filters.selectedCaja?.id ?? null
+          }])
           .select()
           .single();
 
@@ -94,7 +107,11 @@ export function OpcionesCaja() {
           records_count: 1,
           sync_data: {
             action: 'config_updated',
-            config: { [key]: value },
+            config: {
+              [key]: value,
+              sucursal_id: filters.sucursal?.id ?? null,
+              caja_id: filters.selectedCaja?.id ?? null
+            },
             timestamp: new Date().toISOString()
           }
         });
@@ -106,25 +123,39 @@ export function OpcionesCaja() {
 
   // Guardar y sincronizar toda la configuración
   const handleSaveConfiguration = async () => {
+    if (!filters.sucursal || !filters.selectedCaja) {
+      toast.error("❌ Debes seleccionar una sucursal y una caja antes de guardar");
+      return;
+    }
+
     try {
       console.log('💾 Guardando configuración completa...');
 
-      if (configuracion && configuracion[0]) {
-        // ✅ Guardamos todo el objeto settings en la BD
-        await update(configuracion[0].id, settings);
-      } else {
-        // ✅ Si no existe configuración, la creamos
-        const { data, error } = await supabase
-          .from("configuracion_pos")
-          .insert([settings])
-          .select()
-          .single();
+      const { data: existing } = await supabase
+        .from("configuracion_pos")
+        .select("*")
+        .eq("sucursal_id", filters.sucursal?.id ?? null)
+        .eq("caja_id", filters.selectedCaja?.id ?? null)
+        .maybeSingle();
 
-        if (error) throw error;
-        if (data) setSettings(data);
+      if (existing) {
+        // update
+        await supabase
+          .from("configuracion_pos")
+          .update(settings)
+          .eq("id", existing.id);
+      } else {
+        // insert
+        await supabase
+          .from("configuracion_pos")
+          .insert([{
+            ...settings,
+            sucursal_id: filters.sucursal?.id ?? null,
+            caja_id: filters.selectedCaja?.id ?? null
+          }]);
       }
 
-      // ✅ Sync all configuration to POS terminals
+
       const { data: terminals } = await supabase
         .from('pos_terminals')
         .select('*')
@@ -139,7 +170,11 @@ export function OpcionesCaja() {
           records_count: 1,
           sync_data: {
             action: 'full_config_sync',
-            config: settings,
+            config: {
+              ...settings,
+              sucursal_id: filters.sucursal.id,
+              caja_id: filters.selectedCaja.id
+            },
             timestamp: new Date().toISOString()
           }
         });
@@ -153,12 +188,17 @@ export function OpcionesCaja() {
   };
 
   const handleCajaChange = (caja: Caja, checked: boolean) => {
-    setFilters(prev => ({
-      ...prev,
-      cajas: checked
+    setFilters(prev => {
+      let updatedCajas = checked
         ? [...prev.cajas, caja]
-        : prev.cajas.filter(c => c.id !== caja.id),
-    }));
+        : prev.cajas.filter(c => c.id !== caja.id);
+
+      return {
+        ...prev,
+        cajas: updatedCajas,
+        selectedCaja: updatedCajas.length > 0 ? updatedCajas[0] : null
+      };
+    });
   };
 
   if (loading) {
@@ -171,13 +211,13 @@ export function OpcionesCaja() {
         <h2 className="text-lg font-medium text-gray-900">
           Opciones de caja
         </h2>
-        {/* <button
+        <button
           onClick={() => setShowFilters(true)}
           className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
           <Filter className="w-4 h-4" />
           <span>Filtros</span>
-        </button> */}
+        </button>
       </div>
 
       {/* Tipo de moneda */}
@@ -262,7 +302,7 @@ export function OpcionesCaja() {
       </div>
 
       {/* Modal de Filtros */}
-      {/* <Modal
+      <Modal
         isOpen={showFilters}
         onClose={() => setShowFilters(false)}
         title="Filtros"
@@ -285,11 +325,10 @@ export function OpcionesCaja() {
               Sucursales
             </label>
             <select
-              value={filters.sucursales?.id || ""}
+              value={filters.sucursal?.id || ""}
               onChange={(e) => {
-                console.log(sucursales)
                 const sucursal = sucursales?.find(s => s.id === e.target.value) || null;
-                setFilters(prev => ({ ...prev, sucursales: sucursal, cajas: [] }));
+                setFilters(prev => ({ ...prev, sucursal, cajas: [], selectedCaja: null }));
               }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
@@ -308,7 +347,7 @@ export function OpcionesCaja() {
             </label>
             <div className="space-y-2">
               {cajas
-                ?.filter(c => c.sucursal_id === filters.sucursales?.id)
+                ?.filter(c => c.sucursal_id === filters.sucursal?.id)
                 .map(caja => (
                   <label key={caja.id} className="flex items-center space-x-2">
                     <input
@@ -332,7 +371,7 @@ export function OpcionesCaja() {
             </button>
           </div>
         </div>
-      </Modal> */}
+      </Modal>
     </div>
   );
 }
