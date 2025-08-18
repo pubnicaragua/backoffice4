@@ -23,8 +23,15 @@ export function OpcionesCaja() {
   const { data: configuracion, loading } = useSupabaseData<any>(
     "configuracion_pos",
     "*",
-    filters.selectedCaja ? { caja_id: filters.selectedCaja.id } : undefined
+    filters.selectedCaja && filters.sucursal
+      ? {
+        sucursal_id: filters.sucursal.id,
+        caja_id: filters.selectedCaja.id,
+        empresa_id: empresaId
+      }
+      : undefined
   );
+
 
   const { data: cajas } = useSupabaseData<Caja>(
     "cajas",
@@ -70,58 +77,8 @@ export function OpcionesCaja() {
       ...prev,
       [key]: value,
     }));
-
-    try {
-      if (configuracion && configuracion[0]) {
-        await update(configuracion[0].id, {
-          [key]: value,
-          sucursal_id: filters.sucursal?.id ?? null,
-          caja_id: filters.selectedCaja?.id ?? null
-        });
-      } else {
-        const { data, error } = await supabase
-          .from("configuracion_pos")
-          .insert([{
-            [key]: value,
-            sucursal_id: filters.sucursal?.id ?? null,
-            caja_id: filters.selectedCaja?.id ?? null
-          }])
-          .select()
-          .single();
-
-        if (error) throw error;
-        if (data) setSettings(data);
-      }
-
-      const { data: terminals } = await supabase
-        .from('pos_terminals')
-        .select('*')
-        .eq('status', 'online');
-
-      for (const terminal of terminals || []) {
-        await supabase.from('pos_sync_log').insert({
-          terminal_id: terminal.id,
-          sync_type: 'configuration',
-          direction: 'to_pos',
-          status: 'success',
-          records_count: 1,
-          sync_data: {
-            action: 'config_updated',
-            config: {
-              [key]: value,
-              sucursal_id: filters.sucursal?.id ?? null,
-              caja_id: filters.selectedCaja?.id ?? null
-            },
-            timestamp: new Date().toISOString()
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Error updating configuration:', error);
-    }
   };
 
-  // Guardar y sincronizar toda la configuración
   const handleSaveConfiguration = async () => {
     if (!filters.sucursal || !filters.selectedCaja) {
       toast.error("❌ Debes seleccionar una sucursal y una caja antes de guardar");
@@ -129,33 +86,26 @@ export function OpcionesCaja() {
     }
 
     try {
-      console.log('💾 Guardando configuración completa...');
+      console.log('💾 Guardando configuración SOLO para la caja seleccionada...');
 
-      const { data: existing } = await supabase
+      // ✅ Configuración para la caja seleccionada
+      const configuracion = {
+        ...settings,
+        empresa_id: empresaId,
+        sucursal_id: filters.sucursal.id,
+        caja_id: filters.selectedCaja.id,
+      };
+
+      // ✅ Guardamos con upsert
+      const { error } = await supabase
         .from("configuracion_pos")
-        .select("*")
-        .eq("sucursal_id", filters.sucursal?.id ?? null)
-        .eq("caja_id", filters.selectedCaja?.id ?? null)
-        .maybeSingle();
+        .upsert(configuracion, {
+          onConflict: "empresa_id,sucursal_id,caja_id"
+        });
 
-      if (existing) {
-        // update
-        await supabase
-          .from("configuracion_pos")
-          .update(settings)
-          .eq("id", existing.id);
-      } else {
-        // insert
-        await supabase
-          .from("configuracion_pos")
-          .insert([{
-            ...settings,
-            sucursal_id: filters.sucursal?.id ?? null,
-            caja_id: filters.selectedCaja?.id ?? null
-          }]);
-      }
+      if (error) throw error;
 
-
+      // 🔄 Sincronizar con terminales
       const { data: terminals } = await supabase
         .from('pos_terminals')
         .select('*')
@@ -170,17 +120,13 @@ export function OpcionesCaja() {
           records_count: 1,
           sync_data: {
             action: 'full_config_sync',
-            config: {
-              ...settings,
-              sucursal_id: filters.sucursal.id,
-              caja_id: filters.selectedCaja.id
-            },
-            timestamp: new Date().toISOString()
-          }
+            config: configuracion,
+            timestamp: new Date().toISOString(),
+          },
         });
       }
 
-      toast.success('✅ Configuración guardada y sincronizada con todos los terminales POS');
+      toast.success(`✅ Configuración guardada para la caja: ${filters.selectedCaja.nombre}`);
     } catch (error) {
       console.error('Error saving configuration:', error);
       toast.error('❌ Error al guardar la configuración');
@@ -351,10 +297,11 @@ export function OpcionesCaja() {
                 .map(caja => (
                   <label key={caja.id} className="flex items-center space-x-2">
                     <input
-                      type="checkbox"
-                      checked={filters.cajas.some(c => c.id === caja.id)}
-                      onChange={(e) => handleCajaChange(caja, e.target.checked)}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      type="radio"
+                      name="selectedCaja"
+                      checked={filters.selectedCaja?.id === caja.id}
+                      onChange={() => setFilters(prev => ({ ...prev, selectedCaja: caja }))}
+                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                     />
                     <span className="text-sm text-gray-700">{caja.nombre}</span>
                   </label>
