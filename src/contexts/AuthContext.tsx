@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { supabase } from "../lib/supabase";
 import type { User } from "../types";
+import { toast } from "react-toastify";
 
 interface AuthContextType {
   user: User | null;
@@ -116,23 +117,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (rut: string, password: string) => {
     try {
+      // if (!validarRut(rut)) {
+      //   throw new Error("RUT inválido");
+      // }
+
       setLoading(true);
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+      const { data: usuario, error: errorUsuario } = await supabase
+        .from("usuarios")
+        .select("id, email")
+        .eq("rut", rut)
+        .single()
+
+      if (errorUsuario || !usuario) {
+        throw new Error("RUT no encontrado");
+      }
+
+      const { data: usuarioEmpresa, error: errorUsuarioEmpresa } = await
+        supabase.from("usuario_empresa").select("rol").eq("usuario_id", usuario.id).single()
+
+      console.log(usuarioEmpresa)
+
+      if (usuarioEmpresa?.rol === "Empleado" || usuarioEmpresa?.rol === "Cajero") {
+        signOut()
+        toast.error("No cuentas con la autorización para entrar a BackOffice")
+      }
+
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: usuario.email,
         password,
       });
 
-      if (error) {
-        setLoading(false);
-        throw error;
+      if (authError) {
+        throw authError;
       }
       // La carga se manejará en onAuthStateChange
     } catch (error) {
-      setLoading(false);
       throw error;
+    } finally {
+      setLoading(false)
     }
   };
 

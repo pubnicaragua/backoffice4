@@ -3,7 +3,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export function LoginForm() {
-  const [email, setEmail] = useState('');
+  const [rut, setRut] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -17,7 +17,7 @@ export function LoginForm() {
     setError('');
 
     try {
-      await signIn(email, password);
+      await signIn(rut, password);
     } catch (err: any) {
       setError(err.message || 'Error al iniciar sesión');
     } finally {
@@ -50,16 +50,16 @@ export function LoginForm() {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-              Correo
+            <label htmlFor="rut" className="block text-sm font-medium text-gray-700 mb-2">
+              Rut
             </label>
             <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="rut"
+              type="rut"
+              value={rut}
+              onChange={(e) => setRut(e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Ingresa tu correo"
+              placeholder="Rut"
               required
             />
           </div>
