@@ -8,6 +8,7 @@ import { Sucursal } from "../../types/cajas";
 import AgregarMermaModal from "./modals/agregar-merma";
 import FiltersMerma from "./modals/filtros-merma";
 import EliminarMermaModal from "./modals/eliminar-merma";
+import saveAs from "file-saver";
 
 function Mermas() {
     const [state, dispatch] = useReducer(mermaReducer, estado_inicial);
@@ -142,6 +143,36 @@ function Mermas() {
         });
     };
 
+    const handleDownloadMermas = () => {
+        const headers = [
+            "Sucursal",
+            "Producto",
+            "Tipo",
+            "Cantidad",
+            "Observación",
+            "Fecha",
+        ];
+
+        // Creamos el contenido del CSV recorriendo los datos de la tabla
+        const csvContent = [
+            headers.join(","),
+            ...paginatedData.map((merma) =>
+                [
+                    merma.sucursal_nombre,
+                    merma.producto_nombre,
+                    merma.tipo || "N/A",
+                    merma.cantidad,
+                    merma.observacion || "N/A",
+                    merma.fecha ? new Date(merma.fecha).toLocaleDateString() : "N/A",
+                ].join(",")
+            ),
+        ].join("\n");
+
+        // Creamos el archivo y lo descargamos
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        saveAs(blob, `reporte_pedidos_${new Date().toISOString().split("T")[0]}.csv`);
+    };
+
 
     const handleEditMerma = (merma: Merma) => {
         changeValue("selectedMerma", merma)
@@ -197,7 +228,7 @@ function Mermas() {
                             </button>
                         )}
                         <button
-                            // onClick={() => dispatch({ type: mermaAcciones.DOWNLOAD_REPORT })}
+                            onClick={() => handleDownloadMermas()}
                             className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                             title="Descargar Reporte"
                             type="button"
