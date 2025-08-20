@@ -154,7 +154,7 @@ function Mermas() {
         ];
 
         // Creamos el contenido del CSV recorriendo los datos de la tabla
-        const csvContent = [
+        const csvContent = "\uFEFF" + [
             headers.join(","),
             ...paginatedData.map((merma) =>
                 [
