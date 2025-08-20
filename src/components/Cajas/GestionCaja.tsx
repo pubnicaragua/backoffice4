@@ -563,7 +563,7 @@ const GestionCaja: React.FC = () => {
                   </p>
 
                   <p className="text-sm text-gray-600">
-                    Saldo Inicial: C${sesion.saldo_inicial.toFixed(2)}
+                    Saldo Inicial: $CLP {sesion.saldo_inicial.toFixed(2)}
                   </p>
                   <p
                     className="text-sm text-gray-600"

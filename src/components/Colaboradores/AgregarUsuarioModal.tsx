@@ -64,7 +64,7 @@ export function AgregarUsuarioModal({
       }
 
       const resp = await fetch(
-        "https://ujkdekqhoeyfjvtzdtaz.supabase.co/functions/v1/crear_usuario_con_password",
+        "https://ujkdekqhoeyfjvtzdtaz.supabase.co/functions/v1/crear-colaborador",
         {
           method: "POST",
           headers: {
