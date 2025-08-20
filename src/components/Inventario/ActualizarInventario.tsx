@@ -19,11 +19,11 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
   const [selectedProducts, setSelectedProducts] = useState<{ [key: string]: { selected: boolean, cantidad: number, descripcion?: string } }>({});
   const [xmlFiles, setXmlFiles] = useState<Array<{ id: string, name: string, products: any[] }>>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const { user, empresaId } = useAuth()
 
   const { insert } = useSupabaseInsert('inventario');
-  const { data: sucursales } = useSupabaseData<any>('sucursales', '*');
+  const { data: sucursales } = useSupabaseData<any>('sucursales', '*', empresaId ? { empresa_id: empresaId } : undefined);
   const { data: categorias } = useSupabaseData<any>('categorias', '*')
-  const { user, empresaId } = useAuth()
 
   const [sucursalDestino, setSucursalDestino] = useState("");
 

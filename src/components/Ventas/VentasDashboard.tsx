@@ -385,7 +385,7 @@ export function VentasDashboard() {
                   "Método Pago",
                   "Producto",
                 ];
-                const csvContent = [
+                const csvContent = "\uFEFF" + [
                   headers.join(","),
                   ...filteredVentas.map((v) =>
                     [

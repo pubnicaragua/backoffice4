@@ -131,6 +131,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq("rut", rut)
         .single()
 
+      console.log(errorUsuario)
+
       if (errorUsuario || !usuario) {
         throw new Error("RUT no encontrado");
       }

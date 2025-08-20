@@ -121,7 +121,7 @@ export function PromocionesTodas() {
         "Precio",
         "Disponible",
       ];
-      const csvContent = [
+      const csvContent = "\uFEFF" + [
         headers.join("\t"),
         ...filteredData.map((p) =>
           [

@@ -90,10 +90,10 @@ export function GestionDespachos() {
       despacho.estado === "pendiente"
         ? "Pendiente"
         : despacho.estado === "entregado"
-        ? "Entregado"
-        : despacho.estado === "cancelado"
-        ? "Cancelado"
-        : "Pendiente",
+          ? "Entregado"
+          : despacho.estado === "cancelado"
+            ? "Cancelado"
+            : "Pendiente",
     sucursal_destino:
       sucursales?.find((s) => s.id === despacho.sucursal_id)?.nombre ||
       despacho.direccion ||
@@ -146,7 +146,7 @@ export function GestionDespachos() {
         "Estado",
         "Sucursal",
       ];
-      const csvContent = [
+      const csvContent = "\uFEFF" + [
         headers.join("\t"),
         ...filteredData.map((d) =>
           [
@@ -311,11 +311,10 @@ export function GestionDespachos() {
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-1 rounded-md text-sm ${
-                        currentPage === page
+                      className={`px-3 py-1 rounded-md text-sm ${currentPage === page
                           ? "bg-blue-600 text-white"
                           : "text-gray-700 hover:bg-gray-100"
-                      }`}
+                        }`}
                     >
                       {page}
                     </button>

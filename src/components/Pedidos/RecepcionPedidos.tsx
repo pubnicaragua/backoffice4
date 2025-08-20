@@ -290,7 +290,7 @@ export function RecepcionPedidos() {
       "Monto Total",
       "Sucursal Captura",
     ];
-    const csvContent = [
+    const csvContent = "\uFEFF" + [
       headers.join(","),
       ...filteredData.map((row) =>
         [

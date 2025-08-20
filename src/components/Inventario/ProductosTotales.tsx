@@ -9,6 +9,7 @@ import {
   Trash2,
   Package,
   FileDown,
+  Loader,
 } from "lucide-react";
 import { useSupabaseData } from "../../hooks/useSupabaseData";
 import { useAuth } from "../../contexts/AuthContext";
@@ -63,10 +64,9 @@ export function ProductosTotales() {
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [inventarios, setInventarios] = useState<Inventario[]>([]);
   const [inventariosLoading, setInventariosLoading] = useState(false);
-
+  const [loading, setLoading] = useState<boolean>(true)
   const {
     data: productos = [],
-    loading: productosLoading,
     refetch,
   } = useSupabaseData<Producto>(
     "productos",
@@ -121,7 +121,8 @@ export function ProductosTotales() {
       setInventariosLoading(false);
     }
     cargarInventarios();
-  }, [empresaId, filters]);
+    setLoading(false)
+  }, [empresaId, filters, loading]);
 
   const columns = [
     { key: "|", label: "", width: "40px" },
@@ -340,7 +341,7 @@ export function ProductosTotales() {
       "Disponible",
     ];
     const filteredDataForReport = filteredProducts;
-    const csvContent = [
+    const csvContent = "\uFEFF" + [
       headers.join(","),
       ...filteredDataForReport.map((row) =>
         [
@@ -578,17 +579,27 @@ export function ProductosTotales() {
 
       <ActualizarInventario
         isOpen={showInventarioModal}
-        onClose={() => setShowInventarioModal(false)}
+        onClose={() => {
+          setShowInventarioModal(false)
+          setLoading(true)
+          refetch()
+        }
+        }
       />
 
       <AgregarProductoModal
         isOpen={showProductoModal}
-        onClose={() => setShowProductoModal(false)}
+        onClose={() => {
+          setShowProductoModal(false)
+          setLoading(true)
+          refetch();
+        }}
         empresaId={empresaId!}
         selectedProduct={selectedProduct}
         onSuccess={() => {
           setShowProductoModal(false);
           setSelectedProduct(null);
+          setLoading(true)
           refetch();
         }}
       />
