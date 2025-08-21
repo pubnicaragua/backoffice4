@@ -1,31 +1,17 @@
-import React, { useState } from "react";
+import { useEffect, useState } from "react";
 import { DetallePedido } from "./DetallePedido";
-import { Filter, Plus, Download, FileDown } from "lucide-react";
+import { Filter, Plus, Download } from "lucide-react";
 import { saveAs } from "file-saver";
 import {
   useSupabaseData,
-  useSupabaseInsert,
 } from "../../hooks/useSupabaseData";
 import { Modal } from "../Common/Modal";
 import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";
 
-import { extraerDatosCompletos } from "../../../utils/pdfParser";
 import { useAuth } from "../../contexts/AuthContext";
+import { AgregarPedidoModal } from "./modals/CrearPedido";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.js";
-
-interface Producto {
-  numero_serie: string;
-  cantidad: number;
-  descripcion: string;
-  total: number | null;
-}
-
-interface ResultadoExtraccion {
-  proveedor: string | null;
-  productos: Producto[];
-  costo_total: number | null;
-}
 
 export function RecepcionPedidos() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -33,13 +19,6 @@ export function RecepcionPedidos() {
   const [showDetalle, setShowDetalle] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showAgregarModal, setShowAgregarModal] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-  const [parsedPdfInfo, setParsedPdfInfo] =
-    useState<ResultadoExtraccion | null>(null);
-  const [selectedProducts, setSelectedProducts] = useState<{
-    [key: string]: { selected: boolean; cantidad: number };
-  }>({});
-  const [processing, setProcessing] = useState(false);
   const [selectedPedido, setSelectedPedido] = useState<any>(null);
   const { empresaId } = useAuth();
   const [filters, setFilters] = useState({
@@ -47,11 +26,22 @@ export function RecepcionPedidos() {
     fecha: "",
     estado: "",
   });
-  const [sucursalCaptura, setSucursalCaptura] = useState("");
+
+  const {
+    data: proveedores
+  } = useSupabaseData<any>(
+    "clientes",
+    "*",
+    empresaId ? { empresa_id: empresaId } : undefined
+  )
+
+  const [loading, setLoading] = useState<boolean>(true)
+
+  const { data: productos } = useSupabaseData("productos", "*", empresaId ? { empresa_id: empresaId } : undefined)
 
   const {
     data: pedidos,
-    loading,
+    loading: pedidosLoading,
     refetch,
   } = useSupabaseData<any>(
     "pedidos",
@@ -64,13 +54,10 @@ export function RecepcionPedidos() {
     "*",
     empresaId ? { empresa_id: empresaId } : undefined
   );
-  const { data: clientes, refetch: refetchClientes } = useSupabaseData<any>(
+  const { data: clientes } = useSupabaseData<any>(
     "clientes",
     "*"
   );
-  const { insert, loading: inserting } = useSupabaseInsert("pedidos");
-  const { insert: insertCliente, loading: insertingCliente } =
-    useSupabaseInsert("clientes");
 
   // Procesa datos para tabla principal
   const processedData = (pedidos || [])
@@ -126,162 +113,6 @@ export function RecepcionPedidos() {
     setShowDetalle(true);
   };
 
-  const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const uploadedFile = event.target.files?.[0];
-    if (uploadedFile) {
-      setFile(uploadedFile);
-      await processFile(uploadedFile);
-    }
-  };
-
-  const processFile = async (file: File) => {
-    setProcessing(true);
-    setParsedPdfInfo(null);
-    setSelectedProducts({});
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      let fullText = "";
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items
-          .map((item: any) => item.str)
-          .join(" ");
-        fullText += pageText + "\n";
-      }
-      const resultado: ResultadoExtraccion = extraerDatosCompletos(fullText);
-      setParsedPdfInfo(resultado);
-
-      // Inicializa selectedProducts con todos seleccionados y cantidades
-      const initialSelectedProducts = resultado.productos.reduce(
-        (acc, producto) => {
-          acc[producto.descripcion] = {
-            selected: true,
-            cantidad: producto.cantidad,
-          };
-          return acc;
-        },
-        {} as { [key: string]: { selected: boolean; cantidad: number } }
-      );
-      setSelectedProducts(initialSelectedProducts);
-    } catch (error) {
-      console.error("Error procesando PDF:", error);
-      alert("No se pudo procesar el archivo PDF correctamente.");
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  // Espera a que cliente aparezca en datos de clientes tras la recarga
-  const waitForCliente = async (
-    razon_social: string,
-    retries = 5,
-    delayMs = 500
-  ): Promise<string> => {
-    for (let i = 0; i < retries; i++) {
-      const clienteEncontrado = (clientes || []).find(
-        (c) =>
-          c.razon_social?.trim().toLowerCase() === razon_social.toLowerCase()
-      );
-      if (clienteEncontrado) return clienteEncontrado.id;
-
-      // Esperar antes de reiniciar
-      await new Promise((res) => setTimeout(res, delayMs));
-      await refetchClientes();
-    }
-    throw new Error(
-      "No se pudo obtener el id del nuevo cliente insertado después de crear"
-    );
-  };
-
-  // Obtiene el id de proveedor: busca o inserta y espera a tenerlo
-  const getProveedorId = async (): Promise<string> => {
-    if (!parsedPdfInfo?.proveedor) {
-      throw new Error("Proveedor no detectado en el PDF");
-    }
-    const nombreProveedor = parsedPdfInfo.proveedor.trim();
-
-    const clienteExistente = (clientes || []).find(
-      (c) =>
-        c.razon_social?.trim().toLowerCase() === nombreProveedor.toLowerCase()
-    );
-    if (clienteExistente) {
-      return clienteExistente.id;
-    }
-
-    // Inserta cliente nuevo
-    const insertResult = await insertCliente({ razon_social: nombreProveedor });
-    if (!insertResult) {
-      throw new Error("Error insertando nuevo cliente");
-    }
-
-    // Espera y obtiene el id del cliente insertado
-    const clienteId = await waitForCliente(nombreProveedor);
-    return clienteId;
-  };
-
-  const handleAgregarPedido = async () => {
-    if (!sucursalCaptura) {
-      alert("Por favor selecciona una sucursal de captura");
-      return;
-    }
-    if (!parsedPdfInfo) {
-      alert("No hay datos para agregar.");
-      return;
-    }
-    try {
-      setProcessing(true);
-
-      const proveedorId = await getProveedorId();
-
-      const productosSeleccionados = Object.entries(selectedProducts)
-        .filter(([_, data]) => data.selected)
-        .map(([key, data]) => {
-          const producto = parsedPdfInfo.productos.find(
-            (p) => p.descripcion === key
-          );
-          return {
-            nombre: key,
-            cantidad: data.cantidad,
-            costo: producto?.total || 1000,
-          };
-        });
-
-      const totalPedido = productosSeleccionados.reduce(
-        (sum, p) => sum + p.cantidad * p.costo,
-        0
-      );
-
-      const success = await insert({
-        empresa_id: empresaId,
-        sucursal_id: sucursalCaptura,
-        proveedor_id: proveedorId,
-        folio: `PED-${Date.now()}`,
-        fecha: new Date().toISOString(),
-        estado: "pendiente",
-        total: totalPedido,
-      });
-
-      if (success) {
-        setShowAgregarModal(false);
-        setFile(null);
-        setParsedPdfInfo(null);
-        setSelectedProducts({});
-        setSucursalCaptura("");
-        refetch();
-        refetchClientes();
-      }
-    } catch (error) {
-      console.error("Error agregando pedido:", error);
-      alert(`Hubo un error al agregar el pedido: ${(error as Error).message}`);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
   const handleDownloadReport = () => {
     const headers = [
       "Proveedor",
@@ -310,22 +141,36 @@ export function RecepcionPedidos() {
     );
   };
 
+  useEffect(() => {
+    refetch()
+  }, [loading]);
+
   const applyFilters = () => {
     setCurrentPage(1);
     setShowFilters(false);
   };
 
-  if (loading) {
+  if (pedidosLoading) {
     return <div className="text-center py-4">Cargando pedidos...</div>;
   }
 
   if (showDetalle) {
+    const selectedProveedor = proveedores.find((proveedor) => proveedor.nombre === selectedPedido.proovedor)
+
     return (
       <DetallePedido
+        productos={productos}
         onBack={() => setShowDetalle(false)}
         pedido={selectedPedido}
+        proveedor={selectedProveedor}
       />
     );
+  }
+
+
+  const refresh = () => {
+    refetch()
+    setLoading(true)
   }
 
   return (
@@ -524,167 +369,7 @@ export function RecepcionPedidos() {
         </div>
       </Modal>
 
-      <Modal
-        isOpen={showAgregarModal}
-        onClose={() => setShowAgregarModal(false)}
-        title="Agregar pedido recibido"
-        size="lg"
-      >
-        <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Sucursal de captura *
-            </label>
-            <select
-              value={sucursalCaptura}
-              onChange={(e) => setSucursalCaptura(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            >
-              <option value="">Seleccionar sucursal</option>
-              {sucursales?.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-            {processing ? (
-              <div className="w-12 h-12 mx-auto mb-4 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
-            ) : (
-              <div className="w-16 h-16 text-gray-400 mx-auto mb-4 text-4xl">
-                📄
-              </div>
-            )}
-            <div className="mb-4">
-              <label className="cursor-pointer">
-                <span className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-block font-medium">
-                  {processing ? "Procesando PDF..." : "Subir archivo PDF"}
-                </span>
-                <input
-                  type="file"
-                  accept=".pdf"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  disabled={processing}
-                />
-              </label>
-            </div>
-
-            {file && parsedPdfInfo && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
-                <h4 className="font-medium text-blue-900 mb-2">
-                  📋 Análisis del PDF:
-                </h4>
-                <p>
-                  <strong>Archivo:</strong> {file.name}
-                </p>
-                <p>
-                  <strong>Proveedor Detectado:</strong>{" "}
-                  {parsedPdfInfo.proveedor || "No detectado"}
-                </p>
-                <p>
-                  <strong>Costo Total:</strong>{" "}
-                  {parsedPdfInfo.costo_total !== null
-                    ? `$${parsedPdfInfo.costo_total.toLocaleString("es-CL")}`
-                    : "No disponible"}
-                </p>
-
-                <h5 className="mt-4 font-semibold text-blue-900">
-                  Productos detectados:
-                </h5>
-                {parsedPdfInfo.productos.length === 0 && (
-                  <p className="text-sm text-blue-800">
-                    No se detectaron productos.
-                  </p>
-                )}
-                <div className="max-h-60 overflow-y-auto mt-2 space-y-2">
-                  {parsedPdfInfo.productos.map((producto) => (
-                    <div
-                      key={producto.descripcion}
-                      className="grid grid-cols-4 gap-4 text-sm items-center bg-white p-3 rounded border"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={
-                          selectedProducts[producto.descripcion]?.selected ||
-                          false
-                        }
-                        onChange={(e) =>
-                          setSelectedProducts((prev) => ({
-                            ...prev,
-                            [producto.descripcion]: {
-                              selected: e.target.checked,
-                              cantidad:
-                                prev[producto.descripcion]?.cantidad ||
-                                producto.cantidad,
-                            },
-                          }))
-                        }
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                      <span className="text-gray-900">
-                        {producto.descripcion}
-                      </span>
-                      <input
-                        type="number"
-                        value={
-                          selectedProducts[producto.descripcion]?.cantidad ||
-                          producto.cantidad
-                        }
-                        onChange={(e) =>
-                          setSelectedProducts((prev) => ({
-                            ...prev,
-                            [producto.descripcion]: {
-                              selected: true,
-                              cantidad: Math.max(
-                                1,
-                                parseInt(e.target.value) || 1
-                              ),
-                            },
-                          }))
-                        }
-                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
-                        min="1"
-                      />
-                      <span className="text-gray-600 text-xs">
-                        Total:{" "}
-                        {producto.total !== null
-                          ? `$${producto.total.toLocaleString("es-CL")}`
-                          : "No disponible"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {parsedPdfInfo && parsedPdfInfo.productos.length > 0 && (
-              <div className="flex justify-center">
-                <button
-                  onClick={handleAgregarPedido}
-                  disabled={
-                    inserting ||
-                    !sucursalCaptura ||
-                    insertingCliente ||
-                    processing
-                  }
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {inserting
-                    ? "Agregando..."
-                    : `Agregar ${Object.values(selectedProducts).filter(
-                      (p) => p.selected
-                    ).length
-                    } productos como pedido`}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </Modal>
+      <AgregarPedidoModal refresh={refresh} isOpen={showAgregarModal} onClose={() => setShowAgregarModal(false)} productos={productos} proveedores={proveedores} empresaId={empresaId!} sucursales={sucursales} />
     </div>
   );
 }
