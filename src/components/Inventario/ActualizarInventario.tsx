@@ -82,6 +82,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
       // Always process multiple files, even if only one is selected
       // This ensures the xmlFiles state is always an array of processed files
       setFile(uploadedFiles[0]); // Set the first file for single file display
+      setFoliosFacturas([])
       if (uploadMethod === 'xml') { // Only XML files are managed as multiple "loaded files"
         // Procesar múltiples archivos
         processMultipleFiles(Array.from(uploadedFiles));
@@ -430,6 +431,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
       setXmlFiles([]);
       setProductos([]);
       setSelectedProducts({});
+      setFoliosFacturas([])
     } catch (generalError) {
       console.error('❌ INVENTARIO: Error general en confirmación masiva', generalError);
       toast.error('Error al procesar los productos');

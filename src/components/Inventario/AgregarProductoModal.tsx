@@ -174,7 +174,7 @@ export function AgregarProductoModal({
       const { data: existingProduct, error: findError } = await supabase
         .from("productos")
         .select("*")
-        .eq("codigo", formData.sku)
+        .eq("nombre", formData.producto)
         .eq("empresa_id", empresaId)
         .eq("sucursal_id", formData.sucursal)
         .single();

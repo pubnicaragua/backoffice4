@@ -39,6 +39,9 @@ function Mermas() {
     } = useSupabaseData<Producto>(
         "productos",
         "*",
+        {
+            activo: true,
+        }
     )
 
     useEffect(() => {
