@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { toast } from "react-hot-toast";
 import { supabase } from "../../../lib/supabase";
 import { Modal } from "../../Common/Modal";
+import { toast } from "react-toastify";
 
 interface AgregarPedidoModalProps {
     isOpen: boolean;
