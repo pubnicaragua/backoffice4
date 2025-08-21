@@ -13,27 +13,16 @@ import {
   Badge,
   Select,
 } from "flowbite-react";
-import { HiLockOpen, HiLockClosed, HiRefresh } from "react-icons/hi";
+import { HiLockOpen, HiLockClosed, HiRefresh, HiOutlineCube } from "react-icons/hi";
 import { Modal } from "../Common/Modal";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../contexts/AuthContext";
 import "react-toastify/dist/ReactToastify.css";
 import { useSupabaseData } from "../../hooks/useSupabaseData";
+import { Sucursal, Usuario } from "../../types/cajas";
+import { CrearCajaModal } from "./modals/CrearCajaModal";
 
 type EstadoSesion = "abierta" | "cerrada" | "en_proceso";
-
-interface Sucursal {
-  id: string;
-  empresa_id?: string;
-  nombre: string;
-  direccion?: string;
-  telefono?: string;
-  email?: string;
-  activa?: boolean;
-  activo?: boolean;
-  created_at?: string;
-  updated_at?: string;
-}
 
 interface Caja {
   id: string;
@@ -80,6 +69,7 @@ interface GestionCajaState {
   procesando: boolean;
   error: string | null;
   sucursales: Sucursal[];
+  empleados: Usuario[]
   cajasDisponibles: Caja[];
   cajaSeleccionada: Caja | null;
   sesionesActivas: SesionCaja[];
@@ -89,9 +79,11 @@ interface GestionCajaState {
   saldoFinal: string;
   observaciones: string;
   sucursalSeleccionadaId: string;
+  empleadoSeleccionadoId: string;
   sesionSeleccionadaCerrar: SesionCaja | null;
   tipoVueltoSeleccionado: TipoVuelto;
   montoVuelto: string;
+  crearCajaModal: boolean;
 }
 
 const GestionCaja: React.FC = () => {
@@ -100,6 +92,7 @@ const GestionCaja: React.FC = () => {
     procesando: false,
     error: null,
     sucursales: [],
+    empleados: [],
     cajasDisponibles: [],
     cajaSeleccionada: null,
     sesionesActivas: [],
@@ -109,9 +102,11 @@ const GestionCaja: React.FC = () => {
     saldoFinal: "",
     observaciones: "",
     sucursalSeleccionadaId: "",
+    empleadoSeleccionadoId: "",
     sesionSeleccionadaCerrar: null,
     tipoVueltoSeleccionado: "monto_efectivo",
     montoVuelto: "",
+    crearCajaModal: false,
   };
   const { empresaId, user } = useAuth();
   const [state, setState] = useState<GestionCajaState>(initialState);
@@ -178,7 +173,6 @@ const GestionCaja: React.FC = () => {
     const { data, error } = await supabase
       .from("sesiones_caja")
       .select("*, caja:cajas(*)")
-      .eq("usuario_id", user.id)
       .eq("sucursal_id", sucursalId)
       .eq("estado", "abierta");
     if (error) {
@@ -188,6 +182,20 @@ const GestionCaja: React.FC = () => {
     return data || [];
   }, [showToast, user]);
 
+  // 4. Cargar empleados
+  const cargarEmpleados = useCallback(async (sucursalId: string): Promise<Usuario[]> => {
+    if (!user) return [];
+    const { data, error } = await supabase
+      .from("usuarios")
+      .select("*")
+      .eq("sucursal_id", sucursalId)
+      .eq("rol", "empleado")
+    if (error) {
+      showToast("Error cargando sesiones activas", "error");
+      return [];
+    }
+    return data || [];
+  }, [])
   // ✅ 4. flujo inicial
   const cargarDatosIniciales = useCallback(async () => {
     updateState({ cargando: true });
@@ -197,13 +205,15 @@ const GestionCaja: React.FC = () => {
       // set sucursal por defecto
       const sucursalDefault = sucursalesData.length > 0 ? sucursalesData[0].id : "";
 
-      const [cajasData, sesionesData] = await Promise.all([
+      const [cajasData, sesionesData, empleadosData] = await Promise.all([
         cargarCajasDisponibles(sucursalDefault),
         cargarSesionesActivas(sucursalDefault),
+        cargarEmpleados(sucursalDefault),
       ]);
 
       updateState({
         sucursales: sucursalesData,
+        empleados: empleadosData,
         sucursalSeleccionadaId: sucursalDefault,
         cajasDisponibles: cajasData,
         sesionesActivas: sesionesData,
@@ -221,7 +231,7 @@ const GestionCaja: React.FC = () => {
       showToast(`Error cargando datos: ${errMsg}`, "error");
       updateState({ cargando: false, error: errMsg });
     }
-  }, [cargarSucursalesDisponibles, cargarCajasDisponibles, cargarSesionesActivas, showToast, updateState]);
+  }, [cargarSucursalesDisponibles, cargarCajasDisponibles, cargarSesionesActivas, showToast, updateState, cargarEmpleados]);
 
   useEffect(() => {
     cargarDatosIniciales();
@@ -233,12 +243,15 @@ const GestionCaja: React.FC = () => {
     })
   }, [state.cajasDisponibles, state.sucursales, updateState])
 
-  // ✅ 5. cuando cambie sucursal, recargar cajas
+  // ✅ 5. cuando cambie sucursal, recargar cajas y empleados
   useEffect(() => {
     const fetchCajas = async () => {
       if (state.sucursalSeleccionadaId) {
+        const empleados = await cargarEmpleados(state.sucursalSeleccionadaId);
         const cajas = await cargarCajasDisponibles(state.sucursalSeleccionadaId);
         updateState({
+          empleados: empleados,
+          empleadoSeleccionadoId: empleados.length > 0 ? empleados[0].id : undefined,
           cajasDisponibles: cajas,
           cajaSeleccionada: cajas.length > 0 ? cajas[0] : null,
         });
@@ -310,6 +323,9 @@ const GestionCaja: React.FC = () => {
       showToast("Por favor selecciona una sucursal", "warning");
       return;
     }
+    if (!state.empleadoSeleccionadoId) {
+      showToast("Por favor selecciona un empleado", "warning")
+    }
     if (!user) {
       showToast("Usuario no autenticado", "error");
       return;
@@ -333,7 +349,7 @@ const GestionCaja: React.FC = () => {
         .insert([
           {
             caja_id: state.cajaSeleccionada.id,
-            usuario_id: user.id,
+            usuario_id: state.empleadoSeleccionadoId,
             sucursal_id: state.sucursalSeleccionadaId,
             estado: "abierta",
             saldo_inicial: parseFloat(state.saldoInicial),
@@ -448,7 +464,7 @@ const GestionCaja: React.FC = () => {
           : "Error desconocido al cerrar la caja";
       updateState({ error: errorMessage });
       showToast(errorMessage, "error");
-      updateState({ procesando: false });
+      updateState({ procesando: false, cajaSeleccionada: null });
     }
   }, [
     state.sesionSeleccionadaCerrar,
@@ -480,9 +496,17 @@ const GestionCaja: React.FC = () => {
     updateState({
       sesionesActivas: sesiones,
     });
-
   }
 
+  const handleEmpleadoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const empleadoId = e.target.value;
+
+    updateState({ empleadoSeleccionadoId: empleadoId })
+  }
+
+  const handleCrearCajaModal = () => {
+    updateState({ crearCajaModal: !state.crearCajaModal })
+  }
 
   if (state.cargando) {
     return (
@@ -536,6 +560,14 @@ const GestionCaja: React.FC = () => {
               <HiLockOpen className="mr-2 h-5 w-5" />
               Abrir Caja
             </Button>
+            <Button
+              color="success"
+              onClick={handleCrearCajaModal}
+              disabled={!state.cajaSeleccionada || state.procesando}
+            >
+              <HiOutlineCube className="mr-2 h-5 w-5" />
+              Crear Caja
+            </Button>
           </div>
         </div>
       </Card>
@@ -560,6 +592,10 @@ const GestionCaja: React.FC = () => {
                 <div>
                   <p className="font-semibold text-lg">
                     {sesion.caja?.nombre || "N/A"}
+                  </p>
+
+                  <p className="text-sm text-gray-600">
+                    Empleado: {state.empleados.find((usuario) => usuario.id === sesion.usuario_id)?.nombres || "Desconocido"}
                   </p>
 
                   <p className="text-sm text-gray-600">
@@ -620,6 +656,29 @@ const GestionCaja: React.FC = () => {
           </div>
 
           <div>
+            <Label htmlFor="sucursalSeleccionadaId">
+              Selecciona una Sucursal
+            </Label>
+            <select
+              id="sucursalSeleccionadaId"
+              value={state.sucursalSeleccionadaId}
+              onChange={handleSucursalChange}
+              className="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 mt-1"
+              required
+              disabled={state.procesando}
+            >
+              <option value="" disabled>
+                -- Seleccionar sucursal --
+              </option>
+              {state.sucursales.map((sucursal) => (
+                <option key={sucursal.id} value={sucursal.id}>
+                  {sucursal.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
             <Label htmlFor="cajaSeleccionada">Selecciona una Caja</Label>
             <select
               id="cajaSeleccionada"
@@ -642,22 +701,22 @@ const GestionCaja: React.FC = () => {
 
           <div>
             <Label htmlFor="sucursalSeleccionadaId">
-              Selecciona una Sucursal
+              Selecciona un Empleado
             </Label>
             <select
               id="sucursalSeleccionadaId"
-              value={state.sucursalSeleccionadaId}
-              onChange={handleSucursalChange}
+              value={state.empleadoSeleccionadoId}
+              onChange={handleEmpleadoChange}
               className="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 mt-1"
               required
               disabled={state.procesando}
             >
               <option value="" disabled>
-                -- Seleccionar sucursal --
+                -- Seleccionar empleado --
               </option>
-              {state.sucursales.map((sucursal) => (
-                <option key={sucursal.id} value={sucursal.id}>
-                  {sucursal.nombre}
+              {state.empleados.map((empleado) => (
+                <option key={empleado.id} value={empleado.id}>
+                  {empleado.nombres}
                 </option>
               ))}
             </select>
@@ -814,6 +873,9 @@ const GestionCaja: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Modal Crear Caja*/}
+      <CrearCajaModal isOpen={state.crearCajaModal} onClose={() => updateState({ crearCajaModal: !state.crearCajaModal })} empresaId={empresaId!} sucursales={state.sucursales} />
     </div>
   );
 };
