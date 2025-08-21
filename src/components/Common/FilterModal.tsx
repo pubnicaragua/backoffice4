@@ -46,7 +46,7 @@ export function FilterModal({ isOpen, onClose, title = "Filtros", children, onAp
       <div className="fixed right-0 top-0 h-full w-80 bg-white shadow-xl transform transition-transform duration-300 ease-in-out">
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <div className="flex items-center space-x-2">
-            <span className="text-blue-600 text-lg">🔍</span>
+            <span className="text-blue-600 text-lg"></span>
             <h3 className="text-lg font-medium text-gray-900">{title}</h3>
           </div>
           <button

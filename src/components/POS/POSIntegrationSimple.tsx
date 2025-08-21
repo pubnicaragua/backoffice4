@@ -44,7 +44,7 @@ export function POSIntegrationSimple() {
               <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-4">
                 <Monitor className="w-8 h-8 text-gray-600" />
               </div>
-              <h4 className="font-medium text-gray-900 mb-2">3. Modo Manual</h4>
+              <h4 className="font-medium text-gray-900 mb-2">2. Modo Manual</h4>
             </div>
             <div className="space-y-3 text-sm">
               <p className="text-gray-600">Usuario realiza cobro manualmente</p>
