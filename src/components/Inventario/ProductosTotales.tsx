@@ -116,7 +116,17 @@ export function ProductosTotales() {
         console.error("Error cargando inventario:", error);
         setInventarios([])
       } else {
-        setInventarios(data)
+        const latestInventarios = Object.values(
+          data.reduce((acc, inv) => {
+            const key = `${inv.producto_id}-${inv.sucursal_id}`;
+            if (!acc[key] || new Date(inv.fecha) > new Date(acc[key].fecha)) {
+              acc[key] = inv;
+            }
+            return acc;
+          }, {})
+        );
+
+        setInventarios(latestInventarios);
       }
       setInventariosLoading(false);
     }
