@@ -10,15 +10,12 @@ import {
   Textarea,
   Alert,
   Spinner,
-  Badge,
-  Select,
 } from "flowbite-react";
 import { HiLockOpen, HiLockClosed, HiRefresh, HiOutlineCube } from "react-icons/hi";
 import { Modal } from "../Common/Modal";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../contexts/AuthContext";
 import "react-toastify/dist/ReactToastify.css";
-import { useSupabaseData } from "../../hooks/useSupabaseData";
 import { Sucursal, Usuario } from "../../types/cajas";
 import { CrearCajaModal } from "./modals/CrearCajaModal";
 
@@ -640,22 +637,6 @@ const GestionCaja: React.FC = () => {
       >
         <div className="space-y-4">
           <div>
-            <Label htmlFor="saldoInicial">Saldo Inicial en Efectivo</Label>
-            <TextInput
-              id="saldoInicial"
-              type="number"
-              min="0"
-              step="0.01"
-              value={state.saldoInicial}
-              onChange={(e) => updateState({ saldoInicial: e.target.value })}
-              placeholder="0.00"
-              required
-              className="mt-1"
-              disabled={state.procesando}
-            />
-          </div>
-
-          <div>
             <Label htmlFor="sucursalSeleccionadaId">
               Selecciona una Sucursal
             </Label>
@@ -781,39 +762,6 @@ const GestionCaja: React.FC = () => {
         size="md"
       >
         <div className="space-y-4">
-          <div>
-            <Label htmlFor="tipoVueltoSeleccionado">
-              Selecciona tipo de vuelto
-            </Label>
-            <select
-              id="tipoVueltoSeleccionado"
-              value={state.tipoVueltoSeleccionado}
-              onChange={(e) => updateState({ tipoVueltoSeleccionado: e.target.value })}
-              className="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 mt-1"
-              disabled={state.procesando}
-            >
-              <option value="monto_efectivo">Efectivo</option>
-              <option value="monto_tarjeta">Tarjeta</option>
-              <option value="monto_transferencia">Transferencia</option>
-              <option value="monto_otros">Otros</option>
-            </select>
-          </div>
-
-          <div>
-            <Label htmlFor="montoVuelto">Monto del vuelto</Label>
-            <TextInput
-              id="montoVuelto"
-              type="number"
-              min="0"
-              step="0.01"
-              value={state.montoVuelto}
-              onChange={(e) => updateState({ montoVuelto: e.target.value })}
-              placeholder="0.00"
-              className="mt-1"
-              disabled={state.procesando}
-            />
-          </div>
-
           <div>
             <Label htmlFor="saldoFinal">Saldo Final en Efectivo</Label>
             <TextInput

@@ -22,6 +22,7 @@ import { Modal } from "../Common/Modal";
 import { supabase } from "../../lib/supabase";
 import { Producto } from "../../types";
 import { Sucursal } from "../../types/cajas";
+import { ToastContainer } from "react-toastify";
 
 interface Categoria {
   id: string;
@@ -198,6 +199,14 @@ export function ProductosTotales() {
 
         return {
           id: producto.id,
+          checkbox: (
+            <input
+              type="checkbox"
+              checked={selectedProducts.has(producto.id)}
+              onChange={(e) => handleSelectProduct(producto.id, e.target.checked)}
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+          ),
           producto: producto.nombre,
           stock: inv.stock_final.toString(),
           categoria:
@@ -205,20 +214,12 @@ export function ProductosTotales() {
             "Sin categoría",
           descripcion: producto.descripcion || "",
           sku: producto.codigo,
-          costo: `$${Math.round(parseFloat(producto.costo) || 0).toLocaleString("es-CL")}`,
+          costo: `$${Math.round(
+            parseFloat(producto.costo) || 0
+          ).toLocaleString("es-CL")}`,
           precio: `$${Math.round(producto.precio || 0).toLocaleString("es-CL")}`,
           margen: `${margenPercent}%`,
           disponible: inv.stock_final > 0 ? "Disponible" : "Agotado",
-          checkbox: (
-            <input
-              type="checkbox"
-              checked={selectedProducts.has(producto.id)}
-              onChange={(e) =>
-                handleSelectProduct(producto.id, e.target.checked)
-              }
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-            />
-          ),
           acciones: (
             <div className="flex items-center space-x-2">
               <button
@@ -251,16 +252,6 @@ export function ProductosTotales() {
 
   const filteredProducts = getFilteredProducts()
 
-  // Mapa productoId => stock total sumado desde inventarios
-  const stockPorProductoId: Record<string, number> = React.useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const inv of inventarios) {
-      map[inv.producto_id] =
-        (map[inv.producto_id] || 0) + (inv.stock_final || 0);
-    }
-    return map;
-  }, [inventarios]);
-
   // Filtrar por búsqueda en tabla
   const filteredData = filteredProducts.filter(
     (item) =>
@@ -288,13 +279,25 @@ export function ProductosTotales() {
     setShowDeleteModal(true);
   };
 
-  const handleSelectProduct = (productId: string, checked: boolean) => {
+  const handleSelectProduct = (id: string, checked: boolean) => {
     setSelectedProducts((prev) => {
       const newSet = new Set(prev);
-      if (checked) newSet.add(productId);
-      else newSet.delete(productId);
+      if (checked) {
+        newSet.add(id);
+      } else {
+        newSet.delete(id);
+      }
       return newSet;
     });
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allIds = paginatedData.map((row) => row.id);
+      setSelectedProducts(new Set(allIds));
+    } else {
+      setSelectedProducts(new Set());
+    }
   };
 
   const handleBulkDelete = () => {
@@ -327,11 +330,6 @@ export function ProductosTotales() {
       console.error("Error eliminando producto", errorProducto);
       return;
     }
-
-    await supabase
-      .from("inventario")
-      .update({ activo: false })
-      .eq("producto_id", selectedProduct.id);
 
     setShowDeleteModal(false);
     setSelectedProduct(null);
@@ -486,6 +484,14 @@ export function ProductosTotales() {
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
+              <th className="px-6 py-3">
+                <input
+                  type="checkbox"
+                  checked={selectedProducts.size === paginatedData.length}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+              </th>
               {columns.map((column) => (
                 <th
                   key={column.key}
@@ -500,6 +506,14 @@ export function ProductosTotales() {
           <tbody className="divide-y divide-gray-200">
             {paginatedData.map((row) => (
               <tr key={row.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4">
+                  <input
+                    type="checkbox"
+                    checked={selectedProducts.has(row.id)}
+                    onChange={(e) => handleSelectProduct(row.id, e.target.checked)}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                </td>
                 {columns.map((column) => (
                   <td
                     key={column.key}
@@ -581,6 +595,8 @@ export function ProductosTotales() {
         )}
       </div>
 
+      <ToastContainer />
+
       {/* Modales */}
       <ReporteMermas
         isOpen={showMermasModal}
@@ -604,7 +620,6 @@ export function ProductosTotales() {
           setLoading(true)
           refetch();
         }}
-        empresaId={empresaId!}
         selectedProduct={selectedProduct}
         onSuccess={() => {
           setShowProductoModal(false);

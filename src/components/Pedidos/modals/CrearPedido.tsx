@@ -1,5 +1,4 @@
-import React, { useState, useMemo } from "react";
-import { Search } from "lucide-react";
+import React, { useState } from "react";
 import { toast } from "react-hot-toast";
 import { supabase } from "../../../lib/supabase";
 import { Modal } from "../../Common/Modal";
@@ -8,8 +7,6 @@ interface AgregarPedidoModalProps {
     isOpen: boolean;
     onClose: () => void;
     sucursales: any[];
-    proveedores: any[];
-    productos: any[];
     empresaId: string;
     refresh: () => void;
 }
@@ -18,148 +15,165 @@ export function AgregarPedidoModal({
     isOpen,
     onClose,
     sucursales,
-    proveedores,
-    productos,
     empresaId,
-    refresh
+    refresh,
 }: AgregarPedidoModalProps) {
     const [formData, setFormData] = useState({
-        sucursalId: "",
-        proveedorId: "",
-        razonSocial: "",
-        precio_promocion: "",
-        productos_seleccionados: [] as any[],
+        proveedor: "",
+        folio_factura: "",
+        monto_total: "",
+        sucursal_captura: "",
+        archivo_respaldo: null as File | null,
+        productos: [] as { nombre: string; cantidad: number }[],
     });
 
-    const [searchTerm, setSearchTerm] = useState("");
+    const handleClose = () => {
+        onClose()
+        setFormData({
+            proveedor: "",
+            folio_factura: "",
+            monto_total: "",
+            sucursal_captura: "",
+            archivo_respaldo: null as File | null,
+            productos: [] as { nombre: string; cantidad: number }[],
+        })
+    }
 
-    const filteredProductos = useMemo(() => {
-        return productos.filter(
-            (p) =>
-                p.codigo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                p.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [searchTerm, productos]);
+    const [inserting, setInserting] = useState(false);
+    const [nuevoProducto, setNuevoProducto] = useState({ nombre: "", cantidad: 1 });
 
-    const handleProductoSelect = (producto: any) => {
-        const productFound = formData.productos_seleccionados.find((producto_seleccionado) => producto_seleccionado.id === producto.id)
-        if (!productFound) {
-            setFormData((prev) => ({
-                ...prev,
-                productos_seleccionados: [
-                    ...prev.productos_seleccionados,
-                    { ...producto, cantidad: 1 },
-                ],
-            }));
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setFormData((prev) => ({ ...prev, archivo_respaldo: e.target.files![0] }));
         }
-        setSearchTerm("");
     };
 
-    const handleCantidadChange = (id: string, cantidad: number) => {
+    const handleAgregarProducto = () => {
+        if (!nuevoProducto.nombre.trim() || nuevoProducto.cantidad <= 0) {
+            toast.error("Debes ingresar un nombre y cantidad válida");
+            return;
+        }
         setFormData((prev) => ({
             ...prev,
-            productos_seleccionados: prev.productos_seleccionados.map((p) =>
-                p.id === id ? { ...p, cantidad } : p
-            ),
+            productos: [...prev.productos, nuevoProducto],
         }));
+        setNuevoProducto({ nombre: "", cantidad: 1 });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setInserting(true);
 
         try {
-            const total = formData.productos_seleccionados.reduce(
-                (acc, p) =>
-                    acc +
-                    (p.precio -
-                        parseFloat(formData.precio_promocion || "0")) *
-                    (p.cantidad || 1),
-                0
-            );
+            const { error } = await supabase.from("pedidos").insert([
+                {
+                    empresa_id: empresaId,
+                    proveedor: formData.proveedor,
+                    sucursal_id: formData.sucursal_captura,
+                    total: formData.monto_total,
+                    estado: "pendiente",
+                    fecha_pedido: new Date().toISOString(),
+                    fecha: new Date().toISOString(),
+                    folio: formData.folio_factura,
+                    created_at: new Date().toISOString(),
+                },
+            ]);
 
-            const folio = `PED-${Date.now()}`;
-
-            await supabase
-                .from("pedidos")
-                .insert([
-                    {
-                        empresa_id: empresaId,
-                        proveedor_id: formData.proveedorId,
-                        sucursal_id: formData.sucursalId,
-                        fecha_pedido: new Date().toISOString(),
-                        estado: "pendiente",
-                        total,
-                        folio,
-                        razon_social: formData.razonSocial,
-                    },
-                ])
-                .select()
-                .single();
+            if (error) throw error;
 
             toast.success("Pedido creado con éxito ✅");
             onClose();
-            refresh()
+            refresh();
             setFormData({
-                sucursalId: "",
-                proveedorId: "",
-                razonSocial: "",
-                precio_promocion: "",
-                productos_seleccionados: [],
+                proveedor: "",
+                folio_factura: "",
+                monto_total: "",
+                sucursal_captura: "",
+                archivo_respaldo: null as File | null,
+                productos: [] as { nombre: string; cantidad: number }[],
             });
         } catch (err) {
             console.error(err);
-            toast.error("Error a    l crear el pedido ❌");
+            toast.error("Error al crear el pedido ❌");
+        } finally {
+            setInserting(false);
         }
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Agregar Pedido" size="lg">
+        <Modal isOpen={isOpen} onClose={handleClose} title="Agregar Pedido" size="lg">
             <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Selector de proveedor */}
+                {/* Proveedor */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Proveedor
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Proveedor *
                     </label>
-                    <select
-                        value={formData.proveedorId}
+                    <input
+                        type="text"
+                        value={formData.proveedor}
                         onChange={(e) =>
-                            setFormData((prev) => ({
-                                ...prev,
-                                proveedorId: e.target.value,
-                                razonSocial:
-                                    proveedores.find((p) => p.id === e.target.value)?.nombre || "",
-                            }))
+                            setFormData((prev) => ({ ...prev, proveedor: e.target.value }))
                         }
-                        className="w-full border border-gray-300 rounded-md px-3 py-2"
+                        placeholder="Nombre del proveedor"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
                         required
-                    >
-                        <option value="">Selecciona proveedor</option>
-                        {proveedores.map((prov) => (
-                            <option key={prov.id} value={prov.id}>
-                                {prov.razon_social}
-                            </option>
-                        ))}
-                    </select>
+                    />
                 </div>
 
-                {/* Selector de sucursal */}
+                {/* Folio Factura */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Sucursal
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Folio factura *
+                    </label>
+                    <input
+                        type="text"
+                        value={formData.folio_factura}
+                        onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, folio_factura: e.target.value }))
+                        }
+                        placeholder="Número de folio"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        required
+                    />
+                </div>
+
+                {/* Monto Total */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Monto total *
+                    </label>
+                    <input
+                        type="number"
+                        value={formData.monto_total}
+                        onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, monto_total: e.target.value }))
+                        }
+                        placeholder="0"
+                        min="0"
+                        step="0.01"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        required
+                    />
+                </div>
+
+                {/* Sucursal */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Sucursal de captura *
                     </label>
                     <select
-                        value={formData.sucursalId}
+                        value={formData.sucursal_captura}
                         onChange={(e) =>
                             setFormData((prev) => ({
                                 ...prev,
-                                sucursalId: e.target.value,
+                                sucursal_captura: e.target.value,
                             }))
                         }
-                        className="w-full border border-gray-300 rounded-md px-3 py-2"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
                         required
                     >
-                        <option value="">Selecciona sucursal</option>
-                        {sucursales.map((s) => (
+                        <option value="">Seleccionar sucursal</option>
+                        {sucursales?.map((s) => (
                             <option key={s.id} value={s.id}>
                                 {s.nombre}
                             </option>
@@ -167,79 +181,89 @@ export function AgregarPedidoModal({
                     </select>
                 </div>
 
-                {/* Buscador productos */}
-                <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Buscar producto
+                {/* Productos */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Productos
                     </label>
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <div className="flex space-x-2">
                         <input
                             type="text"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="Buscar productos..."
-                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md"
+                            value={nuevoProducto.nombre}
+                            onChange={(e) =>
+                                setNuevoProducto((prev) => ({ ...prev, nombre: e.target.value }))
+                            }
+                            placeholder="Nombre del producto"
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
                         />
+                        <input
+                            type="number"
+                            value={nuevoProducto.cantidad}
+                            onChange={(e) =>
+                                setNuevoProducto((prev) => ({
+                                    ...prev,
+                                    cantidad: Number(e.target.value),
+                                }))
+                            }
+                            min={1}
+                            className="w-24 px-3 py-2 border border-gray-300 rounded-md"
+                        />
+                        <button
+                            type="button"
+                            onClick={handleAgregarProducto}
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                        >
+                            Agregar
+                        </button>
                     </div>
-                    {searchTerm && filteredProductos.length > 0 && (
-                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-y-auto">
-                            {filteredProductos.slice(0, 5).map((producto) => (
-                                <button
-                                    key={producto.id}
-                                    type="button"
-                                    onClick={() => handleProductoSelect(producto)}
-                                    className="w-full text-left px-3 py-2 hover:bg-gray-100 text-sm"
-                                >
-                                    <div className="font-medium">{producto.nombre}</div>
-                                    <div className="text-gray-500 text-xs">
-                                        SKU: {producto.codigo || "N/A"} - Precio: $
-                                        {producto.precio?.toLocaleString("es-CL")}
-                                    </div>
-                                </button>
+
+                    {/* Lista de productos agregados */}
+                    {formData.productos.length > 0 && (
+                        <ul className="mt-2 space-y-1 text-sm text-gray-700">
+                            {formData.productos.map((p, i) => (
+                                <li key={i} className="flex justify-between">
+                                    <span>
+                                        {p.nombre} (x{p.cantidad})
+                                    </span>
+                                </li>
                             ))}
-                        </div>
+                        </ul>
                     )}
                 </div>
 
-                {/* Productos seleccionados */}
-                {formData.productos_seleccionados.length > 0 && (
-                    <div className="space-y-3">
-                        {formData.productos_seleccionados.map((producto) => (
-                            <div
-                                key={producto.id}
-                                className="bg-gray-50 p-3 rounded-lg text-sm space-y-1"
-                            >
-                                <div className="flex justify-between items-center">
-                                    <div>
-                                        <div className="font-medium">{producto.nombre}</div>
-                                        <div className="text-gray-500 text-xs">
-                                            SKU: {producto.codigo || "N/A"}
-                                        </div>
-                                        <div className="text-xs">
-                                            Precio: ${(producto.precio * (producto.cantidad || 1))?.toLocaleString("es-CL")}
-                                        </div>
-                                    </div>
-                                    <input
-                                        type="number"
-                                        min={1}
-                                        value={producto.cantidad}
-                                        onChange={(e) =>
-                                            handleCantidadChange(producto.id, Number(e.target.value))
-                                        }
-                                        className="w-16 border rounded-md text-center"
-                                    />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-                <div className="flex justify-end">
+                {/* Archivo */}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Archivo de respaldo (PNG, JPG, JPEG, PDF)
+                    </label>
+                    <input
+                        type="file"
+                        accept=".png,.jpg,.jpeg,.pdf"
+                        onChange={handleFileUpload}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                    {formData.archivo_respaldo && (
+                        <p className="text-xs text-green-600 mt-1">
+                            ✓ Archivo seleccionado: {formData.archivo_respaldo.name}
+                        </p>
+                    )}
+                </div>
+
+                {/* Botones */}
+                <div className="flex justify-end space-x-3">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                    >
+                        Cancelar
+                    </button>
                     <button
                         type="submit"
-                        className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                        disabled={inserting}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                     >
-                        Guardar Pedido
+                        {inserting ? "Guardando..." : "Guardar pedido"}
                     </button>
                 </div>
             </form>

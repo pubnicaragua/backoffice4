@@ -171,7 +171,6 @@ export function OpcionesCaja() {
         <h3 className="font-medium text-gray-900">Tipo de moneda</h3>
         <div className="space-y-3">
           {[
-            { key: 'usd', label: 'USD' },
             { key: 'clp', label: 'CLP' },
           ].map(option => (
             <label key={option.key} className="flex items-center space-x-3">

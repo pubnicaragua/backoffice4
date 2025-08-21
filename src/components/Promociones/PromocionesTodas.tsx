@@ -157,7 +157,7 @@ export function PromocionesTodas() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-medium text-gray-900">
-          Promociones de todas las tiendas
+          Promociones
         </h2>
       </div>
 

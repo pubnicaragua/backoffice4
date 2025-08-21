@@ -154,19 +154,18 @@ export function RecepcionPedidos() {
     return <div className="text-center py-4">Cargando pedidos...</div>;
   }
 
-  if (showDetalle) {
-    const selectedProveedor = proveedores.find((proveedor) => proveedor.nombre === selectedPedido.proovedor)
+  // if (showDetalle) {
+  //   const selectedProveedor = proveedores.find((proveedor) => proveedor.nombre === selectedPedido.proovedor)
 
-    return (
-      <DetallePedido
-        productos={productos}
-        onBack={() => setShowDetalle(false)}
-        pedido={selectedPedido}
-        proveedor={selectedProveedor}
-      />
-    );
-  }
-
+  //   return (
+  //     <DetallePedido
+  //       productos={productos}
+  //       onBack={() => setShowDetalle(false)}
+  //       pedido={selectedPedido}
+  //       proveedor={selectedProveedor}
+  //     />
+  //   );
+  // }
 
   const refresh = () => {
     refetch()
@@ -369,7 +368,13 @@ export function RecepcionPedidos() {
         </div>
       </Modal>
 
-      <AgregarPedidoModal refresh={refresh} isOpen={showAgregarModal} onClose={() => setShowAgregarModal(false)} productos={productos} proveedores={proveedores} empresaId={empresaId!} sucursales={sucursales} />
+      <AgregarPedidoModal
+        refresh={refresh}
+        isOpen={showAgregarModal}
+        onClose={() => setShowAgregarModal(false)}
+        empresaId={empresaId!}
+        sucursales={sucursales}
+      />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { Modal } from '../Common/Modal';
 import { useSupabaseData, useSupabaseInsert } from '../../hooks/useSupabaseData';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import toast from 'react-hot-toast';
+import { ToastContainer, toast } from 'react-toastify';
 
 interface ActualizarInventarioProps {
   isOpen: boolean;
@@ -20,6 +20,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
   const [xmlFiles, setXmlFiles] = useState<Array<{ id: string, name: string, products: any[] }>>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const { user, empresaId } = useAuth()
+  const [foliosFacturas, setFoliosFacturas] = useState<Array<{ folio: string, fileName: string }>>([])
 
   const { insert } = useSupabaseInsert('inventario');
   const { data: sucursales } = useSupabaseData<any>('sucursales', '*', empresaId ? { empresa_id: empresaId } : undefined);
@@ -117,6 +118,10 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
     setXmlFiles([]); // Clear XML files for non-XML uploads
     try {
       const processedProducts = await processFileContent(file);
+      if (processedProducts.length === 0) {
+        setFile(null)
+        return
+      }
       setProductos(processedProducts);
     } catch (error) {
       console.error('❌ ERROR PROCESANDO ARCHIVO:', error);
@@ -126,39 +131,73 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
     }
   };
 
+  const checkFacturaEnBD = async (folio: string) => {
+    const { data: existingFolio, error: folioError } = await supabase
+      .from('facturas_pedidos')
+      .select('*')
+      .eq('folio', folio)
+      .eq('sucursal_id', sucursalDestino)
+      .maybeSingle();
+
+    if (folioError) {
+      console.error("Error en la consulta:", folioError);
+      return false;
+    }
+
+    return !!existingFolio;
+  }
+
+
   const processFileContent = async (file: File): Promise<any[]> => {
     try {
       if (file.name.endsWith('.xml')) {
-        console.log('📄 INVENTARIO: Procesando XML SII BOLETA');
+        console.log('📄 INVENTARIO: Procesando XML SII FACTURA/BOLETA');
 
         const text = await file.text();
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(text, 'text/xml');
 
-        // Seleccionar los nodos <Detalle> del XML del SII
-        const detalles = xmlDoc.getElementsByTagName('Detalle');
+        const NS = "http://www.sii.cl/SiiDte";
+
+        const encabezados = xmlDoc.getElementsByTagNameNS(NS, "Encabezado")
+
+        const folioProcesado = Array.from(encabezados).map(header => {
+          const folio = header.getElementsByTagNameNS(NS, "Folio")[0]?.textContent || null;
+          return {
+            folio
+          }
+        })
+
+        // Setear el folio 
+        setFoliosFacturas(prev => [...prev, {
+          folio: folioProcesado[0].folio!,
+          fileName: file.name
+        }]);
+        // Procesar los productos
+        const detalles = xmlDoc.getElementsByTagNameNS(NS, "Detalle");
 
         const processedProducts = Array.from(detalles).map(det => {
-          const nombre = det.getElementsByTagName('NmbItem')[0]?.textContent || '';
-          const descripcion = det.getElementsByTagName('DscItem')[0]?.textContent || '';
-          const cantidad = parseInt(det.getElementsByTagName('QtyItem')[0]?.textContent || '0');
-          const costoConIva = parseFloat(det.getElementsByTagName('PrcItem')[0]?.textContent || '0');
-          const codigo = det.getElementsByTagName('VlrCodigo')[0]?.textContent || '';
+          const nombre = det.getElementsByTagNameNS(NS, 'NmbItem')[0]?.textContent || '';
+          const descripcion = det.getElementsByTagNameNS(NS, 'DscItem')[0]?.textContent || '';
+          const cantidad = parseInt(det.getElementsByTagNameNS(NS, 'QtyItem')[0]?.textContent || '0');
+          const costo = parseFloat(det.getElementsByTagNameNS(NS, 'PrcItem')[0]?.textContent || '0');
+          const codigo = det.getElementsByTagNameNS(NS, 'VlrCodigo')[0]?.textContent || '';
 
-          // Si tienes una lista de categorías y quieres mapear por nombre
           const categoriaEncontrada = findClosestCategory(nombre, categorias || []);
 
           return {
             nombre,
-            codigo,
-            cantidad,
-            costo: costoConIva,
             descripcion,
-            categoria: categoriaEncontrada ? categoriaEncontrada.id : null
+            cantidad,
+            costo,
+            sku: "",
+            precio: null,
+            codigo,
+            categoria: categoriaEncontrada ? categoriaEncontrada.id : null,
+            folio: folioProcesado[0].folio!
           };
         });
 
-        console.log('✅ INVENTARIO: XML procesado', processedProducts.length, 'productos');
         return processedProducts;
       } else if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
         console.log('📊 INVENTARIO: Procesando CSV');
@@ -175,7 +214,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
           return {
             nombre: values[0] || 'Producto',
             cantidad: parseInt(values[1]) || 0,
-            costo: Math.round(costoBase * 1.19), // Costo con IVA
+            costo: Math.round(costoBase * 1.19),
             descripcion: `Costo con IVA incluido`,
             categoria: categoriaEncontrada ? categoriaEncontrada.id : null
           };
@@ -230,9 +269,31 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
   const handleConfirm = async () => {
     try {
       setLoading(true);
-      console.log(productos);
+      // Verificar folios duplicados  
+      const foliosValidos: string[] = [];
+      const foliosDuplicados = [];
 
-      for (const producto of productos) {
+      for (const folioInfo of foliosFacturas) {
+        const existeFactura = await checkFacturaEnBD(folioInfo.folio);
+        if (existeFactura) {
+          foliosDuplicados.push(folioInfo.folio);
+          toast.error(`⚠️ La factura con folio ${folioInfo.folio} ya fue registrada. Se omite.`);
+        } else {
+          foliosValidos.push(folioInfo.folio);
+        }
+      }
+
+      // Filtrar productos solo de folios válidos  
+      const productosValidos = productos.filter(producto =>
+        foliosValidos.includes(producto.folio)
+      );
+
+      if (productosValidos.length === 0) {
+        toast.error('No hay productos válidos para procesar');
+        return;
+      }
+
+      for (const producto of productosValidos) {
         try {
           console.log('📦 INVENTARIO: Procesando producto', producto.nombre);
 
@@ -277,7 +338,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
                 stock: nuevoStock,
                 descripcion: descripcionFinal,
                 costo: producto.costo,
-                precio: Math.round(producto.costo * 1.3),
+                precio: "",
               })
               .eq('id', existingProduct.id);
 
@@ -307,12 +368,10 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
               .insert({
                 empresa_id: empresaId,
                 sucursal_id: sucursalDestino,
-                codigo: `PROD-${Date.now()}-${Math.random()
-                  .toString(36)
-                  .substr(2, 9)}`,
+                codigo: "",
                 nombre: producto.nombre,
                 descripcion: descripcionFinal,
-                precio: Math.round(producto.costo * 1.3),
+                precio: "",
                 categoria_id: producto.categoria,
                 costo: producto.costo,
                 stock: cantidadFinal,
@@ -347,6 +406,22 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
           console.error('❌ INVENTARIO: Error procesando producto', producto.nombre, productError);
           toast.error(`Error procesando producto: ${producto.nombre}`);
           continue;
+        }
+      }
+
+      // Insertar solo folios válidos  
+      for (const folio of foliosValidos) {
+        const { data: facturaInsert, error: facturaError } = await supabase
+          .from("facturas_pedidos")
+          .insert({
+            folio: folio,
+            sucursal_id: sucursalDestino
+          })
+          .select()
+          .single();
+
+        if (facturaError) {
+          console.error("❌ Error insertando factura:", facturaError.message);
         }
       }
 
@@ -456,8 +531,10 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
           <div>
             <h4 className="font-medium text-gray-900 mb-2">
               Productos encontrados ({productos.length})
-              {productos.some(p => p.costo) && (
-                <span className="text-sm text-green-600 ml-2">✓ IVA 19% aplicado</span>
+              {foliosFacturas.length > 0 && (
+                <span className="text-sm text-green-600 ml-2">
+                  Folios: {foliosFacturas.map(f => f.folio).join(', ')}
+                </span>
               )}
             </h4>
 
@@ -485,15 +562,12 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
               <span>Producto</span>
               <span>Descripción del Producto</span>
               <span>Cantidad</span>
-              <span>Costo con IVA</span>
+              <span>Costo</span>
               <span>Categoría</span>
             </div>
 
             <div className="space-y-3 max-h-60 overflow-y-auto">
               {productos.map((producto, index) => {
-                // Obtener categoría predeterminada
-                const categoriaPredeterminada = findClosestCategory(producto.categoria || '', categorias || []);
-
                 return (
                   <div key={index} className="grid grid-cols-5 gap-4 text-sm items-center">
                     {/* Nombre */}
@@ -510,7 +584,8 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
                             ...prev[producto.nombre],
                             selected: true,
                             cantidad: prev[producto.nombre]?.cantidad || producto.cantidad,
-                            descripcion: e.target.value
+                            descripcion: e.target.value,
+                            costo: producto.costo // ✅ mantener el costo original
                           }
                         }));
                       }}
@@ -529,14 +604,15 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
                             ...prev[producto.nombre],
                             selected: true,
                             cantidad: parseInt(e.target.value) || 0,
-                            descripcion: prev[producto.nombre]?.descripcion || producto.descripcion
+                            descripcion: prev[producto.nombre]?.descripcion || producto.descripcion,
+                            costo: producto.costo // ✅ mantener el costo original
                           }
                         }));
                       }}
                       className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                     />
 
-                    {/* Costo */}
+                    {/* Costo (solo mostrar, no editar) */}
                     <span className="text-gray-600 text-xs">
                       ${producto.costo?.toLocaleString('es-CL')}
                     </span>
@@ -549,7 +625,8 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
                           ...prev,
                           [producto.nombre]: {
                             ...prev[producto.nombre],
-                            categoria: e.target.value
+                            categoria: e.target.value,
+                            costo: producto.costo // ✅ aseguramos que siempre se mantenga
                           }
                         }));
                       }}
@@ -565,6 +642,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
                 )
               })}
             </div>
+
 
             {/* Paginación para productos */}
             <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
