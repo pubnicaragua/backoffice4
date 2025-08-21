@@ -229,48 +229,106 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
 
   const handleConfirm = async () => {
     try {
-      // 1. Se guarda automáticamente en Supabase
-      // 2. Crear productos en la tabla productos
-      setLoading(true)
-      console.log(productos)
+      setLoading(true);
+      console.log(productos);
+
       for (const producto of productos) {
         try {
-          console.log('📦 INVENTARIO: Creando producto', producto.nombre);
+          console.log('📦 INVENTARIO: Procesando producto', producto.nombre);
 
-          const descripcionFinal = selectedProducts[producto.nombre]?.descripcion || producto.descripcion || 'Descripción del producto';
-          const cantidadFinal = selectedProducts[producto.nombre]?.cantidad || producto.cantidad || 1;
+          const descripcionFinal =
+            selectedProducts[producto.nombre]?.descripcion ||
+            producto.descripcion ||
+            'Descripción del producto';
 
-          // Crear producto en tabla productos
-          const { data: newProduct, error } = await supabase
+          const cantidadFinal =
+            selectedProducts[producto.nombre]?.cantidad ||
+            producto.cantidad ||
+            1;
+
+          // 1. Buscar si el producto ya existe
+          const { data: existingProduct, error: findError } = await supabase
             .from('productos')
-            .insert({
-              empresa_id: empresaId,
-              sucursal_id: sucursalDestino,
-              codigo: `PROD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              nombre: producto.nombre,
-              descripcion: descripcionFinal,
-              precio: Math.round(producto.costo * 1.3), // Precio = costo + 30% margen
-              categoria_id: producto.categoria,
-              costo: producto.costo,
-              stock: cantidadFinal,
-              stock_minimo: 0,
-              destacado: false,
-              activo: true,
-              tipo: 'producto',
-              unidad: 'UN'
-            })
-            .select()
+            .select('*')
+            .eq('empresa_id', empresaId)
+            .eq('sucursal_id', sucursalDestino)
+            .eq('nombre', producto.nombre)
             .single();
 
-          if (error) {
-            console.error('❌ INVENTARIO: Error creando producto', producto.nombre, error);
-            throw error;
-          }
+          if (existingProduct) {
+            console.log('🔎 INVENTARIO: Producto ya existe', existingProduct.nombre);
 
-          if (newProduct) {
-            console.log('✅ INVENTARIO: Producto creado en BD', newProduct.nombre);
-            // Registrar movimiento de inventario
-            await insert({
+            // 2. Obtener último stock_final de inventario
+            const { data: lastMov } = await supabase
+              .from('inventario')
+              .select('stock_final')
+              .eq('producto_id', existingProduct.id)
+              .order('fecha', { ascending: false })
+              .limit(1)
+              .single();
+
+            const stockAnterior = lastMov?.stock_final || existingProduct.stock || 0;
+            const nuevoStock = stockAnterior + cantidadFinal;
+
+            // 3. Actualizar stock del producto
+            const { error: updateError } = await supabase
+              .from('productos')
+              .update({
+                stock: nuevoStock,
+                descripcion: descripcionFinal,
+                costo: producto.costo,
+                precio: Math.round(producto.costo * 1.3),
+              })
+              .eq('id', existingProduct.id);
+
+            if (updateError) throw updateError;
+
+            // 4. Insertar movimiento de inventario
+            await supabase.from('inventario').insert({
+              empresa_id: empresaId,
+              sucursal_id: sucursalDestino,
+              producto_id: existingProduct.id,
+              movimiento: 'entrada',
+              cantidad: cantidadFinal,
+              stock_anterior: stockAnterior,
+              stock_final: nuevoStock,
+              categoria_id: existingProduct.categoria_id,
+              referencia: 'Actualización masiva XML/CSV',
+              usuario_id: user?.id,
+            });
+
+            console.log('✅ INVENTARIO: Stock actualizado para', existingProduct.nombre);
+          } else {
+            console.log('➕ INVENTARIO: Creando producto nuevo', producto.nombre);
+
+            // 5. Insertar nuevo producto
+            const { data: newProduct, error } = await supabase
+              .from('productos')
+              .insert({
+                empresa_id: empresaId,
+                sucursal_id: sucursalDestino,
+                codigo: `PROD-${Date.now()}-${Math.random()
+                  .toString(36)
+                  .substr(2, 9)}`,
+                nombre: producto.nombre,
+                descripcion: descripcionFinal,
+                precio: Math.round(producto.costo * 1.3),
+                categoria_id: producto.categoria,
+                costo: producto.costo,
+                stock: cantidadFinal,
+                stock_minimo: 0,
+                destacado: false,
+                activo: true,
+                tipo: 'producto',
+                unidad: 'UN',
+              })
+              .select()
+              .single();
+
+            if (error) throw error;
+
+            // 6. Insertar movimiento inventario inicial
+            await supabase.from('inventario').insert({
               empresa_id: empresaId,
               sucursal_id: sucursalDestino,
               producto_id: newProduct.id,
@@ -280,38 +338,31 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
               stock_final: cantidadFinal,
               categoria_id: newProduct.categoria,
               referencia: 'Actualización masiva XML/CSV',
-              usuario_id: user?.id
+              usuario_id: user?.id,
             });
 
-            console.log('✅ INVENTARIO: Producto sincronizado con POS', {
-              nombre: producto.nombre,
-              stock: cantidadFinal,
-              precio: producto.precio || producto.costo * 1.5,
-              id: newProduct.id
-            });
+            console.log('✅ INVENTARIO: Producto creado en BD', newProduct.nombre);
           }
         } catch (productError) {
           console.error('❌ INVENTARIO: Error procesando producto', producto.nombre, productError);
-          toast.error('Error procesando producto', producto.nombre)
+          toast.error(`Error procesando producto: ${producto.nombre}`);
           continue;
         }
       }
 
-      // 3. Sincronizar con POS
-      console.log('🔄 INVENTARIO: Sincronizando con terminales POS...');
-
+      console.log('🔄 INVENTARIO: Sincronización masiva completada');
       onClose();
-      setXmlFiles([]); // Clear XML files
-      setProductos([]); // Clear products list
-      setSelectedProducts({}); // Clear selections
-
+      setXmlFiles([]);
+      setProductos([]);
+      setSelectedProducts({});
     } catch (generalError) {
       console.error('❌ INVENTARIO: Error general en confirmación masiva', generalError);
       toast.error('Error al procesar los productos');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Actualizar inventario masivo" size="lg">
       <div className="space-y-6">

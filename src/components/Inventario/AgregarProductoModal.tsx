@@ -34,9 +34,8 @@ export function AgregarProductoModal({
     sucursal: "", // agregada para seleccionar sucursal
   });
   const { insert, loading } = useSupabaseInsert("productos");
-  const { empresaId } = useAuth()
+  const { empresaId, user } = useAuth()
 
-  console.log(empresaId)
   const { update, loading: updating } = useSupabaseUpdate("productos");
 
   const { data: categorias } = useSupabaseData<any>("categorias", '*')
@@ -71,7 +70,7 @@ export function AgregarProductoModal({
   useEffect(() => {
     if (selectedProduct) {
       setFormData({
-        categoria_id: selectedProduct.categoria || '',
+        categoria_id: selectedProduct.categoria_id || '',
         producto: selectedProduct.nombre || "",
         descripcion: selectedProduct.descripcion || "",
         se_vende_por: selectedProduct.unidad === "KG" ? "kilogramo" : "unidad",
@@ -134,7 +133,6 @@ export function AgregarProductoModal({
       return;
     }
 
-    // Validar sucursal seleccionada
     if (!formData.sucursal) {
       alert("Por favor, seleccione una sucursal.");
       return;
@@ -151,37 +149,92 @@ export function AgregarProductoModal({
 
     let success;
 
-    console.log(formData)
+    console.log(formData);
 
     if (selectedProduct) {
-      // Update existing product
-      success = await update(selectedProduct.id, {
-        codigo: formData.sku || formData.codigo_unitario,
-        nombre: formData.producto,
-        descripcion: formData.descripcion,
-        precio: precioParsed,
-        costo: costoParsed,
-        unidad: formData.se_vende_por === "unidad" ? "UN" : "KG",
-        stock: stockParsed,
-        empresa_id: empresaId,
-        sucursal_id: formData.sucursal,
-        categoria_id: formData.categoria_id
-      });
+      const { error } = await supabase
+        .from("productos")
+        .update({
+          codigo: formData.sku || formData.codigo_unitario,
+          nombre: formData.producto,
+          descripcion: formData.descripcion,
+          precio: precioParsed,
+          costo: costoParsed,
+          unidad: formData.se_vende_por === "unidad" ? "UN" : "KG",
+          stock: stockParsed,
+          empresa_id: empresaId,
+          sucursal_id: formData.sucursal,
+          categoria_id: formData.categoria_id,
+        })
+        .eq("id", selectedProduct.id);
+
+      success = !error;
     } else {
-      // Create new product
-      success = await insert({
-        codigo: formData.sku,
-        nombre: formData.producto,
-        descripcion: formData.descripcion,
-        precio: precioParsed,
-        costo: costoParsed,
-        tipo: "producto",
-        unidad: formData.se_vende_por === "unidad" ? "UN" : "KG",
-        stock: stockParsed,
-        empresa_id: empresaId,
-        sucursal_id: formData.sucursal,
-        categoria_id: formData.categoria_id,
-      });
+      // 1. Verificar si ya existe el producto
+      const { data: existingProduct, error: findError } = await supabase
+        .from("productos")
+        .select("*")
+        .eq("codigo", formData.sku)
+        .eq("empresa_id", empresaId)
+        .eq("sucursal_id", formData.sucursal)
+        .single();
+
+      if (existingProduct) {
+        // 2. Buscar el último registro de inventario de ese producto
+        const { data: lastMov, error: invError } = await supabase
+          .from("inventario")
+          .select("stock_final")
+          .eq("producto_id", existingProduct.id)
+          .order("fecha", { ascending: false })
+          .limit(1)
+          .single();
+
+        const stockAnterior = lastMov?.stock_final || 0;
+        const nuevoStock = stockAnterior + stockParsed;
+
+        // 3. Actualizar el producto con el nuevo stock
+        const { error: updateError } = await supabase
+          .from("productos")
+          .update({
+            stock: nuevoStock,
+          })
+          .eq("id", existingProduct.id);
+
+        if (!updateError) {
+          // 4. Insertar un movimiento en inventario (tipo entrada)
+          await supabase.from("inventario").insert({
+            empresa_id: empresaId,
+            sucursal_id: formData.sucursal,
+            producto_id: existingProduct.id,
+            fecha: new Date().toISOString(),
+            movimiento: "entrada",
+            cantidad: stockParsed,
+            stock_final: nuevoStock,
+            stock_anterior: stockAnterior,
+            referencia: "Ingreso adicional de producto",
+            usuario_id: user?.id,
+          });
+        }
+
+        success = !updateError;
+      } else {
+        // 5. Si no existe → crear producto normalmente
+        const { error } = await supabase.from("productos").insert({
+          codigo: formData.sku,
+          nombre: formData.producto,
+          descripcion: formData.descripcion,
+          precio: precioParsed,
+          costo: costoParsed,
+          tipo: "producto",
+          unidad: formData.se_vende_por === "unidad" ? "UN" : "KG",
+          stock: stockParsed,
+          empresa_id: empresaId,
+          sucursal_id: formData.sucursal,
+          categoria_id: formData.categoria_id,
+        });
+
+        success = !error;
+      }
     }
 
     if (success) {
