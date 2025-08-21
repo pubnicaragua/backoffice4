@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Filter } from "lucide-react";
 import { useSupabaseData } from "../../hooks/useSupabaseData";
 import { FilterModal } from "../Common/FilterModal";
@@ -7,6 +7,7 @@ import { useAuth } from "../../contexts/AuthContext";
 export function MovimientosEfectivo() {
   const { empresaId } = useAuth();
   const [showFilters, setShowFilters] = useState(false);
+  const [cajasSucursal, setCajasSucursal] = useState<any[]>([]);
   const [filters, setFilters] = useState({
     sucursal: "",
     tipo: "",
@@ -32,7 +33,6 @@ export function MovimientosEfectivo() {
     empresaId ? { empresa_id: empresaId } : undefined
   );
 
-
   // Filtrar cajas por empresa
   const { data: cajas } = useSupabaseData<any>(
     "cajas",
@@ -40,7 +40,27 @@ export function MovimientosEfectivo() {
     empresaId ? { empresa_id: empresaId } : undefined
   );
 
-  console.log(cajas)
+  useEffect(() => {
+    filterCajas();
+  }, [filters.sucursal, cajas]);
+
+  const filterCajas = () => {
+    if (!filters.sucursal) {
+      setCajasSucursal(cajas || []);
+    } else {
+      const cajasFiltradas = (cajas || []).filter((caja) => caja.sucursal_id === filters.sucursal);
+      setCajasSucursal(cajasFiltradas);
+    }
+  }
+
+  const handleSucursalChange = (e) => {
+    setFilters((prev) => ({
+      ...prev,
+      sucursal: e.target.value,
+      caja: [] // Limpiar cajas seleccionadas  
+    }));
+  }
+
   // Validación de empresa
   if (!empresaId) {
     return (
@@ -182,9 +202,7 @@ export function MovimientosEfectivo() {
             </label>
             <select
               value={filters.sucursal}
-              onChange={(e) =>
-                setFilters((prev) => ({ ...prev, sucursal: e.target.value }))
-              }
+              onChange={handleSucursalChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Todas las sucursales</option>
@@ -197,7 +215,7 @@ export function MovimientosEfectivo() {
           </div>
 
           <div className="space-y-2">
-            {cajas?.map((caja) => (
+            {cajasSucursal?.map((caja) => (
               <label key={caja.id} className="flex items-center space-x-2">
                 <input
                   type="checkbox"
