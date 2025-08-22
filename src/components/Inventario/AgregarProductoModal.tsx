@@ -26,19 +26,20 @@ export function AgregarProductoModal({
     descripcion: "",
     se_vende_por: "unidad",
     codigo_unitario: "",
+    margen: "",
     precio_unitario: "", // Precio de venta
-    categoria_id: '',
+    categoria_id: "",
     sku: "",
     agregar_stock: "",
     costo: "",
     sucursal: "", // agregada para seleccionar sucursal
   });
   const { insert, loading } = useSupabaseInsert("productos");
-  const { empresaId, user } = useAuth()
+  const { empresaId, user } = useAuth();
 
   const { update, loading: updating } = useSupabaseUpdate("productos");
 
-  const { data: categorias } = useSupabaseData<any>("categorias", '*')
+  const { data: categorias } = useSupabaseData<any>("categorias", "*");
 
   const [sucursales, setSucursales] = useState<any[]>([]);
   const [loadingSucursales, setLoadingSucursales] = useState(false);
@@ -70,7 +71,7 @@ export function AgregarProductoModal({
   useEffect(() => {
     if (selectedProduct) {
       setFormData({
-        categoria_id: selectedProduct.categoria_id || '',
+        categoria_id: selectedProduct.categoria_id || "",
         producto: selectedProduct.nombre || "",
         descripcion: selectedProduct.descripcion || "",
         se_vende_por: selectedProduct.unidad === "KG" ? "kilogramo" : "unidad",
@@ -100,7 +101,7 @@ export function AgregarProductoModal({
         precio_unitario: "",
         sku: "",
         agregar_stock: "",
-        categoria_id: '',
+        categoria_id: "",
         costo: "",
         sucursal: "",
       });
@@ -249,6 +250,7 @@ export function AgregarProductoModal({
         costo: "",
         sucursal: "",
         categoria_id: "",
+        margen: "",
       });
 
       if (onSuccess) {
@@ -258,6 +260,20 @@ export function AgregarProductoModal({
       }
     }
   };
+
+  useEffect(() => {
+    if (selectedProduct) {
+      const costo = parseFloat(formData.costo) || 0;
+      const precio = parseFloat(formData.precio_unitario) || 0;
+
+      const margen =
+        costo && precio
+          ? Math.round(((precio - costo) / precio) * 100).toString()
+          : "";
+
+      setFormData((prev) => ({ ...prev, margen }));
+    }
+  }, [selectedProduct, formData.costo, formData.precio_unitario]);
 
   return (
     <Modal
@@ -382,11 +398,9 @@ export function AgregarProductoModal({
             name="sucursal-select"
             value={formData.sucursal}
             onChange={(e) => {
-              console.log(e.target.value)
-              setFormData((prev) => ({ ...prev, sucursal: e.target.value }))
-
-            }
-            }
+              console.log(e.target.value);
+              setFormData((prev) => ({ ...prev, sucursal: e.target.value }));
+            }}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
             disabled={loadingSucursales}
@@ -404,6 +418,7 @@ export function AgregarProductoModal({
         </div>
 
         <div className="grid grid-cols-2 gap-4">
+          {/* Costo */}
           <div>
             <label
               htmlFor="costo-producto"
@@ -416,15 +431,27 @@ export function AgregarProductoModal({
               name="costo-producto"
               type="number"
               value={formData.costo}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, costo: e.target.value }))
-              }
+              onChange={(e) => {
+                const costo = parseFloat(e.target.value) || 0;
+                const precio = parseFloat(formData.precio_unitario) || 0;
+                const margen = costo
+                  ? (((precio - costo) / precio) * 100).toFixed(2)
+                  : 0;
+
+                setFormData((prev) => ({
+                  ...prev,
+                  costo: e.target.value,
+                  margen,
+                }));
+              }}
               placeholder="Costo del producto"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               min="0"
               step="any"
             />
           </div>
+
+          {/* Precio de venta */}
           <div>
             <label
               htmlFor="precio-unitario"
@@ -437,12 +464,19 @@ export function AgregarProductoModal({
               name="precio-unitario"
               type="number"
               value={formData.precio_unitario}
-              onChange={(e) =>
+              onChange={(e) => {
+                const precio = parseFloat(e.target.value) || 0;
+                const costo = parseFloat(formData.costo) || 0;
+                const margen = costo
+                  ? (((precio - costo) / precio) * 100).toFixed(2)
+                  : 0;
+
                 setFormData((prev) => ({
                   ...prev,
                   precio_unitario: e.target.value,
-                }))
-              }
+                  margen,
+                }));
+              }}
               placeholder="Precio de venta"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
@@ -454,11 +488,30 @@ export function AgregarProductoModal({
 
         <div>
           <label
+            htmlFor="margen"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Margen (%)
+          </label>
+          <input
+            id="margen"
+            name="margen"
+            type="number"
+            disabled
+            value={formData.margen || ""}
+            placeholder="Margen de ganancia (%)"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label
             htmlFor="stock-actual"
             className="block text-sm font-medium text-gray-700 mb-1"
           >
-            Agregar stock actual
-          </label>
+            {" "}
+            Agregar stock actual{" "}
+          </label>{" "}
           <input
             id="stock-actual"
             name="stock-actual"
@@ -474,7 +527,7 @@ export function AgregarProductoModal({
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             min="0"
             step="any"
-          />
+          />{" "}
         </div>
 
         <div>
@@ -483,7 +536,9 @@ export function AgregarProductoModal({
           </label>
           <select
             value={formData.categoria_id}
-            onChange={(e) => setFormData(prev => ({ ...prev, categoria_id: e.target.value }))}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, categoria_id: e.target.value }))
+            }
             id="filter-categoria"
             name="filter-categoria"
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -506,8 +561,8 @@ export function AgregarProductoModal({
             {loading || updating
               ? "Guardando..."
               : selectedProduct
-                ? "Actualizar producto"
-                : "Guardar producto"}
+              ? "Actualizar producto"
+              : "Guardar producto"}
           </button>
         </div>
       </form>
