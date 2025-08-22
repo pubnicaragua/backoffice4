@@ -3,6 +3,7 @@ import { Modal } from "../Common/Modal";
 import { supabase, supabaseAnonKey } from "../../lib/supabase";
 import { useAuth } from "../../contexts/AuthContext";
 import { toast } from "react-toastify";
+import { useSupabaseData } from "../../hooks/useSupabaseData";
 
 interface AgregarUsuarioModalProps {
   loading: boolean;
@@ -29,12 +30,23 @@ export function AgregarUsuarioModal({
     direccion: "",
     fecha_nacimiento: "",
     pass: "",
+    sucursal_id: "",
     rol: "empleado",
   });
   const [mensaje, setMensaje] = useState<{
     texto: string;
     tipo: "error" | "success" | null;
   }>({ texto: "", tipo: null });
+
+  const { data: sucursales } = useSupabaseData("sucursales", "*", empresaId ? { empresa_id: empresaId } : undefined)
+
+  const handleSucursalChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { value } = e.target
+    setFormData((prev) => ({
+      ...prev,
+      sucursal_id: value
+    }))
+  }
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -213,6 +225,32 @@ export function AgregarUsuarioModal({
           />
         </div>
 
+        <div>
+          <label
+            htmlFor="sucursal_id"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Selecciona una sucursal
+          </label>
+          <select
+            id="sucursal_id"
+            value={formData.sucursal_id || ""}
+            onChange={handleSucursalChange}
+            className="block w-full p-2 border border-gray-300 rounded-md shadow-sm 
+               focus:ring-blue-500 focus:border-blue-500 mt-1"
+            required
+          >
+            <option value="" disabled>
+              -- Seleccionar sucursal --
+            </option>
+            {sucursales?.map((sucursal) => (
+              <option key={sucursal.id} value={sucursal.id}>
+                {sucursal.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* Email */}
         <div>
           <label
@@ -266,24 +304,6 @@ export function AgregarUsuarioModal({
             value={formData.telefono}
             onChange={(e) => handleChange("telefono", e.target.value)}
             placeholder="+56912345678"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        {/* Dirección */}
-        <div>
-          <label
-            htmlFor="direccion-input"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Dirección
-          </label>
-          <input
-            id="direccion-input"
-            type="text"
-            value={formData.direccion}
-            onChange={(e) => handleChange("direccion", e.target.value)}
-            placeholder="Dirección del empleado"
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>

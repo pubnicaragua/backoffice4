@@ -222,7 +222,7 @@ export function GestionUsuarios() {
               <option value="n2">N°2</option>
             </select>
           </div>
-          <div>
+          {/* <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Fecha
             </label>
@@ -240,7 +240,7 @@ export function GestionUsuarios() {
               <option value="morning">Mañana</option>
               <option value="afternoon">Tarde</option>
             </select>
-          </div>
+          </div> */}
         </div>
       </FilterModal>
     </div>
