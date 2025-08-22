@@ -536,7 +536,7 @@ const GestionCaja: React.FC = () => {
       <Card className="mb-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h2 className="text-xl font-semibold">Abrir Nueva Caja</h2>
+            <h2 className="text-xl font-semibold">Otorgar Nueva Caja</h2>
           </div>
           <div className="flex gap-2 w-full md:w-auto flex-col md:flex-row">
             <select
@@ -556,7 +556,7 @@ const GestionCaja: React.FC = () => {
               onClick={handleAbrirModal}
             >
               <HiLockOpen className="mr-2 h-5 w-5" />
-              Abrir Caja
+              Otorgar Caja
             </Button>
             <Button
               color="success"
@@ -632,7 +632,7 @@ const GestionCaja: React.FC = () => {
       <Modal
         isOpen={state.mostrarModalApertura}
         onClose={() => updateState({ mostrarModalApertura: false })}
-        title="Abrir Caja"
+        title="Otorgar Caja"
         size="md"
       >
         <div className="space-y-4">
@@ -747,7 +747,7 @@ const GestionCaja: React.FC = () => {
                 Procesando...
               </>
             ) : (
-              "Confirmar Apertura"
+              "Confirmar"
             )}
           </Button>
         </div>
@@ -761,21 +761,7 @@ const GestionCaja: React.FC = () => {
         size="md"
       >
         <div className="space-y-4">
-          <div>
-            <Label htmlFor="saldoFinal">Saldo Final en Efectivo</Label>
-            <TextInput
-              id="saldoFinal"
-              type="number"
-              min="0"
-              step="0.01"
-              value={state.saldoFinal}
-              onChange={(e) => updateState({ saldoFinal: e.target.value })}
-              placeholder="0.00"
-              required
-              className="mt-1"
-              disabled={state.procesando}
-            />
-          </div>
+        
 
           <div>
             <Label htmlFor="observacionesCierre">
