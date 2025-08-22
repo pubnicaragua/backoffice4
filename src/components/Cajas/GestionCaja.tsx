@@ -106,6 +106,7 @@ const GestionCaja: React.FC = () => {
     crearCajaModal: false,
   };
   const { empresaId, user } = useAuth();
+  const [loading, setLoading] = useState<boolean>(true)
   const [state, setState] = useState<GestionCajaState>(initialState);
 
   const updateState = useCallback((updates: Partial<GestionCajaState>) => {
@@ -185,6 +186,7 @@ const GestionCaja: React.FC = () => {
     const { data, error } = await supabase
       .from("usuarios")
       .select("*")
+      .eq("empresa_id", empresaId)
       .eq("sucursal_id", sucursalId)
       .eq("rol", "empleado")
     if (error) {
@@ -223,6 +225,7 @@ const GestionCaja: React.FC = () => {
         tipoVueltoSeleccionado: "monto_efectivo",
         montoVuelto: "",
       });
+
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : "Error desconocido";
       showToast(`Error cargando datos: ${errMsg}`, "error");
@@ -232,7 +235,8 @@ const GestionCaja: React.FC = () => {
 
   useEffect(() => {
     cargarDatosIniciales();
-  }, [cargarDatosIniciales]);
+    updateState({ cargando: false })
+  }, [cargarDatosIniciales, state.cargando]);
 
   const handleAbrirModal = useCallback(() => {
     updateState({
@@ -312,10 +316,6 @@ const GestionCaja: React.FC = () => {
       showToast("Por favor selecciona una caja", "warning");
       return;
     }
-    if (!state.saldoInicial || parseFloat(state.saldoInicial) < 0) {
-      showToast("Por favor ingresa un saldo inicial válido", "warning");
-      return;
-    }
     if (!state.sucursalSeleccionadaId) {
       showToast("Por favor selecciona una sucursal", "warning");
       return;
@@ -336,6 +336,13 @@ const GestionCaja: React.FC = () => {
       );
       return;
     }
+    const empleadoOcupado = state.sesionesActivas.find(
+      (sesion) =>
+        sesion.usuario_id === state.empleadoSeleccionadoId);
+    if (empleadoOcupado) {
+      toast.error("Este empleado ya tiene una caja asignada")
+      return
+    }
     try {
       updateState({ procesando: true });
 
@@ -349,7 +356,7 @@ const GestionCaja: React.FC = () => {
             usuario_id: state.empleadoSeleccionadoId,
             sucursal_id: state.sucursalSeleccionadaId,
             estado: "abierta",
-            saldo_inicial: parseFloat(state.saldoInicial),
+            saldo_inicial: 0,
             observaciones: state.observaciones || null,
             abierta_en: now,
             creada_en: now,
@@ -407,12 +414,6 @@ const GestionCaja: React.FC = () => {
       showToast("Usuario no autenticado", "error");
       return;
     }
-    // Validar montoVuelto según tipo seleccionado
-    if (!state.montoVuelto || parseFloat(state.montoVuelto) < 0) {
-      showToast("Por favor ingresa un monto válido para el vuelto", "warning");
-      return;
-    }
-
     if (state.sesionSeleccionadaCerrar === null) {
       handleAbrirCaja()
       return
@@ -452,6 +453,7 @@ const GestionCaja: React.FC = () => {
         cajaSeleccionada: null,
         sesionSeleccionadaCerrar: null,
         procesando: false,
+        cargando: true,
         montoVuelto: "",
       });
     } catch (err) {
@@ -552,7 +554,6 @@ const GestionCaja: React.FC = () => {
             <Button
               color="success"
               onClick={handleAbrirModal}
-              disabled={!state.cajaSeleccionada || state.procesando}
             >
               <HiLockOpen className="mr-2 h-5 w-5" />
               Abrir Caja
@@ -560,7 +561,6 @@ const GestionCaja: React.FC = () => {
             <Button
               color="success"
               onClick={handleCrearCajaModal}
-              disabled={!state.cajaSeleccionada || state.procesando}
             >
               <HiOutlineCube className="mr-2 h-5 w-5" />
               Crear Caja
@@ -735,7 +735,6 @@ const GestionCaja: React.FC = () => {
             color="success"
             onClick={handleConfirmarApertura}
             disabled={
-              !state.saldoInicial ||
               !state.sucursalSeleccionadaId ||
               !state.cajaSeleccionada ||
               state.procesando
@@ -805,7 +804,7 @@ const GestionCaja: React.FC = () => {
               color="failure"
               onClick={handleConfirmarCierre}
               disabled={
-                !state.saldoFinal || !state.montoVuelto || state.procesando
+                !state.saldoFinal || state.procesando
               }
               className="flex items-center"
             >
@@ -823,7 +822,7 @@ const GestionCaja: React.FC = () => {
       </Modal>
 
       {/* Modal Crear Caja*/}
-      <CrearCajaModal isOpen={state.crearCajaModal} onClose={() => updateState({ crearCajaModal: !state.crearCajaModal })} empresaId={empresaId!} sucursales={state.sucursales} />
+      <CrearCajaModal isOpen={state.crearCajaModal} onClose={() => updateState({ crearCajaModal: !state.crearCajaModal, cargando: true })} empresaId={empresaId!} sucursales={state.sucursales} />
     </div>
   );
 };
