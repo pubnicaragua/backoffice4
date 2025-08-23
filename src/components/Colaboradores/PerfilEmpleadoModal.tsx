@@ -20,7 +20,11 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({
   const [showTareaModal, setShowTareaModal] = useState(false);
   const [showPermisoModal, setShowPermisoModal] = useState(false);
 
-  const { data: userDetails, loading: userLoading } = useSupabaseData<any>(
+  const {
+    data: userDetails,
+    loading: userLoading,
+    refetch: refetchUser,
+  } = useSupabaseData<any>(
     "usuarios",
     "*",
     selectedUser?.id ? { id: selectedUser.id } : null
@@ -37,7 +41,7 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({
   );
 
   const { data: allPermissions, loading: allPermissionsLoading } =
-    useSupabaseData<any>("permisos", "*", null);
+    useSupabaseData<any>("permisos", "*", { activo: true });
 
   const {
     data: userTasks,
@@ -211,13 +215,11 @@ export const PerfilEmpleadoModal: React.FC<PerfilEmpleadoModalProps> = ({
               </h3>
               <div className="flex space-x-3">
                 <button
-                  onClick={() => setShowPermisoModal(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  Editar permisos
-                </button>
-                <button
-                  onClick={() => setShowPermisoModal(true)}
+                  onClick={() => {
+                    setShowPermisoModal(true);
+                    refetchPermissions();
+                    refetchUser();
+                  }}
                   className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
                   Asignar permisos

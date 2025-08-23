@@ -9,10 +9,11 @@ export function useSupabaseData<T>(
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     fetchData();
-  }, [table, select, JSON.stringify(filters)]);
+  }, [table, select, JSON.stringify(filters), refreshTrigger]);
 
   const fetchData = async () => {
     try {
@@ -45,12 +46,11 @@ export function useSupabaseData<T>(
   };
 
   const refetch = () => {
-    fetchData();
+    setRefreshTrigger(prev => prev + 1);
   };
 
   return { data, loading, error, refetch };
 }
-
 export function useSupabaseInsert<T>(table: string) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
