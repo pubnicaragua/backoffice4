@@ -22,6 +22,7 @@ import { supabase } from "../../lib/supabase";
 import { Producto } from "../../types";
 import { Sucursal } from "../../types/cajas";
 import { ToastContainer, toast } from "react-toastify";
+import { useUserPermissions } from "../../hooks/usePermission";
 
 interface Categoria {
   id: string;
@@ -47,11 +48,12 @@ interface FilterState {
   sucursal: string;
   categoria: string;
   disponibilidad: string;
-  movimiento: string; // Nuevo filtro  
+  movimiento: string; // Nuevo filtro
 }
 
 export function ProductosTotales() {
-  const { empresaId } = useAuth();
+  const { empresaId, user } = useAuth();
+  const { hasPermission, PERMISOS } = useUserPermissions();
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [searchTerm, setSearchTerm] = useState("");
@@ -59,7 +61,7 @@ export function ProductosTotales() {
     sucursal: "",
     categoria: "",
     disponibilidad: "",
-    movimiento: "", // Nuevo filtro  
+    movimiento: "", // Nuevo filtro
   });
   const [showMermasModal, setShowMermasModal] = useState(false);
   const [showInventarioModal, setShowInventarioModal] = useState(false);
@@ -67,17 +69,16 @@ export function ProductosTotales() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Producto | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(
+    new Set()
+  );
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [inventarios, setInventarios] = useState<Inventario[]>([]);
   const [inventariosLoading, setInventariosLoading] = useState(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [ventaItems, setVentaItems] = useState<VentaItem[]>([]);
 
-  const {
-    data: productos = [],
-    refetch,
-  } = useSupabaseData<Producto>(
+  const { data: productos = [], refetch } = useSupabaseData<Producto>(
     "productos",
     "*",
     empresaId ? { empresa_id: empresaId } : undefined
@@ -89,9 +90,12 @@ export function ProductosTotales() {
     empresaId ? { empresa_id: empresaId } : undefined
   );
 
-  const { data: categorias = [] } = useSupabaseData<Categoria>("categorias", "*");
+  const { data: categorias = [] } = useSupabaseData<Categoria>(
+    "categorias",
+    "*"
+  );
 
-  // Cargar datos de ventas para calcular movimiento  
+  // Cargar datos de ventas para calcular movimiento
   useEffect(() => {
     async function cargarVentaItems() {
       if (!empresaId) return;
@@ -100,7 +104,10 @@ export function ProductosTotales() {
         .from("venta_items")
         .select("*, ventas!inner(empresa_id)")
         .eq("ventas.empresa_id", empresaId)
-        .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()); // Últimos 30 días  
+        .gte(
+          "created_at",
+          new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+        ); // Últimos 30 días
 
       if (!error && data) {
         setVentaItems(data);
@@ -163,17 +170,24 @@ export function ProductosTotales() {
     { key: "costo", label: "Costo" },
     { key: "precio", label: "Precio" },
     { key: "margen", label: "Margen" },
-    { key: "movimiento", label: "Movimiento" }, // Nueva columna  
+    { key: "movimiento", label: "Movimiento" }, // Nueva columna
     { key: "disponible", label: "Disponible" },
     { key: "acciones", label: "Acciones" },
   ];
 
-  // Función para calcular el movimiento de un producto  
-  const calcularMovimientoProducto = (productoId: string): { cantidad: number; tipo: string } => {
-    const ventasProducto = ventaItems.filter(item => item.producto_id === productoId);
-    const totalVendido = ventasProducto.reduce((sum, item) => sum + item.cantidad, 0);
+  // Función para calcular el movimiento de un producto
+  const calcularMovimientoProducto = (
+    productoId: string
+  ): { cantidad: number; tipo: string } => {
+    const ventasProducto = ventaItems.filter(
+      (item) => item.producto_id === productoId
+    );
+    const totalVendido = ventasProducto.reduce(
+      (sum, item) => sum + item.cantidad,
+      0
+    );
 
-    // Clasificar movimiento basado en ventas de los últimos 30 días  
+    // Clasificar movimiento basado en ventas de los últimos 30 días
     let tipo = "Sin movimiento";
     if (totalVendido >= 50) {
       tipo = "Mucho movimiento";
@@ -187,125 +201,153 @@ export function ProductosTotales() {
   };
 
   const getFilteredProducts = () => {
-    return inventarios
-      // Filtrar inventarios cuyo producto ya no existe  
-      .filter((inv) => productos.some((p) => p.id === inv.producto_id))
-      // Filtrar por categoría  
-      .filter((inv) => {
-        if (filters.categoria) {
+    return (
+      inventarios
+        // Filtrar inventarios cuyo producto ya no existe
+        .filter((inv) => productos.some((p) => p.id === inv.producto_id))
+        // Filtrar por categoría
+        .filter((inv) => {
+          if (filters.categoria) {
+            const producto = productos.find((p) => p.id === inv.producto_id);
+            return producto?.categoria_id === filters.categoria;
+          }
+          return true;
+        })
+        // Filtrar por si está activo o no
+        .filter((inv) => {
           const producto = productos.find((p) => p.id === inv.producto_id);
-          return producto?.categoria_id === filters.categoria;
-        }
-        return true;
-      })
-      // Filtrar por si está activo o no  
-      .filter((inv) => {
-        const producto = productos.find((p) => p.id === inv.producto_id);
-        return producto?.activo === true;
-      })
-      // Filtrar por sucursal si aplica  
-      .filter((inv) => {
-        if (filters.sucursal) {
-          return inv.sucursal_id === filters.sucursal;
-        }
-        return true;
-      })
-      // Filtrar por disponibilidad  
-      .filter((inv) => {
-        if (filters.disponibilidad === "disponibles") {
-          return inv.stock_final > 0;
-        }
-        if (filters.disponibilidad === "agotados") {
-          return inv.stock_final === 0;
-        }
-        return true;
-      })
-      // Filtrar por movimiento  
-      .filter((inv) => {
-        if (filters.movimiento) {
-          const movimiento = calcularMovimientoProducto(inv.producto_id);
-          if (filters.movimiento === "mucho" && movimiento.tipo !== "Mucho movimiento") return false;
-          if (filters.movimiento === "poco" && movimiento.tipo !== "Poco movimiento") return false;
-          if (filters.movimiento === "sin" && movimiento.tipo !== "Sin movimiento") return false;
-        }
-        return true;
-      })
-      // Mapear inventario + producto  
-      .map((inv) => {
-        const producto = productos.find((p) => p.id === inv.producto_id)!;
-        const margenPercent = Math.round(
-          (((producto.precio || 0) - (parseFloat(producto.costo) || 0)) /
-            (producto.precio || 1)) *
-          100
-        );
-        const movimiento = calcularMovimientoProducto(producto.id);
+          return producto?.activo === true;
+        })
+        // Filtrar por sucursal si aplica
+        .filter((inv) => {
+          if (filters.sucursal) {
+            return inv.sucursal_id === filters.sucursal;
+          }
+          return true;
+        })
+        // Filtrar por disponibilidad
+        .filter((inv) => {
+          if (filters.disponibilidad === "disponibles") {
+            return inv.stock_final > 0;
+          }
+          if (filters.disponibilidad === "agotados") {
+            return inv.stock_final === 0;
+          }
+          return true;
+        })
+        // Filtrar por movimiento
+        .filter((inv) => {
+          if (filters.movimiento) {
+            const movimiento = calcularMovimientoProducto(inv.producto_id);
+            if (
+              filters.movimiento === "mucho" &&
+              movimiento.tipo !== "Mucho movimiento"
+            )
+              return false;
+            if (
+              filters.movimiento === "poco" &&
+              movimiento.tipo !== "Poco movimiento"
+            )
+              return false;
+            if (
+              filters.movimiento === "sin" &&
+              movimiento.tipo !== "Sin movimiento"
+            )
+              return false;
+          }
+          return true;
+        })
+        // Mapear inventario + producto
+        .map((inv) => {
+          const producto = productos.find((p) => p.id === inv.producto_id)!;
+          const margenPercent = Math.round(
+            (((producto.precio || 0) - (parseFloat(producto.costo) || 0)) /
+              (producto.precio || 1)) *
+              100
+          );
+          const movimiento = calcularMovimientoProducto(producto.id);
 
-        return {
-          id: producto.id,
-          checkbox: (
-            <input
-              type="checkbox"
-              checked={selectedProducts.has(producto.id)}
-              onChange={(e) => handleSelectProduct(producto.id, e.target.checked)}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-            />
-          ),
-          producto: producto.nombre,
-          stock: inv.stock_final.toString(),
-          categoria:
-            categorias.find((c) => c.id === producto.categoria_id)?.nombre ||
-            "Sin categoría",
-          descripcion: producto.descripcion || "",
-          sku: producto.codigo,
-          costo: `$${Math.round(parseFloat(producto.costo) || 0).toLocaleString("es-CL")}`,
-          precio: `$${Math.round(producto.precio || 0).toLocaleString("es-CL")}`,
-          margen: `${margenPercent}%`,
-          movimiento: (
-            <div className="flex flex-col">
-              <span className={`text-xs px-2 py-1 rounded-full ${movimiento.tipo === "Mucho movimiento" ? "bg-green-100 text-green-800" :
-                movimiento.tipo === "Poco movimiento" ? "bg-yellow-100 text-yellow-800" :
-                  movimiento.tipo === "Movimiento medio" ? "bg-blue-100 text-blue-800" :
-                    "bg-gray-100 text-gray-800"
-                }`}>
-                {movimiento.tipo}
-              </span>
-              <span className="text-xs text-gray-500 mt-1">{movimiento.cantidad} vendidos</span>
-            </div>
-          ),
-          disponible: inv.stock_final > 0 ? "Disponible" : "Agotado",
-          acciones: (
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleEditProduct(producto);
-                }}
-                className="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 transition-colors"
-                title="Editar producto"
-                type="button"
-              >
-                <Edit className="w-5 h-5" />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteProduct(producto);
-                }}
-                className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-colors"
-                title="Eliminar producto"
-                type="button"
-              >
-                <Trash2 className="w-5 h-5" />
-              </button>
-            </div>
-          ),
-        };
-      });
+          return {
+            id: producto.id,
+            checkbox: (
+              <input
+                type="checkbox"
+                checked={selectedProducts.has(producto.id)}
+                onChange={(e) =>
+                  handleSelectProduct(producto.id, e.target.checked)
+                }
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+            ),
+            producto: producto.nombre,
+            stock: inv.stock_final.toString(),
+            categoria:
+              categorias.find((c) => c.id === producto.categoria_id)?.nombre ||
+              "Sin categoría",
+            descripcion: producto.descripcion || "",
+            sku: producto.codigo,
+            costo: `$${Math.round(
+              parseFloat(producto.costo) || 0
+            ).toLocaleString("es-CL")}`,
+            precio: `$${Math.round(producto.precio || 0).toLocaleString(
+              "es-CL"
+            )}`,
+            margen: `${margenPercent}%`,
+            movimiento: (
+              <div className="flex flex-col">
+                <span
+                  className={`text-xs px-2 py-1 rounded-full ${
+                    movimiento.tipo === "Mucho movimiento"
+                      ? "bg-green-100 text-green-800"
+                      : movimiento.tipo === "Poco movimiento"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : movimiento.tipo === "Movimiento medio"
+                      ? "bg-blue-100 text-blue-800"
+                      : "bg-gray-100 text-gray-800"
+                  }`}
+                >
+                  {movimiento.tipo}
+                </span>
+                <span className="text-xs text-gray-500 mt-1">
+                  {movimiento.cantidad} vendidos
+                </span>
+              </div>
+            ),
+            disponible: inv.stock_final > 0 ? "Disponible" : "Agotado",
+            acciones: (
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditProduct(producto);
+                  }}
+                  className="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 transition-colors"
+                  title="Editar producto"
+                  type="button"
+                >
+                  <Edit className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteProduct(producto);
+                  }}
+                  className="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 transition-colors"
+                  title="Eliminar producto"
+                  type="button"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              </div>
+            ),
+          };
+        })
+    );
   };
 
   const filteredProducts = getFilteredProducts();
 
-  // Filtrar por búsqueda en tabla  
+  // Filtrar por búsqueda en tabla
   const filteredData = filteredProducts.filter(
     (item) =>
       searchTerm === "" ||
@@ -315,9 +357,12 @@ export function ProductosTotales() {
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedData = filteredData.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
 
-  // Handlers para editar, eliminar y selección múltiple  
+  // Handlers para editar, eliminar y selección múltiple
   const handleEditProduct = (producto: Producto) => {
     setSelectedProduct(producto);
     setShowProductoModal(true);
@@ -396,30 +441,34 @@ export function ProductosTotales() {
       "Disponible",
     ];
     const filteredDataForReport = filteredProducts;
-    const csvContent = "\uFEFF" + [
-      headers.join(","),
-      ...filteredDataForReport.map((row) => {
-        const movimiento = calcularMovimientoProducto(row.id);
-        return [
-          row.producto,
-          row.stock,
-          row.categoria,
-          row.sku,
-          row.costo.replace(/[$.,]/g, ""),
-          row.precio.replace(/[$.,]/g, ""),
-          row.margen.replace("%", ""),
-          movimiento.tipo,
-          movimiento.cantidad,
-          row.disponible,
-        ].join(",");
-      }),
-    ].join("\n");
+    const csvContent =
+      "\uFEFF" +
+      [
+        headers.join(","),
+        ...filteredDataForReport.map((row) => {
+          const movimiento = calcularMovimientoProducto(row.id);
+          return [
+            row.producto,
+            row.stock,
+            row.categoria,
+            row.sku,
+            row.costo.replace(/[$.,]/g, ""),
+            row.precio.replace(/[$.,]/g, ""),
+            row.margen.replace("%", ""),
+            movimiento.tipo,
+            movimiento.cantidad,
+            row.disponible,
+          ].join(",");
+        }),
+      ].join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `reporte_inventario_${new Date().toISOString().split("T")[0]}.csv`;
+    a.download = `reporte_inventario_${
+      new Date().toISOString().split("T")[0]
+    }.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success("Reporte CSV descargado");
@@ -432,7 +481,9 @@ export function ProductosTotales() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `plantilla_productos_stock_${new Date().toISOString().split("T")[0]}.csv`;
+    a.download = `plantilla_productos_stock_${
+      new Date().toISOString().split("T")[0]
+    }.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success("Plantilla de productos y stock descargada.");
@@ -442,7 +493,9 @@ export function ProductosTotales() {
     <div className="p-6">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Productos totales</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">
+          Productos totales
+        </h1>
       </div>
 
       {/* Search and actions */}
@@ -498,6 +551,10 @@ export function ProductosTotales() {
           </button>
           <button
             onClick={() => {
+              if (!hasPermission(PERMISOS.GestionProductos)) {
+                toast.error("No cuentas permisos para realizar esta accion");
+                return;
+              }
               setSelectedProduct(null);
               setShowProductoModal(true);
             }}
@@ -508,7 +565,13 @@ export function ProductosTotales() {
             <Plus className="w-4 h-4" />
           </button>
           <button
-            onClick={() => setShowInventarioModal(true)}
+            onClick={() => {
+              if (!hasPermission(PERMISOS.GestionProductos)) {
+                toast.error("No cuentas permisos para realizar esta accion");
+                return;
+              }
+              setShowInventarioModal(true);
+            }}
             className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             title="Actualizar inventario"
             type="button"
@@ -557,7 +620,9 @@ export function ProductosTotales() {
                   <input
                     type="checkbox"
                     checked={selectedProducts.has(row.id)}
-                    onChange={(e) => handleSelectProduct(row.id, e.target.checked)}
+                    onChange={(e) =>
+                      handleSelectProduct(row.id, e.target.checked)
+                    }
                     className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                   />
                 </td>
@@ -616,10 +681,11 @@ export function ProductosTotales() {
                   <button
                     key={page}
                     onClick={() => setCurrentPage(page)}
-                    className={`px-3 py-1 rounded-md text-sm ${currentPage === page
-                      ? "bg-blue-600 text-white"
-                      : "text-gray-700 hover:bg-gray-100"
-                      }`}
+                    className={`px-3 py-1 rounded-md text-sm ${
+                      currentPage === page
+                        ? "bg-blue-600 text-white"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
                     type="button"
                   >
                     {page}
@@ -779,7 +845,8 @@ export function ProductosTotales() {
         isOpen={showBulkDeleteModal}
         onClose={() => setShowBulkDeleteModal(false)}
         title="Eliminar Productos"
-        size="sm"  >
+        size="sm"
+      >
         <div className="text-center space-y-4">
           <p className="text-gray-600">
             ¿Estás seguro de que deseas eliminar {selectedProducts.size}{" "}

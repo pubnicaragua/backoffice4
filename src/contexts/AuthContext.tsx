@@ -39,13 +39,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
 
     try {
-
       const { data: userData, error: userError } = await supabase
         .from("usuarios")
         .select("*")
         .eq("id", userId)
         .single();
-
 
       let finalUser = userData;
 
@@ -75,7 +73,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq("usuario_id", finalUser.id)
           .eq("activo", true)
           .single();
-
 
         setEmpresaId(usuarioEmpresa?.empresa_id || null);
         setSucursalId(usuarioEmpresa?.sucursal_id || null);
@@ -129,28 +126,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from("usuarios")
         .select("id, email")
         .eq("rut", rut)
-        .single()
+        .single();
 
-      console.log(errorUsuario)
+      console.log(errorUsuario);
 
       if (errorUsuario || !usuario) {
         throw new Error("RUT no encontrado");
       }
 
-      const { data: usuarioEmpresa, error: errorUsuarioEmpresa } = await
-        supabase.from("usuario_empresa").select("rol").eq("usuario_id", usuario.id).single()
+      const { data: usuarioEmpresa, error: errorUsuarioEmpresa } =
+        await supabase
+          .from("usuario_empresa")
+          .select("rol")
+          .eq("usuario_id", usuario.id)
+          .single();
 
-      console.log(usuarioEmpresa)
+      console.log(usuarioEmpresa);
 
-      if (usuarioEmpresa?.rol === "Empleado" || usuarioEmpresa?.rol === "Cajero") {
-        signOut()
-        toast.error("No cuentas con la autorización para entrar a BackOffice")
+      if (
+        usuarioEmpresa?.rol === "empleado" ||
+        usuarioEmpresa?.rol === "cajero"
+      ) {
+        signOut();
+        throw Error("No cuentas con la autorización para entrar a BackOffice");
       }
 
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: usuario.email,
-        password,
-      });
+      const { data: authData, error: authError } =
+        await supabase.auth.signInWithPassword({
+          email: usuario.email,
+          password,
+        });
 
       if (authError) {
         throw authError;
@@ -159,7 +164,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       throw error;
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   };
 
@@ -180,7 +185,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
 
     supabase.auth.getSession().then(({ data: { session }, error }) => {
-
       if (error) {
         console.error("Error obteniendo sesión", error);
         setLoading(false);
