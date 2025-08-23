@@ -761,7 +761,20 @@ const GestionCaja: React.FC = () => {
         size="md"
       >
         <div className="space-y-4">
-        
+
+          <div>
+            <Label htmlFor="saldoFinal">
+              Saldo Final
+            </Label>
+            <TextInput 
+            id="saldoFinal" 
+            value={state.saldoFinal} 
+            onChange={(e) => updateState({ saldoFinal: e.target.value })} 
+            className="mt-1" 
+            placeholder="0.00" 
+            disabled={state.procesando} />
+
+          </div>
 
           <div>
             <Label htmlFor="observacionesCierre">
