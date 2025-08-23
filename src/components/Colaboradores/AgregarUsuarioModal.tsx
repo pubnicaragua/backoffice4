@@ -16,47 +16,42 @@ interface AgregarUsuarioModalProps {
 // ✅ Función para enviar correo de bienvenida con SendGrid  
 const sendWelcomeEmail = async (email: string, nombre: string) => {  
   try {  
-    // ✅ URL corregida de SendGrid  
     const response = await fetch('https://api.sendgrid.com/v3/mail/send', {  
       method: 'POST',  
       headers: {  
         'Content-Type': 'application/json',  
-        'Authorization': `Bearer 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`  
+        'Authorization': `Bearer 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`  
       },  
       body: JSON.stringify({  
         personalizations: [{  
           to: [{ email: email }],  
           subject: 'Bienvenido al sistema - Confirma tu cuenta'  
         }],  
-        from: { email: 'noreply@solvendo.cl', name: 'Sistema Solvendo' },  
+        // ✅ CAMBIAR ESTA LÍNEA:  
+        from: { email: 'registros@solvendo.cl', name: 'Sistema Solvendo' },  
         content: [{  
           type: 'text/html',  
-          value: `  
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">  
-              <h2 style="color: #2563eb;">¡Bienvenido al sistema!</h2>  
-              <p>Hola ${nombre},</p>  
-              <p>Tu cuenta ha sido creada exitosamente. Recibirás un correo de confirmación para establecer tu contraseña.</p>  
-              <p>Una vez que confirmes tu cuenta, podrás acceder al sistema con tu email.</p>  
-              <a href="${window.location.origin}/login"   
-                 style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0;">  
-                Ir al Login  
-              </a>  
-              <p style="color: #6b7280; font-size: 14px;">  
-                Si tienes problemas para acceder, contacta al administrador del sistema.  
-              </p>  
-            </div>  
-          `  
+          value: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">  
+            <h2 style="color: #2563eb;">¡Bienvenido al sistema!</h2>  
+            <p>Hola ${nombre},</p>  
+            <p>Tu cuenta ha sido creada exitosamente. Recibirás un correo de confirmación para establecer tu contraseña.</p>  
+            <p>Una vez que confirmes tu cuenta, podrás acceder al sistema con tu email.</p>  
+            <a href="${window.location.origin}/login"  
+               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0;">  
+              Ir al Login  
+            </a>  
+            <p style="color: #6b7280; font-size: 14px;">Si tienes problemas para acceder, contacta al administrador del sistema.</p>  
+          </div>`  
         }]  
       })  
     });  
-  
     return response.ok;  
   } catch (error) {  
     console.error('Error enviando correo de bienvenida:', error);  
     return false;  
   }  
-};  
-  
+};
+
 export function AgregarUsuarioModal({  
   loading,  
   setLoading,  
