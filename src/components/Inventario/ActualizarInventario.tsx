@@ -4,7 +4,7 @@ import { Modal } from '../Common/Modal';
 import { useSupabaseData, useSupabaseInsert } from '../../hooks/useSupabaseData';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { ToastContainer, toast } from 'react-toastify';
+import { toast } from 'react-toastify';
 // ✅ Comentado temporalmente para evitar conflictos de versión  
 // import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";  
 

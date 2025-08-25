@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { ProductosTotales } from "./ProductosTotales";
 import Mermas from "../Mermas/mermas";
-import { ToastContainer } from "react-toastify";
 
 export function Inventario() {
     const [activeTab, setActiveTab] = useState('productos');
@@ -48,7 +47,6 @@ export function Inventario() {
                     {renderContent()}
                 </div>
             </div>
-            <ToastContainer />
         </div>
     );
 }

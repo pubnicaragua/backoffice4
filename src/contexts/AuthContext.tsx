@@ -141,14 +141,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq("usuario_id", usuario.id)
           .single();
 
-      console.log(usuarioEmpresa);
+      const { error: errorActivarSesion } = await supabase.from("usuarios").update({
+        sesion_activa: true,
+      }).eq("id", usuario.id)
+
+      if (errorActivarSesion) {
+        toast.error("Error al activar la sesión")
+        return
+      }
 
       if (
         usuarioEmpresa?.rol === "empleado" ||
         usuarioEmpresa?.rol === "cajero"
       ) {
         signOut();
-        throw Error("No cuentas con la autorización para entrar a BackOffice");
+        throw toast.error("No cuentas con la autorización para entrar a BackOffice");
       }
 
       const { data: authData, error: authError } =
@@ -170,6 +177,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
+      const { error: errorDesactivarSesion } = await
+        supabase.
+          from("usuarios").
+          update({ sesion_activa: false }).
+          eq("id", user?.id)
+
+      if (errorDesactivarSesion) {
+        toast.error("Error al desactivar la sesión del usuario")
+        return
+      }
       const { error } = await supabase.auth.signOut();
       if (error) {
         throw error;

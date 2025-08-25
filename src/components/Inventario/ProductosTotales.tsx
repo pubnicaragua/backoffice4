@@ -21,7 +21,7 @@ import { Modal } from "../Common/Modal";
 import { supabase } from "../../lib/supabase";
 import { Producto } from "../../types";
 import { Sucursal } from "../../types/cajas";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import { useUserPermissions } from "../../hooks/usePermission";
 
 interface Categoria {
@@ -263,7 +263,7 @@ export function ProductosTotales() {
           const margenPercent = Math.round(
             (((producto.precio || 0) - (parseFloat(producto.costo) || 0)) /
               (producto.precio || 1)) *
-              100
+            100
           );
           const movimiento = calcularMovimientoProducto(producto.id);
 
@@ -296,15 +296,14 @@ export function ProductosTotales() {
             movimiento: (
               <div className="flex flex-col">
                 <span
-                  className={`text-xs px-2 py-1 rounded-full ${
-                    movimiento.tipo === "Mucho movimiento"
-                      ? "bg-green-100 text-green-800"
-                      : movimiento.tipo === "Poco movimiento"
+                  className={`text-xs px-2 py-1 rounded-full ${movimiento.tipo === "Mucho movimiento"
+                    ? "bg-green-100 text-green-800"
+                    : movimiento.tipo === "Poco movimiento"
                       ? "bg-yellow-100 text-yellow-800"
                       : movimiento.tipo === "Movimiento medio"
-                      ? "bg-blue-100 text-blue-800"
-                      : "bg-gray-100 text-gray-800"
-                  }`}
+                        ? "bg-blue-100 text-blue-800"
+                        : "bg-gray-100 text-gray-800"
+                    }`}
                 >
                   {movimiento.tipo}
                 </span>
@@ -466,9 +465,8 @@ export function ProductosTotales() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `reporte_inventario_${
-      new Date().toISOString().split("T")[0]
-    }.csv`;
+    a.download = `reporte_inventario_${new Date().toISOString().split("T")[0]
+      }.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success("Reporte CSV descargado");
@@ -481,9 +479,8 @@ export function ProductosTotales() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `plantilla_productos_stock_${
-      new Date().toISOString().split("T")[0]
-    }.csv`;
+    a.download = `plantilla_productos_stock_${new Date().toISOString().split("T")[0]
+      }.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success("Plantilla de productos y stock descargada.");
@@ -681,11 +678,10 @@ export function ProductosTotales() {
                   <button
                     key={page}
                     onClick={() => setCurrentPage(page)}
-                    className={`px-3 py-1 rounded-md text-sm ${
-                      currentPage === page
-                        ? "bg-blue-600 text-white"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
+                    className={`px-3 py-1 rounded-md text-sm ${currentPage === page
+                      ? "bg-blue-600 text-white"
+                      : "text-gray-700 hover:bg-gray-100"
+                      }`}
                     type="button"
                   >
                     {page}
@@ -707,8 +703,6 @@ export function ProductosTotales() {
           </div>
         )}
       </div>
-
-      <ToastContainer />
 
       {/* Modales */}
       <ReporteMermas

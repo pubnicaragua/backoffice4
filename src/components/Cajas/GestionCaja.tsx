@@ -11,13 +11,19 @@ import {
   Alert,
   Spinner,
 } from "flowbite-react";
-import { HiLockOpen, HiLockClosed, HiRefresh, HiOutlineCube } from "react-icons/hi";
+import {
+  HiLockOpen,
+  HiLockClosed,
+  HiRefresh,
+  HiOutlineCube,
+} from "react-icons/hi";
 import { Modal } from "../Common/Modal";
-import { supabase } from "../../lib/supabase";
+import { supabase, supabaseAnonKey } from "../../lib/supabase";
 import { useAuth } from "../../contexts/AuthContext";
 import "react-toastify/dist/ReactToastify.css";
 import { Sucursal, Usuario } from "../../types/cajas";
 import { CrearCajaModal } from "./modals/CrearCajaModal";
+import { useSupabaseData, useSupabaseUpdate } from "../../hooks/useSupabaseData";
 
 type EstadoSesion = "abierta" | "cerrada" | "en_proceso";
 
@@ -66,7 +72,7 @@ interface GestionCajaState {
   procesando: boolean;
   error: string | null;
   sucursales: Sucursal[];
-  empleados: Usuario[]
+  empleados: Usuario[];
   cajasDisponibles: Caja[];
   cajaSeleccionada: Caja | null;
   sesionesActivas: SesionCaja[];
@@ -106,8 +112,9 @@ const GestionCaja: React.FC = () => {
     crearCajaModal: false,
   };
   const { empresaId, user } = useAuth();
-  const [loading, setLoading] = useState<boolean>(true)
+  const [loading, setLoading] = useState<boolean>(true);
   const [state, setState] = useState<GestionCajaState>(initialState);
+  const { update } = useSupabaseUpdate("usuarios",)
 
   const updateState = useCallback((updates: Partial<GestionCajaState>) => {
     setState((prev) => ({ ...prev, ...updates }));
@@ -132,7 +139,9 @@ const GestionCaja: React.FC = () => {
   );
 
   // ✅ 1. cargar sucursales
-  const cargarSucursalesDisponibles = useCallback(async (): Promise<Sucursal[]> => {
+  const cargarSucursalesDisponibles = useCallback(async (): Promise<
+    Sucursal[]
+  > => {
     if (!user) return [];
     const { data, error } = await supabase
       .from("sucursales")
@@ -166,35 +175,41 @@ const GestionCaja: React.FC = () => {
   );
 
   // ✅ 3. cargar sesiones (igual que tenías)
-  const cargarSesionesActivas = useCallback(async (sucursalId: string): Promise<SesionCaja[]> => {
-    if (!user) return [];
-    const { data, error } = await supabase
-      .from("sesiones_caja")
-      .select("*, caja:cajas(*)")
-      .eq("sucursal_id", sucursalId)
-      .eq("estado", "abierta");
-    if (error) {
-      showToast("Error cargando sesiones activas", "error");
-      return [];
-    }
-    return data || [];
-  }, [showToast, user]);
+  const cargarSesionesActivas = useCallback(
+    async (sucursalId: string): Promise<SesionCaja[]> => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("sesiones_caja")
+        .select("*, caja:cajas(*)")
+        .eq("sucursal_id", sucursalId)
+        .eq("estado", "abierta");
+      if (error) {
+        showToast("Error cargando sesiones activas", "error");
+        return [];
+      }
+      return data || [];
+    },
+    [showToast, user]
+  );
 
   // 4. Cargar empleados
-  const cargarEmpleados = useCallback(async (sucursalId: string): Promise<Usuario[]> => {
-    if (!user) return [];
-    const { data, error } = await supabase
-      .from("usuarios")
-      .select("*")
-      .eq("empresa_id", empresaId)
-      .eq("sucursal_id", sucursalId)
-      .eq("rol", "empleado")
-    if (error) {
-      showToast("Error cargando sesiones activas", "error");
-      return [];
-    }
-    return data || [];
-  }, [])
+  const cargarEmpleados = useCallback(
+    async (sucursalId: string): Promise<Usuario[]> => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("usuarios")
+        .select("*")
+        .eq("empresa_id", empresaId)
+        .eq("sucursal_id", sucursalId)
+        .eq("rol", "empleado");
+      if (error) {
+        showToast("Error cargando sesiones activas", "error");
+        return [];
+      }
+      return data || [];
+    },
+    []
+  );
   // ✅ 4. flujo inicial
   const cargarDatosIniciales = useCallback(async () => {
     updateState({ cargando: true });
@@ -202,7 +217,8 @@ const GestionCaja: React.FC = () => {
       const sucursalesData = await cargarSucursalesDisponibles();
 
       // set sucursal por defecto
-      const sucursalDefault = sucursalesData.length > 0 ? sucursalesData[0].id : "";
+      const sucursalDefault =
+        sucursalesData.length > 0 ? sucursalesData[0].id : "";
 
       const [cajasData, sesionesData, empleadosData] = await Promise.all([
         cargarCajasDisponibles(sucursalDefault),
@@ -217,7 +233,8 @@ const GestionCaja: React.FC = () => {
         cajasDisponibles: cajasData,
         sesionesActivas: sesionesData,
         cajaSeleccionada: cajasData.length > 0 ? cajasData[0] : null,
-        sesionSeleccionadaCerrar: sesionesData.length > 0 ? sesionesData[0] : null,
+        sesionSeleccionadaCerrar:
+          sesionesData.length > 0 ? sesionesData[0] : null,
         cargando: false,
         saldoInicial: "",
         saldoFinal: "",
@@ -225,34 +242,44 @@ const GestionCaja: React.FC = () => {
         tipoVueltoSeleccionado: "monto_efectivo",
         montoVuelto: "",
       });
-
     } catch (error) {
-      const errMsg = error instanceof Error ? error.message : "Error desconocido";
+      const errMsg =
+        error instanceof Error ? error.message : "Error desconocido";
       showToast(`Error cargando datos: ${errMsg}`, "error");
       updateState({ cargando: false, error: errMsg });
     }
-  }, [cargarSucursalesDisponibles, cargarCajasDisponibles, cargarSesionesActivas, showToast, updateState, cargarEmpleados]);
+  }, [
+    cargarSucursalesDisponibles,
+    cargarCajasDisponibles,
+    cargarSesionesActivas,
+    showToast,
+    updateState,
+    cargarEmpleados,
+  ]);
 
   useEffect(() => {
     cargarDatosIniciales();
-    updateState({ cargando: false })
+    updateState({ cargando: false });
   }, [cargarDatosIniciales, state.cargando]);
 
   const handleAbrirModal = useCallback(() => {
     updateState({
       mostrarModalApertura: true,
-    })
-  }, [state.cajasDisponibles, state.sucursales, updateState])
+    });
+  }, [state.cajasDisponibles, state.sucursales, updateState]);
 
   // ✅ 5. cuando cambie sucursal, recargar cajas y empleados
   useEffect(() => {
     const fetchCajas = async () => {
       if (state.sucursalSeleccionadaId) {
         const empleados = await cargarEmpleados(state.sucursalSeleccionadaId);
-        const cajas = await cargarCajasDisponibles(state.sucursalSeleccionadaId);
+        const cajas = await cargarCajasDisponibles(
+          state.sucursalSeleccionadaId
+        );
         updateState({
           empleados: empleados,
-          empleadoSeleccionadoId: empleados.length > 0 ? empleados[0].id : undefined,
+          empleadoSeleccionadoId:
+            empleados.length > 0 ? empleados[0].id : undefined,
           cajasDisponibles: cajas,
           cajaSeleccionada: cajas.length > 0 ? cajas[0] : null,
         });
@@ -321,7 +348,7 @@ const GestionCaja: React.FC = () => {
       return;
     }
     if (!state.empleadoSeleccionadoId) {
-      showToast("Por favor selecciona un empleado", "warning")
+      showToast("Por favor selecciona un empleado", "warning");
     }
     if (!user) {
       showToast("Usuario no autenticado", "error");
@@ -337,11 +364,11 @@ const GestionCaja: React.FC = () => {
       return;
     }
     const empleadoOcupado = state.sesionesActivas.find(
-      (sesion) =>
-        sesion.usuario_id === state.empleadoSeleccionadoId);
+      (sesion) => sesion.usuario_id === state.empleadoSeleccionadoId
+    );
     if (empleadoOcupado) {
-      toast.error("Este empleado ya tiene una caja asignada")
-      return
+      toast.error("Este empleado ya tiene una caja asignada");
+      return;
     }
     try {
       updateState({ procesando: true });
@@ -370,7 +397,9 @@ const GestionCaja: React.FC = () => {
 
       showToast("Caja abierta correctamente", "success");
 
-      const sesiones = await cargarSesionesActivas(state.sucursalSeleccionadaId);
+      const sesiones = await cargarSesionesActivas(
+        state.sucursalSeleccionadaId
+      );
 
       updateState({
         sesionesActivas: sesiones,
@@ -415,8 +444,8 @@ const GestionCaja: React.FC = () => {
       return;
     }
     if (state.sesionSeleccionadaCerrar === null) {
-      handleAbrirCaja()
-      return
+      handleAbrirCaja();
+      return;
     }
 
     try {
@@ -439,11 +468,21 @@ const GestionCaja: React.FC = () => {
         .update(updateData)
         .eq("id", state.sesionSeleccionadaCerrar.id);
 
+      console.log("papu");
       if (error) throw error;
+
+      // Mandamos un update a usuarios para "cerrar" la sesión del usuario 
+      const userToLogout = state.sesionSeleccionadaCerrar.usuario_id;
+
+      update(userToLogout, {
+        sesion_activa: false,
+      })
 
       showToast("Caja cerrada correctamente", "success");
 
-      const sesiones = await cargarSesionesActivas(state.sucursalSeleccionadaId);
+      const sesiones = await cargarSesionesActivas(
+        state.sucursalSeleccionadaId
+      );
 
       updateState({
         sesionesActivas: sesiones,
@@ -488,24 +527,26 @@ const GestionCaja: React.FC = () => {
     });
   };
 
-  const handleSucursalChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    updateState({ sucursalSeleccionadaId: e.target.value })
+  const handleSucursalChange = async (
+    e: React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    updateState({ sucursalSeleccionadaId: e.target.value });
     const sesiones = await cargarSesionesActivas(e.target.value);
 
     updateState({
       sesionesActivas: sesiones,
     });
-  }
+  };
 
   const handleEmpleadoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const empleadoId = e.target.value;
 
-    updateState({ empleadoSeleccionadoId: empleadoId })
-  }
+    updateState({ empleadoSeleccionadoId: empleadoId });
+  };
 
   const handleCrearCajaModal = () => {
-    updateState({ crearCajaModal: !state.crearCajaModal })
-  }
+    updateState({ crearCajaModal: !state.crearCajaModal });
+  };
 
   if (state.cargando) {
     return (
@@ -516,7 +557,7 @@ const GestionCaja: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col space-y-6 " style={{ padding: '30px' }}>
+    <div className="flex flex-col space-y-6 " style={{ padding: "30px" }}>
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Gestión de Caja</h1>
@@ -551,17 +592,11 @@ const GestionCaja: React.FC = () => {
                 </option>
               ))}
             </select>
-            <Button
-              color="success"
-              onClick={handleAbrirModal}
-            >
+            <Button color="success" onClick={handleAbrirModal}>
               <HiLockOpen className="mr-2 h-5 w-5" />
               Otorgar Caja
             </Button>
-            <Button
-              color="success"
-              onClick={handleCrearCajaModal}
-            >
+            <Button color="success" onClick={handleCrearCajaModal}>
               <HiOutlineCube className="mr-2 h-5 w-5" />
               Crear Caja
             </Button>
@@ -592,7 +627,10 @@ const GestionCaja: React.FC = () => {
                   </p>
 
                   <p className="text-sm text-gray-600">
-                    Empleado: {state.empleados.find((usuario) => usuario.id === sesion.usuario_id)?.nombres || "Desconocido"}
+                    Empleado:{" "}
+                    {state.empleados.find(
+                      (usuario) => usuario.id === sesion.usuario_id
+                    )?.nombres || "Desconocido"}
                   </p>
 
                   <p className="text-sm text-gray-600">
@@ -717,10 +755,6 @@ const GestionCaja: React.FC = () => {
               className="mt-1"
             />
           </div>
-
-          <p className="text-sm text-gray-500">
-            Ingrese el monto en efectivo con el que inicia la caja.
-          </p>
         </div>
 
         <div className="flex justify-end mt-6 space-x-3">
@@ -761,19 +795,16 @@ const GestionCaja: React.FC = () => {
         size="md"
       >
         <div className="space-y-4">
-
           <div>
-            <Label htmlFor="saldoFinal">
-              Saldo Final
-            </Label>
-            <TextInput 
-            id="saldoFinal" 
-            value={state.saldoFinal} 
-            onChange={(e) => updateState({ saldoFinal: e.target.value })} 
-            className="mt-1" 
-            placeholder="0.00" 
-            disabled={state.procesando} />
-
+            <Label htmlFor="saldoFinal">Saldo Final</Label>
+            <TextInput
+              id="saldoFinal"
+              value={state.saldoFinal}
+              onChange={(e) => updateState({ saldoFinal: e.target.value })}
+              className="mt-1"
+              placeholder="0.00"
+              disabled={state.procesando}
+            />
           </div>
 
           <div>
@@ -802,9 +833,7 @@ const GestionCaja: React.FC = () => {
             <Button
               color="failure"
               onClick={handleConfirmarCierre}
-              disabled={
-                !state.saldoFinal || state.procesando
-              }
+              disabled={!state.saldoFinal || state.procesando}
               className="flex items-center"
             >
               {state.procesando ? (
@@ -821,7 +850,14 @@ const GestionCaja: React.FC = () => {
       </Modal>
 
       {/* Modal Crear Caja*/}
-      <CrearCajaModal isOpen={state.crearCajaModal} onClose={() => updateState({ crearCajaModal: !state.crearCajaModal, cargando: true })} empresaId={empresaId!} sucursales={state.sucursales} />
+      <CrearCajaModal
+        isOpen={state.crearCajaModal}
+        onClose={() =>
+          updateState({ crearCajaModal: !state.crearCajaModal, cargando: true })
+        }
+        empresaId={empresaId!}
+        sucursales={state.sucursales}
+      />
     </div>
   );
 };
