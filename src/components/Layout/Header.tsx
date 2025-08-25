@@ -125,9 +125,8 @@ export function Header({ onMenuToggle, currentView }: HeaderProps) {
             <div className="relative">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className={`relative p-2 rounded-md hover:bg-gray-100 transition-all ${
-                  notifLoading ? "animate-pulse" : ""
-                }`}
+                className={`relative p-2 rounded-md hover:bg-gray-100 transition-all ${notifLoading ? "animate-pulse" : ""
+                  }`}
               >
                 <Bell className="w-5 h-5 text-gray-700" />
                 {notificaciones.length > 0 && (
