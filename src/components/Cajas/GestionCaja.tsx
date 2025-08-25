@@ -384,6 +384,7 @@ const GestionCaja: React.FC = () => {
             sucursal_id: state.sucursalSeleccionadaId,
             estado: "abierta",
             saldo_inicial: 0,
+            inicializada: false,
             observaciones: state.observaciones || null,
             abierta_en: now,
             creada_en: now,
