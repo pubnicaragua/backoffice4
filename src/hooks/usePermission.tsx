@@ -74,7 +74,7 @@ export const useUserPermissions = () => {
   }, [user?.id]);
 
   const hasPermission = (nombrePermiso: string): boolean => {
-    if (user?.role === "admin") return true;
+    if (user?.role === "admin" || "administrador") return true;
     return permissions.some(
       (p) => p.permisos?.nombre === nombrePermiso && p.otorgado
     );

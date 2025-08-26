@@ -159,7 +159,7 @@ function PieChart({ title, data }: PieChartProps) {
             {/* ✅ Texto central con total y animación */}
             <text
               x="50"
-              y="46"
+              y="39"
               textAnchor="middle"
               dominantBaseline="middle"
               className="pb-3 text-sm font-bold fill-gray-800"
@@ -439,33 +439,29 @@ export default function GeneralDashboard() {
 
   const processLossData = () => {
     if (!mermas || mermasLoading) {
-      return [{ name: "Sin datos", value: 1, color: "#E5E7EB" }];
+      // Estado de carga
+      return [{ name: "Cargando...", value: 1, color: "#E5E7EB" }];
     }
 
     const robo = mermas.filter((m: any) => m.tipo === "robo").length;
     const vencimiento = mermas.filter((m: any) => m.tipo === "vencimiento").length;
-    const dano = mermas.filter(
-      (m: any) => m.tipo === "daño" || m.tipo === "dano"
-    ).length;
+    const dano = mermas.filter((m: any) => m.tipo === "daño" || m.tipo === "dano").length;
     const otro = mermas.filter(
       (m: any) => !["robo", "vencimiento", "daño", "dano"].includes(m.tipo)
     ).length;
 
-    if (!mermas || mermasLoading) {
-      return [{ name: "Sin datos", value: 0, color: "#E5E7EB" }];
-    }
-
     // ✅ Si no hay datos reales
     if (robo === 0 && vencimiento === 0 && dano === 0 && otro === 0) {
-      return [{ name: "Sin mermas reportadas", value: 0, color: "#E5E7EB" }];
+      return [{ name: "Sin mermas reportadas", value: 0, color: "#E5E7EB", isEmpty: true }];
     }
 
+    // ✅ Retornar solo categorías con datos
     return [
       { name: "Robo", value: robo, color: "#EF4444" },
       { name: "Vencimiento", value: vencimiento, color: "#F59E0B" },
       { name: "Daño", value: dano, color: "#6B7280" },
       { name: "Otro", value: otro, color: "#3B82F6" },
-    ].filter(item => item.value > 0); // Solo mostrar categorías con datos  
+    ].filter(item => item.value > 0);
   };
 
   const assistanceData = processAttendanceData();

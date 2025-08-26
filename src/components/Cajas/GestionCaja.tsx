@@ -469,7 +469,6 @@ const GestionCaja: React.FC = () => {
         .update(updateData)
         .eq("id", state.sesionSeleccionadaCerrar.id);
 
-      console.log("papu");
       if (error) throw error;
 
       // Mandamos un update a usuarios para "cerrar" la sesión del usuario 
