@@ -30,9 +30,9 @@ export function OpcionesCaja() {
     "*",
     filters.cajas.length > 0 && filters.sucursal
       ? {
-          sucursal_id: filters.sucursal.id,
-          empresa_id: empresaId,
-        }
+        sucursal_id: filters.sucursal.id,
+        empresa_id: empresaId,
+      }
       : undefined
   );
 
@@ -201,7 +201,7 @@ export function OpcionesCaja() {
       )}
 
       {/* Tipo de moneda */}
-      <div className="space-y-4">
+      {/* <div className="space-y-4">
         <h3 className="font-medium text-gray-900">Tipo de moneda</h3>
         <div className="space-y-3">
           {[{ key: "clp", label: "CLP" }].map((option) => (
@@ -218,7 +218,7 @@ export function OpcionesCaja() {
             </label>
           ))}
         </div>
-      </div>
+      </div> */}
 
       {/* Integración con POS */}
       <div className="space-y-4">
@@ -285,9 +285,8 @@ export function OpcionesCaja() {
           className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {filters.cajas.length > 0
-            ? `Guardar Configuración para ${filters.cajas.length} caja${
-                filters.cajas.length > 1 ? "s" : ""
-              }`
+            ? `Guardar Configuración para ${filters.cajas.length} caja${filters.cajas.length > 1 ? "s" : ""
+            }`
             : "Selecciona al menos una caja para guardar"}
         </button>
       </div>

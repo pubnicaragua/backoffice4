@@ -86,7 +86,7 @@ export function POSIntegrationSimple() {
             <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold">2</div>
             <div>
               <p className="font-medium text-gray-900">Seleccionar "Agregar terminal de pago"</p>
-              <p className="text-sm text-gray-600">Elegir tipo: Terminal físico (USB/Serial), Virtual (API/QR), o Manual</p>
+              <p className="text-sm text-gray-600">Elegir tipo: Terminal físico (USB/Serial) o Manual</p>
             </div>
           </div>
 
@@ -96,7 +96,6 @@ export function POSIntegrationSimple() {
               <p className="font-medium text-gray-900">Configurar conexión</p>
               <ul className="text-sm text-gray-600 mt-1 space-y-1">
                 <li>• <strong>USB/Serial:</strong> Instalar drivers, conectar terminal, probar conexión</li>
-                <li>• <strong>API/QR:</strong> Configurar credenciales del proveedor</li>
                 <li>• <strong>Manual:</strong> Activar modo manual en caja</li>
               </ul>
             </div>

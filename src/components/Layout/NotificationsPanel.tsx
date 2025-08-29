@@ -64,7 +64,7 @@ export function NotificationsPanel({ notifications, onClose, onRefresh }: Notifi
           </button>
         </div>
       </div>
-      
+
       <div className="max-h-96 overflow-y-auto">
         {notifications.length === 0 ? (
           <div className="p-4 text-center text-gray-500">
@@ -97,7 +97,7 @@ export function NotificationsPanel({ notifications, onClose, onRefresh }: Notifi
           </div>
         )}
       </div>
-      
+
       {notifications.length > 0 && (
         <div className="p-3 border-t border-gray-200">
           <button

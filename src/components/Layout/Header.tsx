@@ -12,17 +12,24 @@ interface HeaderProps {
 }
 
 export function Header({ onMenuToggle, currentView }: HeaderProps) {
-  const { user, signOut } = useAuth();
+  const { user, signOut, empresaId, sucursalId } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showNotifications, setShowNotifications] = useState(false);
-
   const { isVoiceOpen, setIsVoiceOpen } = useGlobalVoiceSolvIA();
+
+  const filters: any = {
+    empresa_id: empresaId,
+    leida: false,
+    ...(user?.role === "supervisor"
+      ? { sucursal_id: sucursalId }
+      : undefined),
+  };
 
   const {
     data: notificaciones,
     loading: notifLoading,
     refetch: refetchNotifications,
-  } = useSupabaseData<any>("notificaciones", "*", { leida: false });
+  } = useSupabaseData<any>("notificaciones", "*", filters);
 
   useEffect(() => {
     const timer = setInterval(() => {

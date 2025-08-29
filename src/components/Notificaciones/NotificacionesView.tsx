@@ -1,10 +1,54 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Bell, Package, Monitor, AlertTriangle, CheckCircle, X } from 'lucide-react';
 import { useSupabaseData, useSupabaseUpdate } from '../../hooks/useSupabaseData';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 export function NotificacionesView() {
-  const { data: notificaciones, loading, refetch } = useSupabaseData<any>('notificaciones', '*');
+  const { empresaId, sucursalId, user } = useAuth()
+  const { data: sucursales } = useSupabaseData("sucursales", "*", { empresa_id: empresaId })
+
   const { update } = useSupabaseUpdate('notificaciones');
+  const [selectedSucursalId, setSelectedSucursalId] = useState<string | null>("")
+  const [notificaciones, setNotificaciones] = useState<any>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchNotificaciones = async () => {
+      setLoading(true);
+
+      let query = supabase
+        .from("notificaciones")
+        .select("*")
+        .eq("empresa_id", empresaId)
+        .order("created_at", { ascending: false })
+
+      if (user?.role === "supervisor" && sucursalId) {
+        query = query.eq("sucursal_id", sucursalId);
+      }
+
+      if (selectedSucursalId) {
+        query = query.eq("sucursal_id", selectedSucursalId)
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error("Error al obtener notificaciones:", error);
+      } else {
+        setNotificaciones(data || []);
+      }
+
+      setLoading(false);
+    };
+
+    fetchNotificaciones();
+  }, [empresaId, sucursalId, selectedSucursalId]);
+
+
+  const refetch = () => {
+    setLoading(true)
+  }
 
   const getIcon = (tipo: string) => {
     switch (tipo) {
@@ -41,6 +85,16 @@ export function NotificacionesView() {
     }
   };
 
+  const handleSucursalChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    if (value === "all") {
+      setSelectedSucursalId(null);
+    } else {
+      setSelectedSucursalId(value);
+    }
+  };
+
+
   if (loading) {
     return <div className="text-center py-4">Cargando notificaciones...</div>;
   }
@@ -48,6 +102,7 @@ export function NotificacionesView() {
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
+        {/* Izquierda: título */}
         <div className="flex items-center space-x-3">
           <Bell className="w-6 h-6 text-blue-600" />
           <h1 className="text-2xl font-semibold text-gray-900">Notificaciones</h1>
@@ -57,17 +112,40 @@ export function NotificacionesView() {
             </span>
           )}
         </div>
-        
-        {notificaciones.filter(n => !n.leida).length > 0 && (
-          <button
-            onClick={markAllAsRead}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+
+        {/* Centro: selector de sucursal */}
+        <div>
+          <select
+            id="sucursal_id"
+            value={selectedSucursalId || "all"}
+            onChange={handleSucursalChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
           >
-            <CheckCircle className="w-4 h-4" />
-            <span>Marcar todas como leídas</span>
-          </button>
-        )}
+            <option value="all">Todas las sucursales</option>
+            {sucursales?.map((sucursal) => (
+              <option key={sucursal.id} value={sucursal.id}>
+                {sucursal.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Derecha: botón siempre visible pero con estado */}
+        <button
+          onClick={markAllAsRead}
+          disabled={notificaciones.filter(n => !n.leida).length === 0}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition
+      ${notificaciones.filter(n => !n.leida).length > 0
+              ? "bg-blue-600 text-white hover:bg-blue-700"
+              : "bg-gray-200 text-gray-400 cursor-not-allowed"
+            }`}
+        >
+          <CheckCircle className="w-4 h-4" />
+          <span>Marcar todas como leídas</span>
+        </button>
       </div>
+
 
       <div className="space-y-4">
         {notificaciones.length === 0 ? (
@@ -79,9 +157,8 @@ export function NotificacionesView() {
           notificaciones.map((notification) => (
             <div
               key={notification.id}
-              className={`p-4 rounded-lg border-l-4 ${getPriorityColor(notification.prioridad)} ${
-                notification.leida ? 'opacity-60' : ''
-              }`}
+              className={`p-4 rounded-lg border-l-4 ${getPriorityColor(notification.prioridad)} ${notification.leida ? 'opacity-60' : ''
+                }`}
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-start space-x-3">
@@ -101,7 +178,7 @@ export function NotificacionesView() {
                     </p>
                   </div>
                 </div>
-                
+
                 {!notification.leida && (
                   <button
                     onClick={() => markAsRead(notification.id)}
