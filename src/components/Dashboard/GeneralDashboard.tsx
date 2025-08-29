@@ -1,5 +1,5 @@
 import React from "react";
-import { TrendingUp, HelpCircle } from "lucide-react";
+import { TrendingUp, HelpCircle, TrendingDown } from "lucide-react";
 import { useSupabaseData } from "../../hooks/useSupabaseData";
 import { useAuth } from "../../contexts/AuthContext";
 import { Sucursal } from "../../types/cajas";
@@ -11,26 +11,35 @@ interface MetricsCardProps {
   isPositive: boolean;
 }
 
+
 function MetricsCard({ title, value, change, isPositive }: MetricsCardProps) {
   return (
-    <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+    <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+      {/* Título con icono de ayuda */}
       <div className="flex items-center justify-between mb-2">
         <p className="text-sm text-gray-600 font-medium">{title}</p>
         <HelpCircle className="w-4 h-4 text-gray-400" />
       </div>
+
+      {/* Valor principal y tendencia */}
       <div className="flex items-center justify-between">
         <p className="text-2xl font-bold text-gray-900">{value}</p>
         <div
           className={`flex items-center space-x-1 text-sm font-medium ${isPositive ? "text-green-600" : "text-red-600"
             }`}
         >
-          <TrendingUp className="w-4 h-4" />
+          {isPositive ? (
+            <TrendingUp className="w-4 h-4" />
+          ) : (
+            <TrendingDown className="w-4 h-4" />
+          )}
           <span>{change}</span>
         </div>
       </div>
     </div>
   );
 }
+
 
 interface PieChartProps {
   title: string;
@@ -305,7 +314,10 @@ export default function GeneralDashboard() {
   }
 
   const calculateMetrics = () => {
-    if (ventasLoading || !ventas) return null;
+    if (ventasLoading || !ventas) {
+      console.log("⏳ No hay ventas aún o siguen cargando");
+      return null;
+    }
 
     const currentDate = new Date();
     const currentMonth = currentDate.getMonth();
@@ -313,6 +325,10 @@ export default function GeneralDashboard() {
     const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1;
     const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear;
 
+    console.log("📅 Mes actual:", currentMonth + 1, "Año:", currentYear);
+    console.log("📅 Mes anterior:", previousMonth + 1, "Año:", previousYear);
+
+    // Ventas del mes actual
     const ventasActuales = ventas.filter((v: any) => {
       const ventaDate = new Date(v.fecha);
       return (
@@ -321,6 +337,7 @@ export default function GeneralDashboard() {
       );
     });
 
+    // Ventas del mes anterior
     const ventasAnteriores = ventas.filter((v: any) => {
       const ventaDate = new Date(v.fecha);
       return (
@@ -329,6 +346,23 @@ export default function GeneralDashboard() {
       );
     });
 
+    console.log("🟢 Ventas actuales:", ventasActuales);
+    console.log("🟡 Ventas anteriores:", ventasAnteriores);
+
+    const ventaItemsActuales = ventaItems?.filter((item: any) =>
+      ventasActuales.some((v: any) => v.id === item.venta_id)
+    ) || [];
+
+    const ventaItemsAnteriores = ventaItems?.filter((item: any) =>
+      ventasAnteriores.some((v: any) => v.id === item.venta_id)
+    ) || [];
+
+    console.log(ventaItemsActuales)
+    console.log(ventaItemsAnteriores)
+
+
+
+    // Totales de ventas
     const totalVentasActual = ventasActuales.reduce(
       (sum: number, venta: any) => sum + (parseFloat(venta.total) || 0),
       0
@@ -338,33 +372,63 @@ export default function GeneralDashboard() {
       0
     );
 
-    const totalUnidades =
-      ventaItems?.reduce((sum: number, item: any) => sum + (item.cantidad || 0), 0) || 0;
+    console.log("💰 Total ventas actual:", totalVentasActual);
+    console.log("💰 Total ventas anterior:", totalVentasAnterior);
+
+    // Unidades vendidas (⚠️ ojo, no filtra por mes)
+    const totalUnidades = ventaItemsActuales.reduce(
+      (sum: number, item: any) => sum + (item.cantidad || 0),
+      0
+    );
+
+    console.log("📦 Unidades vendidas (todas):", totalUnidades);
+
+    // Número de ventas y ticket promedio
     const numeroVentas = ventasActuales.length;
     const ticketPromedio =
       numeroVentas > 0 ? totalVentasActual / numeroVentas : 0;
 
-    const totalCosto =
-      ventaItems?.reduce((sum: number, item: any) => {
-        const producto = productos?.find((p: any) => p.id === item.producto_id);
-        return sum + (producto?.costo || 0) * item.cantidad;
-      }, 0) || 0;
-    const margen = totalVentasActual - totalCosto;
+    console.log("🧾 Número de ventas:", numeroVentas);
+    console.log("🎟️ Ticket promedio:", ticketPromedio);
 
+    // ⚠️ Aquí estaba el problema: costo no filtrado por mes
+    const totalCosto = ventaItemsActuales.reduce((sum: number, item: any) => {
+      const producto = productos?.find((p: any) => p.id === item.producto_id);
+      return sum + (producto?.costo || 0) * item.cantidad;
+    }, 0);
+
+
+    const costoAnterior = ventaItemsAnteriores.reduce((sum: number, item: any) => {
+      const producto = productos?.find((p: any) => p.id === item.producto_id);
+      return sum + (producto?.costo || 0) * item.cantidad;
+    }, 0);
+
+    const margenAnterior = totalVentasAnterior - costoAnterior;
+
+    console.log("💸 Costo total (todas las ventas):", totalCosto);
+
+    const margen = totalVentasActual - totalCosto;
+    console.log("📊 Margen calculado:", margen);
+
+    // Aux para cambios
     const calcularCambio = (actual: number, anterior: number) => {
-      if (anterior === 0) return actual > 0 ? "+100%" : "0%";
+      if (anterior === 0) {
+        if (actual > 0) return "+100%";
+        return "0%"; // ambos son 0
+      }
       const cambio = ((actual - anterior) / anterior) * 100;
       return `${cambio >= 0 ? "+" : ""}${cambio.toFixed(1)}%`;
     };
 
-    return {
+    // Resultado final con logs
+    const result = {
       ventasTotales: totalVentasActual,
       margen: margen,
       unidadesVendidas: totalUnidades,
       numeroVentas: numeroVentas,
       ticketPromedio: ticketPromedio,
       cambioVentas: calcularCambio(totalVentasActual, totalVentasAnterior),
-      cambioMargen: calcularCambio(margen, totalVentasAnterior - totalCosto),
+      cambioMargen: calcularCambio(margen, margenAnterior),
       cambioUnidades: calcularCambio(totalUnidades, 0),
       cambioNumeroVentas: calcularCambio(numeroVentas, ventasAnteriores.length),
       cambioTicket: calcularCambio(
@@ -374,7 +438,12 @@ export default function GeneralDashboard() {
           : 0
       ),
     };
+
+    console.log("✅ Métricas finales:", result);
+
+    return result;
   };
+
 
   const metrics = calculateMetrics();
   const metricsData = metrics
