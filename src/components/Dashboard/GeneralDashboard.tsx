@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { TrendingUp, HelpCircle, TrendingDown } from "lucide-react";
 import { useSupabaseData } from "../../hooks/useSupabaseData";
 import { useAuth } from "../../contexts/AuthContext";
 import { Sucursal } from "../../types/cajas";
+import { supabase } from "../../lib/supabase";
+import { toast } from "react-toastify";
 
 interface MetricsCardProps {
   title: string;
@@ -263,13 +265,35 @@ function PieChart({ title, data }: PieChartProps) {
 export default function GeneralDashboard() {
   const { empresaId } = useAuth();
   const [sucursalId, setSucursalId] = React.useState<string>("");
+  const [sucursales, setSucursales] = useState<Sucursal[]>([])
 
   // Hook para cargar sucursales de la empresa  
-  const { data: sucursales, error: sucursalesError } = useSupabaseData<Sucursal>(
-    "sucursales",
-    "*",
-    empresaId ? { empresa_id: empresaId } : undefined
-  );
+  const getSucursales = useCallback(async () => {
+    if (!empresaId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("sucursales")
+        .select("*")
+        .eq("empresa_id", empresaId);
+
+      if (error) {
+        toast.error("Error al obtener las sucursales");
+        return;
+      }
+
+      setSucursales(data);
+    } catch (e) {
+      console.error("Error al obtener sucursales:", e);
+      toast.error("Error al obtener las sucursales");
+    }
+  }, [empresaId]);
+
+  // Llamada en useEffect
+  useEffect(() => {
+    getSucursales();
+  }, [getSucursales]);
+
 
   // Construir filtro común para las consultas según empresaId y sucursalId  
   const commonFilter = React.useMemo(() => {

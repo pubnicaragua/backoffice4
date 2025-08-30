@@ -7,6 +7,10 @@ import {
 } from "../../hooks/useSupabaseData";
 import { Modal } from "../Common/Modal";
 import { useAuth } from "../../contexts/AuthContext";
+import { Producto } from "../../types";
+import AgregarCuponForm from "./modals/AgregarCuponModal";
+import { toast } from "react-toastify";
+import { supabase } from "../../lib/supabase";
 
 export function CuponesTodas() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -29,9 +33,10 @@ export function CuponesTodas() {
     usos_maximos: "1",
     fecha_inicio: "",
     fecha_fin: "",
+    producto_id: "",
+    searchTerm: "",
   });
 
-  console.log("🎫 CUPONES: Componente inicializado");
 
   const {
     data: cupones,
@@ -45,22 +50,22 @@ export function CuponesTodas() {
   const { insert, loading: inserting } = useSupabaseInsert("cupones");
   const { update, loading: updating } = useSupabaseUpdate("cupones");
 
-  console.log("📊 CUPONES: Data del backend", {
-    cupones: cupones?.length || 0,
-  });
+  const { data: productos } = useSupabaseData<any>(
+    "productos",
+    "*",
+    empresaId ? { empresa_id: empresaId } : undefined
+  );
 
   const columns = [
     { key: "codigo", label: "Código" },
     { key: "nombre", label: "Nombre" },
     { key: "tipo", label: "Tipo" },
     { key: "valor", label: "Valor" },
-    { key: "usos", label: "Usos" },
     { key: "estado", label: "Estado" },
     { key: "acciones", label: "Acciones" },
   ];
 
   const processedData = (cupones || []).map((cupon) => {
-    console.log("🎫 CUPONES: Procesando cupón", cupon.codigo);
 
     return {
       id: cupon.id,
@@ -69,21 +74,23 @@ export function CuponesTodas() {
       tipo:
         cupon.tipo === "descuento"
           ? "Descuento"
-          : cupon.tipo === "envio_gratis"
-          ? "Envío Gratis"
-          : "Regalo",
+          : cupon.tipo === "envio"
+            ? "Envío Gratis"
+            : "Desconocido",
       valor:
-        cupon.tipo === "envio_gratis"
+        cupon.tipo === "envio"
           ? "Gratis"
           : cupon.valor > 100
-          ? `$${cupon.valor.toLocaleString("es-CL")}`
-          : `${cupon.valor}%`,
-      usos: `${cupon.usos_actuales || 0}/${cupon.usos_maximos}`,
+            ? `$${cupon.valor.toLocaleString("es-CL")}`
+            : `${cupon.valor}%`,
       estado: cupon.activo ? "Activo" : "Inactivo",
       acciones: (
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => handleEditCupon(cupon)}
+            onClick={() => {
+              setSelectedCupon(cupon)
+              setShowAgregarModal(true)
+            }}
             className="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50"
             title="Editar cupón"
           >
@@ -104,10 +111,7 @@ export function CuponesTodas() {
 
   // Aplicar filtros FUNCIONALES
   const filteredData = processedData.filter((item) => {
-    console.log("🔍 CUPONES: Aplicando filtros", {
-      filters,
-      item: item.codigo,
-    });
+
 
     if (
       searchTerm &&
@@ -131,99 +135,38 @@ export function CuponesTodas() {
     return true;
   });
 
-  const handleEditCupon = (cupon) => {
-    console.log("✏️ CUPONES: Editando cupón", cupon.codigo);
-    setSelectedCupon(cupon);
+  const filteredProductos = (productos || []).filter(
+    (producto) =>
+      producto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      producto.codigo.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const cleanFormData = () => {
     setFormData({
-      codigo: cupon.codigo,
-      nombre: cupon.nombre,
-      descripcion: cupon.descripcion || "",
-      tipo: cupon.tipo,
-      valor: cupon.valor.toString(),
-      usos_maximos: cupon.usos_maximos.toString(),
-      fecha_inicio: cupon.fecha_inicio || "",
-      fecha_fin: cupon.fecha_fin || "",
+      codigo: "",
+      nombre: "",
+      descripcion: "",
+      tipo: "descuento",
+      valor: "",
+      usos_maximos: "1",
+      fecha_inicio: "",
+      fecha_fin: "",
+      searchTerm: "",
+      producto_id: "",
     });
-    setShowEditarModal(true);
-  };
+  }
+
 
   const handleDeleteCupon = async (cupon) => {
-    console.log("🗑️ CUPONES: Eliminando cupón", cupon.codigo);
     if (confirm(`¿Estás seguro de eliminar el cupón ${cupon.codigo}?`)) {
       const success = await update(cupon.id, { activo: false });
       if (success) {
-        console.log("✅ CUPONES: Cupón eliminado");
         refetch();
       }
     }
   };
 
-  const handleSubmitAgregar = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const codigoEsUnico = await validarCodigoUnico(formData.codigo);
-    if (!codigoEsUnico) {
-      alert("Error: Ya existe un cupón con este código en tu empresa");
-      return;
-    }
-    console.log("💾 CUPONES: Guardando nuevo cupón", formData);
-
-    const success = await insert({
-      empresa_id: empresaId,
-      sucursal_id: "00000000-0000-0000-0000-000000000001",
-      codigo: formData.codigo,
-      nombre: formData.nombre,
-      descripcion: formData.descripcion,
-      tipo: formData.tipo,
-      valor: parseFloat(formData.valor),
-      usos_maximos: parseInt(formData.usos_maximos),
-      fecha_inicio: formData.fecha_inicio || null,
-      fecha_fin: formData.fecha_fin || null,
-      activo: true,
-    });
-
-    if (success) {
-      console.log("✅ CUPONES: Cupón creado exitosamente");
-      setShowAgregarModal(false);
-      setFormData({
-        codigo: "",
-        nombre: "",
-        descripcion: "",
-        tipo: "descuento",
-        valor: "",
-        usos_maximos: "1",
-        fecha_inicio: "",
-        fecha_fin: "",
-      });
-      refetch();
-    }
-  };
-
-  const handleSubmitEditar = async (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("💾 CUPONES: Actualizando cupón", selectedCupon?.id);
-
-    const success = await update(selectedCupon.id, {
-      empresa_id: empresaId, // Agregar esta línea
-      codigo: formData.codigo,
-      nombre: formData.nombre,
-      descripcion: formData.descripcion,
-      tipo: formData.tipo,
-      valor: parseFloat(formData.valor),
-      usos_maximos: parseInt(formData.usos_maximos),
-      fecha_inicio: formData.fecha_inicio || null,
-      fecha_fin: formData.fecha_fin || null,
-    });
-
-    if (success) {
-      console.log("✅ CUPONES: Cupón actualizado exitosamente");
-      setShowEditarModal(false);
-      setSelectedCupon(null);
-      refetch();
-    }
-  };
-
   const applyFilters = () => {
-    console.log("✅ CUPONES: Aplicando filtros", filters);
     setShowFilters(false);
   };
   const validarCodigoUnico = async (
@@ -249,7 +192,6 @@ export function CuponesTodas() {
   };
 
   if (loading) {
-    console.log("⏳ CUPONES: Cargando datos...");
     return <div className="text-center py-4">Cargando cupones...</div>;
   }
 
@@ -260,7 +202,6 @@ export function CuponesTodas() {
         <div className="flex items-center space-x-2">
           <button
             onClick={() => {
-              console.log("🔍 CUPONES: Abriendo filtros");
               setShowFilters(true);
             }}
             className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -270,7 +211,6 @@ export function CuponesTodas() {
           </button>
           <button
             onClick={() => {
-              console.log("➕ CUPONES: Abriendo agregar");
               setShowAgregarModal(true);
             }}
             className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -288,7 +228,6 @@ export function CuponesTodas() {
           placeholder="Buscar cupones"
           value={searchTerm}
           onChange={(e) => {
-            console.log("🔍 CUPONES: Búsqueda", e.target.value);
             setSearchTerm(e.target.value);
           }}
           className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -375,144 +314,20 @@ export function CuponesTodas() {
       </Modal>
 
       {/* Modal Agregar */}
-      <Modal
-        isOpen={showAgregarModal}
-        onClose={() => setShowAgregarModal(false)}
-        title="Agregar Cupón"
-        size="md"
-      >
-        <form onSubmit={handleSubmitAgregar} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Código
-            </label>
-            <input
-              type="text"
-              value={formData.codigo}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, codigo: e.target.value }))
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nombre
-            </label>
-            <input
-              type="text"
-              value={formData.nombre}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, nombre: e.target.value }))
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tipo
-            </label>
-            <select
-              value={formData.tipo}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, tipo: e.target.value }))
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            >
-              <option value="descuento">Descuento</option>
-              <option value="envio_gratis">Envío Gratis</option>
-              <option value="regalo">Regalo</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Valor
-            </label>
-            <input
-              type="number"
-              value={formData.valor}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, valor: e.target.value }))
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              required
-            />
-          </div>
-          <div className="flex justify-center">
-            <button
-              type="submit"
-              disabled={inserting}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-            >
-              {inserting ? "Guardando..." : "Guardar Cupón"}
-            </button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Modal Editar */}
-      <Modal
-        isOpen={showEditarModal}
-        onClose={() => setShowEditarModal(false)}
-        title="Editar Cupón"
-        size="md"
-      >
-        <form onSubmit={handleSubmitEditar} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Código
-            </label>
-            <input
-              type="text"
-              value={formData.codigo}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, codigo: e.target.value }))
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nombre
-            </label>
-            <input
-              type="text"
-              value={formData.nombre}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, nombre: e.target.value }))
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Valor
-            </label>
-            <input
-              type="number"
-              value={formData.valor}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, valor: e.target.value }))
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              required
-            />
-          </div>
-          <div className="flex justify-center">
-            <button
-              type="submit"
-              disabled={updating}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-            >
-              {updating ? "Actualizando..." : "Actualizar Cupón"}
-            </button>
-          </div>
-        </form>
-      </Modal>
+      <AgregarCuponForm
+        show={showAgregarModal || showEditarModal}
+        onClose={() => {
+          setShowAgregarModal(false);
+          setShowEditarModal(false);
+          setSelectedCupon(null);
+        }}
+        empresaId={empresaId!}
+        insert={insert}
+        update={update}
+        validarCodigoUnico={validarCodigoUnico}
+        refetch={refetch}
+        selectedCupon={selectedCupon}
+      />
     </div>
   );
 }

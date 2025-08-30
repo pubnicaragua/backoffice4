@@ -263,7 +263,7 @@ export function AgregarUsuarioModal({
             htmlFor="sucursal_id"
             className="block text-sm font-medium text-gray-700 mb-1"
           >
-            Sucursal <span className="text-red-600">*</span>
+            Sucursal
           </label>
           <select
             id="sucursal_id"

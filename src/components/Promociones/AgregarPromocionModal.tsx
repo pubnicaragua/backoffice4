@@ -46,13 +46,6 @@ export function AgregarPromocionModal({
     empresaId ? { empresa_id: empresaId } : undefined
   );
 
-  // Filtrado productos
-  const filteredProductos = (productos || []).filter(
-    (producto) =>
-      producto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      producto.codigo.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   const handleCLose = () => {
     setFormData({
       nombre: "",
@@ -132,12 +125,16 @@ export function AgregarPromocionModal({
 
     const productosIds = productosFinal.map((p) => p.id);
 
+    const precioReal = productosFinal[0]?.precio_real || 0;
+    const descuento = parseFloat(formData.precio_promocion || "0");
+
     const success = await insert({
       nombre: formData.nombre,
       descripcion: formData.descripcion,
       empresa_id: empresaId,
       sucursales_id: formData.sucursales,
-      precio_prom: null,
+      precio: precioReal,
+      precio_prom: precioReal - descuento,
       productos_id: productosIds,
       activo: true,
     });
@@ -246,7 +243,7 @@ export function AgregarPromocionModal({
             {/* Buscador productos */}
             <div className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Buscar producto (SKU obligatorio)
+                Buscar producto
               </label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
