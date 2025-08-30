@@ -315,7 +315,6 @@ export default function GeneralDashboard() {
 
   const calculateMetrics = () => {
     if (ventasLoading || !ventas) {
-      console.log("⏳ No hay ventas aún o siguen cargando");
       return null;
     }
 
@@ -324,9 +323,6 @@ export default function GeneralDashboard() {
     const currentYear = currentDate.getFullYear();
     const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1;
     const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-
-    console.log("📅 Mes actual:", currentMonth + 1, "Año:", currentYear);
-    console.log("📅 Mes anterior:", previousMonth + 1, "Año:", previousYear);
 
     // Ventas del mes actual
     const ventasActuales = ventas.filter((v: any) => {
@@ -346,9 +342,6 @@ export default function GeneralDashboard() {
       );
     });
 
-    console.log("🟢 Ventas actuales:", ventasActuales);
-    console.log("🟡 Ventas anteriores:", ventasAnteriores);
-
     const ventaItemsActuales = ventaItems?.filter((item: any) =>
       ventasActuales.some((v: any) => v.id === item.venta_id)
     ) || [];
@@ -356,11 +349,6 @@ export default function GeneralDashboard() {
     const ventaItemsAnteriores = ventaItems?.filter((item: any) =>
       ventasAnteriores.some((v: any) => v.id === item.venta_id)
     ) || [];
-
-    console.log(ventaItemsActuales)
-    console.log(ventaItemsAnteriores)
-
-
 
     // Totales de ventas
     const totalVentasActual = ventasActuales.reduce(
@@ -372,26 +360,20 @@ export default function GeneralDashboard() {
       0
     );
 
-    console.log("💰 Total ventas actual:", totalVentasActual);
-    console.log("💰 Total ventas anterior:", totalVentasAnterior);
-
     // Unidades vendidas (⚠️ ojo, no filtra por mes)
     const totalUnidades = ventaItemsActuales.reduce(
       (sum: number, item: any) => sum + (item.cantidad || 0),
       0
     );
 
-    console.log("📦 Unidades vendidas (todas):", totalUnidades);
 
     // Número de ventas y ticket promedio
     const numeroVentas = ventasActuales.length;
     const ticketPromedio =
       numeroVentas > 0 ? totalVentasActual / numeroVentas : 0;
 
-    console.log("🧾 Número de ventas:", numeroVentas);
-    console.log("🎟️ Ticket promedio:", ticketPromedio);
 
-    // ⚠️ Aquí estaba el problema: costo no filtrado por mes
+    // Filtrar el costo por mes
     const totalCosto = ventaItemsActuales.reduce((sum: number, item: any) => {
       const producto = productos?.find((p: any) => p.id === item.producto_id);
       return sum + (producto?.costo || 0) * item.cantidad;
@@ -405,10 +387,7 @@ export default function GeneralDashboard() {
 
     const margenAnterior = totalVentasAnterior - costoAnterior;
 
-    console.log("💸 Costo total (todas las ventas):", totalCosto);
-
     const margen = totalVentasActual - totalCosto;
-    console.log("📊 Margen calculado:", margen);
 
     // Aux para cambios
     const calcularCambio = (actual: number, anterior: number) => {
@@ -438,8 +417,6 @@ export default function GeneralDashboard() {
           : 0
       ),
     };
-
-    console.log("✅ Métricas finales:", result);
 
     return result;
   };

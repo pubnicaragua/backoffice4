@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Modal } from '../Common/Modal';
 import { Calendar, FileText } from 'lucide-react';
 import { useSupabaseData } from '../../hooks/useSupabaseData';
+import { useAuth } from '../../contexts/AuthContext';
+import { toast } from 'react-toastify';
+import { supabase } from '../../lib/supabase';
 
 interface DocumentoDetalleModalProps {
   isOpen: boolean;
@@ -16,6 +19,31 @@ export function DocumentoDetalleModal({ isOpen, onClose, documento }: DocumentoD
     documento?.id ? { venta_id: documento.id } : null
   );
 
+  const { empresaId } = useAuth()
+
+  const [userEmpresa, setUserEmpresa] = useState({})
+
+
+  const loadEmpresa = useCallback(async () => {
+    if (!empresaId) return // si no hay empresaId no hace nada
+
+    const { data: empresa, error } = await supabase
+      .from("empresas")
+      .select("*")
+      .eq("id", empresaId)
+      .single()
+
+    if (error) {
+      toast.error("Error al obtener los datos de la empresa")
+      return
+    }
+
+    setUserEmpresa(empresa)
+  }, [empresaId])
+
+  useEffect(() => {
+    loadEmpresa()
+  }, [empresaId])
   if (!documento) return null;
 
   const productos = ventaItems || [];
@@ -113,13 +141,13 @@ export function DocumentoDetalleModal({ isOpen, onClose, documento }: DocumentoD
               <FileText className="w-4 h-4" />
               <span>Vista previa del documento:</span>
             </h3>
-            <div className="w-full h-64 bg-white border border-gray-200 rounded-lg p-4 text-xs font-mono">
+            <div className="w-full max-h-96 overflow-y-auto bg-white border border-gray-200 rounded-lg p-4 text-xs font-mono">
               <div className="text-center mb-4">
                 <img src="./logo_negro.svg" alt="Solvendo" className="h-8 mx-auto mb-2" />
-                <div className="text-sm font-bold">ANROLTEC SPA</div>
-                <div>RUT: 78.168.951-3</div>
-                <div>Av. Principal 123, Santiago</div>
-                <div>Tel: +56 9 1234 5678</div>
+                <div className="text-sm font-bold">{userEmpresa?.razon_social || ""}</div>
+                <div>RUT: {userEmpresa?.rut || ""}</div>
+                <div>{userEmpresa?.direccion + "," || ""} {userEmpresa?.comuna || ""}</div>
+                <div>{userEmpresa?.telefono || ""}</div>
               </div>
 
               <div className="border-t border-b border-gray-300 py-2 mb-2">

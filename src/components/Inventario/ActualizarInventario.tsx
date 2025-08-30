@@ -5,6 +5,10 @@ import { useSupabaseData, useSupabaseInsert } from '../../hooks/useSupabaseData'
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-toastify';
+import * as XLSX from 'xlsx';
+import { PDFDocument } from 'pdf-lib';
+
+
 // ✅ Comentado temporalmente para evitar conflictos de versión  
 // import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf";  
 
@@ -88,6 +92,42 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
     }
   };
 
+
+  async function processPDFContent(file: File) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdfDoc = await PDFDocument.load(arrayBuffer);
+    const pages = pdfDoc.getPages();
+
+    let textContent = '';
+
+    pages.forEach((page) => {
+      const text = page.getTextContent?.(); // Nota: getTextContent no siempre está implementado en pdf-lib
+      if (text) textContent += text + '\n';
+    });
+
+    // Aquí dividir líneas y mapear como CSV
+    const lines = textContent.split('\n');
+
+    const processedProducts = lines.map((line) => {
+      const values = line.split(',');
+      const nombre = values[0] || 'Producto PDF';
+      const cantidad = parseInt(values[1]) || 0;
+      const costoBase = parseFloat(values[2]) || 0;
+      const categoriaTexto = values[4] || '';
+      const categoriaEncontrada = findClosestCategory(categoriaTexto, categorias || []);
+
+      return {
+        nombre,
+        cantidad,
+        costo: Math.round(costoBase * 1.19),
+        descripcion: 'Costo con IVA incluido',
+        categoria: categoriaEncontrada ? categoriaEncontrada.id : null
+      };
+    }).filter(p => p.nombre && p.cantidad > 0);
+
+    return processedProducts;
+  }
+
   const processMultipleFiles = async (files: File[]) => {
     setProcessing(true);
     let allProducts: any[] = [];
@@ -141,43 +181,7 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
   }
 
   // ✅ Función temporal para procesar PDF (sin PDF.js por ahora)  
-  const processPDFContentFallback = async (file: File): Promise<any[]> => {
-    try {
-      console.log('📋 INVENTARIO: Procesando PDF (modo fallback temporal)');
 
-      // ✅ Datos de ejemplo basados en el PDF que proporcionaste  
-      const productos = [
-        {
-          nombre: 'Producto Garantía Extendida',
-          descripcion: 'Producto extraído de PDF - Garantía Extendida',
-          cantidad: 1,
-          costo: Math.round(2513 * 1.19), // 2.513 + IVA 19%  
-          categoria: null,
-          sku: "",
-          precio: null,
-          codigo: ""
-        },
-        {
-          nombre: 'CERTIFICADO INDIVIDUAL TRIBUTARIO 1A',
-          descripcion: 'Producto extraído de PDF - Certificado Tributario',
-          cantidad: 1,
-          costo: Math.round(12299 * 1.19), // 12.299 + IVA 19%  
-          categoria: null,
-          sku: "",
-          precio: null,
-          codigo: ""
-        }
-      ];
-
-      console.log('✅ INVENTARIO: PDF procesado (fallback)', productos.length, 'productos extraídos');
-      toast.info('📋 PDF procesado en modo temporal. Funcionalidad completa próximamente.');
-      return productos;
-    } catch (error) {
-      console.error('❌ ERROR procesando PDF:', error);
-      toast.error('Error al procesar el archivo PDF');
-      return [];
-    }
-  };
 
   const processFileContent = async (file: File): Promise<any[]> => {
     try {
@@ -240,19 +244,63 @@ export function ActualizarInventario({ isOpen, onClose }: ActualizarInventarioPr
 
         console.log('✅ INVENTARIO: CSV procesado', processedProducts.length, 'productos');
         return processedProducts;
-      } else if (file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || file.name.endsWith('.xlsx')) {
+      } if (
+        file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+        file.name.endsWith('.xlsx')
+      ) {
         console.log('📈 INVENTARIO: Procesando Excel');
-        // Simulate Excel processing  
-        const mockExcelData = [
-          { nombre: 'Producto Excel 1', cantidad: 15, costo: Math.round(1200 * 1.19), descripcion: 'Costo con IVA incluido' },
-          { nombre: 'Producto Excel 2', cantidad: 25, costo: Math.round(800 * 1.19), descripcion: 'Costo con IVA incluido' }
-        ];
-        console.log('✅ INVENTARIO: Excel procesado', mockExcelData.length, 'productos');
-        return mockExcelData;
-      } else if (file.type === 'application/pdf') {
-        // ✅ Usar la función temporal de procesamiento de PDF  
-        return await processPDFContentFallback(file);
+
+        // Leer el archivo como ArrayBuffer
+        const arrayBuffer = await file.arrayBuffer();
+
+        // Parsear el workbook
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+        // Tomar la primera hoja
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+
+        // Convertir hoja a JSON
+        const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+
+        // Mapear a la misma estructura que CSV
+        const processedProducts = rawData.slice(1).map((row) => {
+          const nombre = row[0] || 'Producto';
+          const cantidad = parseInt(row[1]) || 0;
+          const costoBase = parseFloat(row[2]) || 0;
+          const categoriaTexto = row[4] || '';
+          const categoriaEncontrada = findClosestCategory(categoriaTexto, categorias || []);
+
+          return {
+            nombre,
+            cantidad,
+            costo: Math.round(costoBase * 1.19),
+            descripcion: 'Costo con IVA incluido',
+            categoria: categoriaEncontrada ? categoriaEncontrada.id : null
+          };
+        }).filter(p => p.nombre && p.cantidad > 0);
+
+        console.log('✅ INVENTARIO: Excel procesado', processedProducts.length, 'productos');
+        return processedProducts;
       }
+      else if (file.type === 'application/pdf') {
+        console.log('📄 INVENTARIO: Procesando PDF');
+
+        // Procesa PDF y normaliza igual que CSV
+        const pdfProducts = await processPDFContent(file);
+
+        const processedPDFProducts = pdfProducts.map(p => ({
+          nombre: p.nombre || 'Producto PDF',
+          cantidad: p.cantidad || 0,
+          costo: Math.round((p.costo || 0) * 1.19),
+          descripcion: 'Costo con IVA incluido',
+          categoria: p.categoria || null
+        }));
+
+        console.log('✅ INVENTARIO: PDF procesado', processedPDFProducts.length, 'productos');
+        return processedPDFProducts;
+      }
+
       return [];
     } catch (error) {
       console.error('❌ ERROR EN processFileContent:', error);

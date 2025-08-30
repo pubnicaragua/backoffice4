@@ -129,7 +129,7 @@ export function VentasDashboard() {
     sucursal: "",
     metodo_pago: "",
     producto: "",
-    movimiento: "", // Nuevo filtro  
+    movimiento: "",
   });
   const [monthlyChartData, setMonthlyChartData] = useState<
     Array<{ mes: string; actual: number }>
@@ -195,7 +195,7 @@ export function VentasDashboard() {
 
       setProductosConMovimiento(movimientos);
     }
-  }, [productos, ventaItems]);
+  }, [productos, ventaItems, ventas]);
 
   useEffect(() => {
     if (!empresaId) return;
@@ -209,11 +209,35 @@ export function VentasDashboard() {
       });
   }, [empresaId]);
 
+  const calcularMovimientoProducto = (
+    productoId: string
+  ): { cantidad: number; tipo: string } => {
+    const ventasProducto = ventaItems.filter(
+      (item) => item.producto_id === productoId
+    );
+    const totalVendido = ventasProducto.reduce(
+      (sum, item) => sum + item.cantidad,
+      0
+    );
+
+    // Clasificar movimiento basado en ventas de los últimos 30 días
+    let tipo = "Sin movimiento";
+    if (totalVendido >= 50) {
+      tipo = "Mucho movimiento";
+    } else if (totalVendido >= 10) {
+      tipo = "Movimiento medio";
+    } else if (totalVendido > 0) {
+      tipo = "Poco movimiento";
+    }
+
+    return { cantidad: totalVendido, tipo };
+  };
+
   const filteredVentas = React.useMemo(() => {
     const fechaInicio = filters.fechaInicio ? new Date(filters.fechaInicio) : null;
     const fechaFin = filters.fechaFin ? new Date(filters.fechaFin) : null;
 
-    // Ajustar fechaFinal para incluir todo el día (hora 23:59:59)  
+    // Ajustar fechaFinal para incluir todo el día (hora 23:59:59)
     if (fechaFin) {
       fechaFin.setHours(23, 59, 59, 999);
     }
@@ -223,7 +247,7 @@ export function VentasDashboard() {
       if (fechaInicio && ventaFecha < fechaInicio) return false;
       if (fechaFin && ventaFecha > fechaFin) return false;
 
-      // Otros filtros  
+      // Otros filtros
       if (filters.sucursal && venta.sucursal_id !== filters.sucursal) return false;
       if (filters.metodo_pago && venta.metodo_pago !== filters.metodo_pago)
         return false;
@@ -238,28 +262,29 @@ export function VentasDashboard() {
         if (items.length === 0) return false;
       }
 
-      // Filtro por movimiento de productos  
+      // Filtro por movimiento de productos
       if (filters.movimiento) {
         const items = ventaItems.filter((item) => item.venta_id === venta.id);
-        const tieneProductoConMovimiento = items.some((item) => {
-          const productoMovimiento = productosConMovimiento.find(
-            (p) => p.id === item.producto_id
-          );
-          if (!productoMovimiento) return false;
 
-          if (filters.movimiento === "mucho" && productoMovimiento.tipo !== "Mucho movimiento") return false;
-          if (filters.movimiento === "poco" && productoMovimiento.tipo !== "Poco movimiento") return false;
-          if (filters.movimiento === "sin" && productoMovimiento.tipo !== "Sin movimiento") return false;
+        const cumpleMovimiento = items.some((item) => {
+          const movimiento = calcularMovimientoProducto(item.producto_id);
+
+          if (filters.movimiento === "mucho" && movimiento.tipo !== "Mucho movimiento")
+            return false;
+          if (filters.movimiento === "poco" && movimiento.tipo !== "Poco movimiento")
+            return false;
+          if (filters.movimiento === "sin" && movimiento.tipo !== "Sin movimiento")
+            return false;
 
           return true;
         });
 
-        if (!tieneProductoConMovimiento) return false;
+        if (!cumpleMovimiento) return false;
       }
 
       return true;
     });
-  }, [ventas, ventaItems, filters, productosConMovimiento]);
+  }, [ventas, ventaItems, filters]);
 
   const calculateKpis = useCallback(() => {
     try {
@@ -324,36 +349,32 @@ export function VentasDashboard() {
         return;
       }
 
-      // Convertir fechas de filtro a Date  
       const startDate = new Date(filters.fechaInicio);
       const endDate = new Date(filters.fechaFin);
 
-      // CORRECIÓN SENCILLA: ajustar startDate restando un día y endDate sumando un día  
+      // Ajustar inicio y fin
       const adjustedStart = new Date(startDate);
-      adjustedStart.setDate(adjustedStart.getDate() - 1);
+      adjustedStart.setHours(0, 0, 0, 0);
+
       const adjustedEnd = new Date(endDate);
-      adjustedEnd.setDate(adjustedEnd.getDate() + 1);
+      adjustedEnd.setHours(23, 59, 59, 999);
 
       const dayMap = new Map<string, number>();
 
-      // Crear mapa de días entre adjustedStart y adjustedEnd  
-      for (
-        let d = new Date(adjustedStart);
-        d <= adjustedEnd;
-        d.setDate(d.getDate() + 1)
-      ) {
+      // Crear mapa de días
+      for (let d = new Date(adjustedStart); d <= adjustedEnd; d.setDate(d.getDate() + 1)) {
         dayMap.set(d.toISOString().slice(0, 10), 0);
       }
 
       filteredVentas.forEach((venta) => {
-        const ventaFechaStr = venta.fecha.slice(0, 10);
+        const ventaFecha = new Date(venta.fecha);
+        const ventaFechaStr = ventaFecha.toISOString().slice(0, 10);
+
         if (dayMap.has(ventaFechaStr)) {
           dayMap.set(
             ventaFechaStr,
             dayMap.get(ventaFechaStr)! +
-            (typeof venta.total === "string"
-              ? parseFloat(venta.total)
-              : venta.total)
+            (typeof venta.total === "string" ? parseFloat(venta.total) : venta.total)
           );
         }
       });
@@ -372,8 +393,7 @@ export function VentasDashboard() {
           prev.length === chartData.length &&
           prev.every(
             (item, idx) =>
-              item.mes === chartData[idx].mes &&
-              item.actual === chartData[idx].actual
+              item.mes === chartData[idx].mes && item.actual === chartData[idx].actual
           )
         )
           return prev;
@@ -385,6 +405,7 @@ export function VentasDashboard() {
       setLoadingChart(false);
     }
   }, [filteredVentas, filters.fechaInicio, filters.fechaFin]);
+
 
   useEffect(() => {
     calculateKpis();
