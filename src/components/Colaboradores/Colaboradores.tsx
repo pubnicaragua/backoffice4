@@ -9,21 +9,21 @@ export function Colaboradores() {
 
   const tabs = [
     { id: 'usuarios', label: 'Gestión de usuarios' },
-    { id: 'solicitudes', label: 'Gestión de solicitudes' },
-    { id: 'control', label: 'Control de asistencias' },
-    { id: 'reporte', label: 'Reporte de asistencia' },
+    // { id: 'solicitudes', label: 'Gestión de solicitudes' },
+    // { id: 'control', label: 'Control de asistencias' },
+    // { id: 'reporte', label: 'Reporte de asistencia' },
   ];
 
   const renderContent = () => {
     switch (activeTab) {
       case 'usuarios':
         return <GestionUsuarios />;
-      case 'solicitudes':
-        return <GestionSolicitudes />;
-      case 'control':
-        return <ControlAsistencias />;
-      case 'reporte':
-        return <ReporteAsistencia />;
+      // case 'solicitudes':
+      //   return <GestionSolicitudes />;
+      // case 'control':
+      //   return <ControlAsistencias />;
+      // case 'reporte':
+      //   return <ReporteAsistencia />;
       default:
         return <GestionUsuarios />;
     }
@@ -42,18 +42,17 @@ export function Colaboradores() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === tab.id
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
               >
                 {tab.label}
               </button>
             ))}
           </nav>
         </div>
-        
+
         <div className="p-6">
           {renderContent()}
         </div>
