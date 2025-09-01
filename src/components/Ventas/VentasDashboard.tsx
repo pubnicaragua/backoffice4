@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   BarChart3,
   Filter,
@@ -7,6 +7,8 @@ import {
   X as XIcon,
   Loader2,
   TrendingUp,
+  HelpCircle,
+  TrendingDown,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -24,31 +26,34 @@ import { supabase } from "../../lib/supabase";
 import { toast } from "react-toastify";
 
 interface KpiCardProps {
-  label: string;
+  title: string;
   value: string;
   change: string;
   isPositive: boolean;
 }
 
-function MetricsCard({ label, value, change, isPositive }: KpiCardProps) {
+function MetricsCard({ title, value, change, isPositive }: KpiCardProps) {
   return (
-    <div className="bg-gray-50 p-4 rounded-2xl flex flex-col justify-between shadow-sm">
+    <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+      {/* Título con icono de ayuda */}
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-sm text-gray-600 font-medium">{title}</p>
+        <HelpCircle className="w-4 h-4 text-gray-400" />
+      </div>
+
+      {/* Valor principal y tendencia */}
       <div className="flex items-center justify-between">
-        <div>
-          <span className="text-sm font-medium text-gray-700">{label}</span>
-          <p className="text-2xl font-semibold text-gray-900">{value}</p>
-        </div>
-        <div className="flex items-center space-x-1">
-          <TrendingUp
-            className={`w-4 h-4 ${isPositive ? "text-green-500" : "text-red-500"
-              }`}
-          />
-          <span
-            className={`text-sm ${isPositive ? "text-green-500" : "text-red-500"
-              }`}
-          >
-            {change}
-          </span>
+        <p className="text-2xl font-bold text-gray-900">{value}</p>
+        <div
+          className={`flex items-center space-x-1 text-sm font-medium ${isPositive ? "text-green-600" : "text-red-600"
+            }`}
+        >
+          {isPositive ? (
+            <TrendingUp className="w-4 h-4" />
+          ) : (
+            <TrendingDown className="w-4 h-4" />
+          )}
+          <span>{change}</span>
         </div>
       </div>
     </div>
@@ -140,7 +145,15 @@ export function VentasDashboard() {
     unidadesVendidas: 0,
     numeroVentas: 0,
     ticketPromedio: 0,
+    changes: {
+      ventasTotales: 0,
+      margen: 0,
+      unidadesVendidas: 0,
+      numeroVentas: 0,
+      ticketPromedio: 0,
+    },
   });
+
   const [sucursales, setSucursales] = useState<Sucursal[]>([]);
   const [productosConMovimiento, setProductosConMovimiento] = useState<
     Array<{ id: string; nombre: string; totalVendido: number; tipo: string }>
@@ -286,57 +299,154 @@ export function VentasDashboard() {
     });
   }, [ventas, ventaItems, filters]);
 
-  const calculateKpis = useCallback(() => {
-    try {
-      setLoadingKpis(true);
-      setKpiError(null);
-
-      const totalVentas = filteredVentas.reduce(
-        (sum, v) =>
-          sum + (typeof v.total === "string" ? parseFloat(v.total) : v.total),
+    const calculateMetrics = () => {
+      if (loadingKpis || !ventas) {
+        return null;
+      }
+  
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth();
+      const currentYear = currentDate.getFullYear();
+      const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+      const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+  
+      // Ventas del mes actual
+      const ventasActuales = ventas.filter((v: any) => {
+        const ventaDate = new Date(v.fecha);
+        return (
+          ventaDate.getMonth() === currentMonth &&
+          ventaDate.getFullYear() === currentYear
+        );
+      });
+  
+      // Ventas del mes anterior
+      const ventasAnteriores = ventas.filter((v: any) => {
+        const ventaDate = new Date(v.fecha);
+        return (
+          ventaDate.getMonth() === previousMonth &&
+          ventaDate.getFullYear() === previousYear
+        );
+      });
+  
+      // Items por mes
+      const ventaItemsActuales =
+        ventaItems?.filter((item: any) =>
+          ventasActuales.some((v: any) => v.id === item.venta_id)
+        ) || [];
+  
+      const ventaItemsAnteriores =
+        ventaItems?.filter((item: any) =>
+          ventasAnteriores.some((v: any) => v.id === item.venta_id)
+        ) || [];
+  
+      // Totales
+      const totalVentasActual = ventasActuales.reduce(
+        (sum: number, v: any) => sum + (parseFloat(v.total) || 0),
         0
       );
-
-      const numeroVentas = filteredVentas.length;
-      const totalUnidades = ventaItems
-        .filter((item) => filteredVentas.some((v) => v.id === item.venta_id))
-        .reduce((sum, item) => sum + (item.cantidad || 0), 0);
-
-      const ticketPromedio = numeroVentas > 0 ? totalVentas / numeroVentas : 0;
-
-      const totalCosto = ventaItems
-        .filter((item) => filteredVentas.some((v) => v.id === item.venta_id))
-        .reduce((sum, item) => {
-          const prod = productos.find((p) => p.id === item.producto_id);
-          return sum + (prod?.costo ?? 0) * (item.cantidad ?? 0);
-        }, 0);
-
-      const margen = totalVentas - totalCosto;
-
-      setKpiData((prev) => {
-        if (
-          prev.ventasTotales === totalVentas &&
-          prev.margen === margen &&
-          prev.unidadesVendidas === totalUnidades &&
-          prev.numeroVentas === numeroVentas &&
-          prev.ticketPromedio === ticketPromedio
-        )
-          return prev;
-
-        return {
-          ventasTotales: totalVentas,
-          margen,
-          unidadesVendidas: totalUnidades,
+      const totalVentasAnterior = ventasAnteriores.reduce(
+        (sum: number, v: any) => sum + (parseFloat(v.total) || 0),
+        0
+      );
+  
+      const totalUnidades = ventaItemsActuales.reduce(
+        (sum: number, i: any) => sum + (i.cantidad || 0),
+        0
+      );
+  
+      const numeroVentas = ventasActuales.length;
+      const ticketPromedio =
+        numeroVentas > 0 ? totalVentasActual / numeroVentas : 0;
+  
+      // Costo y margen
+      const totalCosto = ventaItemsActuales.reduce((sum: number, i: any) => {
+        const producto = productos?.find((p: any) => p.id === i.producto_id);
+        return sum + (producto?.costo || 0) * i.cantidad;
+      }, 0);
+  
+      const costoAnterior = ventaItemsAnteriores.reduce((sum: number, i: any) => {
+        const producto = productos?.find((p: any) => p.id === i.producto_id);
+        return sum + (producto?.costo || 0) * i.cantidad;
+      }, 0);
+  
+      const margen = totalVentasActual - totalCosto;
+      const margenAnterior = totalVentasAnterior - costoAnterior;
+  
+      // Aux para cambios
+      const calcularCambio = (actual: number, anterior: number) => {
+        if (anterior === 0) {
+          if (actual > 0) return "+100%";
+          return "0%";
+        }
+        const cambio = ((actual - anterior) / anterior) * 100;
+        return `${cambio >= 0 ? "+" : ""}${cambio.toFixed(1)}%`;
+      };
+  
+      return {
+        ventasTotales: totalVentasActual,
+        margen,
+        unidadesVendidas: totalUnidades,
+        numeroVentas,
+        ticketPromedio,
+        cambioVentas: calcularCambio(totalVentasActual, totalVentasAnterior),
+        cambioMargen: calcularCambio(margen, margenAnterior),
+        cambioUnidades: calcularCambio(totalUnidades, 0),
+        cambioNumeroVentas: calcularCambio(
           numeroVentas,
+          ventasAnteriores.length
+        ),
+        cambioTicket: calcularCambio(
           ticketPromedio,
-        };
-      });
-    } catch {
-      setKpiError("Error calculando KPIs");
-    } finally {
-      setLoadingKpis(false);
-    }
-  }, [filteredVentas, ventaItems, productos]);
+          ventasAnteriores.length > 0
+            ? totalVentasAnterior / ventasAnteriores.length
+            : 0
+        ),
+      };
+    };
+  
+    const metrics = calculateMetrics();
+  
+    const metricsData = metrics
+      ? [
+          {
+            title: "Ventas totales",
+            value: `$${metrics.ventasTotales.toLocaleString("es-CL")}`,
+            change: metrics.cambioVentas,
+            isPositive: !metrics.cambioVentas.startsWith("-"),
+          },
+          {
+            title: "Margen",
+            value: `$${metrics.margen.toLocaleString("es-CL")}`,
+            change: metrics.cambioMargen,
+            isPositive: !metrics.cambioMargen.startsWith("-"),
+          },
+          {
+            title: "Unidades vendidas",
+            value: metrics.unidadesVendidas.toLocaleString("es-CL"),
+            change: metrics.cambioUnidades,
+            isPositive: !metrics.cambioUnidades.startsWith("-"),
+          },
+          {
+            title: "N° de ventas",
+            value: metrics.numeroVentas.toLocaleString("es-CL"),
+            change: metrics.cambioNumeroVentas,
+            isPositive: !metrics.cambioNumeroVentas.startsWith("-"),
+          },
+          {
+            title: "Ticket promedio",
+            value: `$${Math.round(metrics.ticketPromedio).toLocaleString(
+              "es-CL"
+            )}`,
+            change: metrics.cambioTicket,
+            isPositive: !metrics.cambioTicket.startsWith("-"),
+          },
+        ]
+      : Array(5).fill({
+          title: "Cargando...",
+          value: "$0",
+          change: "+0%",
+          isPositive: true,
+        });
 
   const calculateMonthlyChartData = useCallback(() => {
     try {
@@ -408,8 +518,8 @@ export function VentasDashboard() {
 
 
   useEffect(() => {
-    calculateKpis();
-  }, [calculateKpis]);
+    calculateMetrics();
+  }, [filteredVentas, ventaItems, productos]);
 
   useEffect(() => {
     calculateMonthlyChartData();
@@ -670,39 +780,8 @@ export function VentasDashboard() {
             </div>
           ) : (
             <>
-              {[
-                {
-                  label: "Ventas totales",
-                  value: formatPrice(kpiData.ventasTotales),
-                  change: "+0%",
-                  isPositive: true,
-                },
-                {
-                  label: "Margen",
-                  value: formatPrice(kpiData.margen),
-                  change: "+0%",
-                  isPositive: true,
-                },
-                {
-                  label: "Unidades vendidas",
-                  value: kpiData.unidadesVendidas.toLocaleString("es-CL"),
-                  change: "+0%",
-                  isPositive: true,
-                },
-                {
-                  label: "N° de ventas",
-                  value: kpiData.numeroVentas.toLocaleString("es-CL"),
-                  change: "+0%",
-                  isPositive: true,
-                },
-                {
-                  label: "Ticket promedio",
-                  value: formatPrice(Math.round(kpiData.ticketPromedio)),
-                  change: "+0%",
-                  isPositive: true,
-                },
-              ].map((kpi, idx) => (
-                <MetricsCard key={idx} {...kpi} />
+              {metricsData.map((m, idx) => (
+                <MetricsCard key={idx} {...m} />
               ))}
             </>
           )}
