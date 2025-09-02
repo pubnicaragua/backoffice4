@@ -39,9 +39,7 @@ function Mermas() {
     } = useSupabaseData<Producto>(
         "productos",
         "*",
-        {
-            activo: true,
-        }
+        empresaId ? { empresa_id: empresaId, activo: true } : undefined,
     )
 
     useEffect(() => {

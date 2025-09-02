@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { TrendingUp, HelpCircle, TrendingDown } from "lucide-react";
+import { TrendingUp, HelpCircle, TrendingDown, Loader2 } from "lucide-react";
 import { useSupabaseData } from "../../hooks/useSupabaseData";
 import { useAuth } from "../../contexts/AuthContext";
 import { Sucursal } from "../../types/cajas";
@@ -30,7 +30,7 @@ function MetricsCard({ title, value, change, isPositive }: MetricsCardProps) {
           className={`flex items-center space-x-1 text-sm font-medium ${isPositive ? "text-green-600" : "text-red-600"
             }`}
         >
-          {value !== "0" ? (
+          {value !== "0" && value !== "$0" ? (
             isPositive ? (
               <TrendingUp className="w-4 h-4" />
             ) : (
@@ -40,7 +40,7 @@ function MetricsCard({ title, value, change, isPositive }: MetricsCardProps) {
             <span>-</span>
           )}
 
-          <span>{value !== "0" ? change : ""}</span>
+          <span>{value !== "0" && value !== "$0" ? change : ""}</span>
         </div>
       </div>
     </div>
@@ -271,6 +271,8 @@ export default function GeneralDashboard() {
   const { empresaId } = useAuth();
   const [sucursalId, setSucursalId] = React.useState<string>("");
   const [sucursales, setSucursales] = useState<Sucursal[]>([])
+  const [loadingKpis, setLoadingKpis] = useState(true);
+  const [kpiError, setKpiError] = useState<string | null>(null);
 
   // Hook para cargar sucursales de la empresa  
   const getSucursales = useCallback(async () => {
@@ -294,11 +296,9 @@ export default function GeneralDashboard() {
     }
   }, [empresaId]);
 
-  // Llamada en useEffect
   useEffect(() => {
     getSucursales();
   }, [getSucursales]);
-
 
   // Construir filtro común para las consultas según empresaId y sucursalId  
   const commonFilter = React.useMemo(() => {
@@ -307,25 +307,26 @@ export default function GeneralDashboard() {
     return { empresa_id: empresaId };
   }, [empresaId, sucursalId]);
 
+  // Solo ejecutar estos hooks cuando empresaId existe
   const { data: ventas, loading: ventasLoading } = useSupabaseData<any>(
     "ventas",
     "*",
-    commonFilter
+    empresaId ? commonFilter : undefined
   );
 
   const { data: ventaItems } = useSupabaseData<any>(
     "venta_items",
     "*, ventas!inner(empresa_id)",
-    commonFilter ? { "ventas.empresa_id": commonFilter.empresa_id } : undefined
+    empresaId ? { "ventas.empresa_id": empresaId } : undefined
   );
 
   const { data: asistencias, loading: asistenciasLoading } =
-    useSupabaseData<any>("asistencias", "*", commonFilter);
+    useSupabaseData<any>("asistencias", "*", empresaId ? commonFilter : undefined);
 
   const { data: mermas, loading: mermasLoading } = useSupabaseData<any>(
     "mermas",
     "*",
-    commonFilter
+    empresaId ? commonFilter : undefined
   );
 
   const { data: productos } = useSupabaseData<any>(
@@ -333,6 +334,15 @@ export default function GeneralDashboard() {
     "*",
     empresaId ? { empresa_id: empresaId } : undefined
   );
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setLoadingKpis(false);
+    }, 1000);
+
+    return () => clearTimeout(timeout);
+  }, [ventasLoading]);
+
 
   if (!empresaId) {
     return (
@@ -570,9 +580,32 @@ export default function GeneralDashboard() {
 
       {/* Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        {metricsData.map((metric, index) => (
-          <MetricsCard key={index} {...metric} />
-        ))}
+        {loadingKpis ? (
+          <div className="col-span-full text-center py-8">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
+            <p className="text-gray-600 mt-2">Cargando KPIs...</p>
+          </div>
+        ) : kpiError ? (
+          <div className="col-span-full text-center py-8 text-red-600">
+            <p>{kpiError}</p>
+            <button
+              onClick={() => {
+                setKpiError(null);
+                calculateMetrics();
+              }}
+              className="mt-2 text-blue-600 hover:underline flex items-center justify-center mx-auto"
+              type="button"
+            >
+              <Loader2 className="w-4 h-4 mr-1" /> Reintentar
+            </button>
+          </div>
+        ) : (
+          <>
+            {metricsData.map((m, idx) => (
+              <MetricsCard key={idx} {...m} />
+            ))}
+          </>
+        )}
       </div>
 
       {/* Charts - Gráficos de Pastel Dinámicos Mejorados */}

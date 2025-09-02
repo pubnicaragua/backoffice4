@@ -48,7 +48,7 @@ function MetricsCard({ title, value, change, isPositive }: KpiCardProps) {
           className={`flex items-center space-x-1 text-sm font-medium ${isPositive ? "text-green-600" : "text-red-600"
             }`}
         >
-          {value !== "0" ? (
+          {value !== "0" && value !== "$0" ? (
             isPositive ? (
               <TrendingUp className="w-4 h-4" />
             ) : (
@@ -57,7 +57,7 @@ function MetricsCard({ title, value, change, isPositive }: KpiCardProps) {
           ) : (
             <span>-</span>
           )}
-          <span>{value !== "0" ? change : ""}</span>
+          <span>{value !== "0" && value !== "$0" ? change : ""}</span>
         </div>
       </div>
     </div>
@@ -774,7 +774,7 @@ export function VentasDashboard() {
               <button
                 onClick={() => {
                   setKpiError(null);
-                  calculateKpis();
+                  calculateMetrics();
                 }}
                 className="mt-2 text-blue-600 hover:underline flex items-center justify-center mx-auto"
                 type="button"
