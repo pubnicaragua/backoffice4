@@ -1,6 +1,6 @@
-import React, { SetStateAction, useState } from "react";
+import { SetStateAction, useState } from "react";
 import { Modal } from "../Common/Modal";
-import { supabase, supabaseAnonKey } from "../../lib/supabase";
+import { supabaseAnonKey } from "../../lib/supabase";
 import { useAuth } from "../../contexts/AuthContext";
 import { toast } from "react-toastify";
 import { useSupabaseData } from "../../hooks/useSupabaseData";
@@ -61,17 +61,28 @@ export function AgregarUsuarioModal({
 }: AgregarUsuarioModalProps) {
   const { empresaId } = useAuth();
 
-  // ✅ Removido 'direccion' del formData  
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    nombres: string;
+    apellidos: string;
+    rut: string;
+    email: string;
+    telefono?: string;
+    fecha_nacimiento?: string;
+    sucursal_id: string;
+    rol: string;
+    cv?: File | null;
+  }>({
     nombres: "",
     apellidos: "",
     rut: "",
     email: "",
-    telefono: "", // ✅ Opcional  
-    fecha_nacimiento: "",
+    telefono: "", // Opcional
+    fecha_nacimiento: "", // Opcional
     sucursal_id: "",
     rol: "empleado",
+    cv: null, // Inicialmente sin archivo
   });
+
 
   const [mensaje, setMensaje] = useState<{
     texto: string;
@@ -86,6 +97,68 @@ export function AgregarUsuarioModal({
       ...prev,
       sucursal_id: value
     }));
+  };
+
+  const procesarPDF = async (file: File) => {
+    if (!file) return null;
+
+    const pdfjsLib = await import('pdfjs-dist');
+    const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.mjs?url');
+
+    // Configurar el worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker.default;
+
+    // Leer archivo como ArrayBuffer
+    const arrayBuffer = await file.arrayBuffer();
+
+    const pdfDataArray = new Uint8Array(arrayBuffer);
+
+    // Cargar el PDF
+    const pdfDocument = await pdfjsLib.getDocument(
+      {
+        data: pdfDataArray,
+      }).promise;
+
+    let text = ''
+    // Iteramos cada pagina del pdf
+    for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
+      const page = await pdfDocument.getPage(pageNum)
+      const textContent = await page.getTextContent()
+      const pageText = textContent.items.map((item) => item.str).join(" ")
+      text += pageText + "\n"
+    }
+
+    // Extraer datos con regex mejorados
+    const nombresMatch = text.match(/([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)/);
+    const apellidosMatch = text.match(/([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)/);
+    const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+    const telefonoMatch = text.match(/(\+?\d{1,4}[\s-]?)?(\(?\d{1,4}\)?[\s-]?)?[\d\s-]{6,15}/);
+
+    // Extraer RUT (formatos chilenos)
+    const rutMatch = text.match(/(\d{1,2}\.\d{3}\.\d{3}-[\dkK])|(\d{7,8}-[\dkK])/i);
+
+    // Extraer fecha de nacimiento (múltiples formatos)
+    const fechaNacimientoMatch = text.match(
+      /(\d{1,2}\s*[\/\-\.]\s*\d{1,2}\s*[\/\-\.]\s*\d{4})|(\d{4}\s*[\/\-\.]\s*\d{1,2}\s*[\/\-\.]\s*\d{1,2})|(\d{1,2}\s+(de\s+)?(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+(de\s+)?\d{4})/i
+    );
+
+    console.log('Datos extraídos:', {
+      nombres: nombresMatch ? nombresMatch[0] : null,
+      apellidos: apellidosMatch ? apellidosMatch[0] : null,
+      email: emailMatch ? emailMatch[0] : null,
+      telefono: telefonoMatch ? telefonoMatch[0] : null,
+      rut: rutMatch ? rutMatch[0] : null,
+      fechaNacimiento: fechaNacimientoMatch ? fechaNacimientoMatch[0] : null
+    });
+
+    return {
+      nombres: nombresMatch ? nombresMatch[1].trim() : "",
+      apellidos: apellidosMatch ? apellidosMatch[1].trim() : "",
+      email: emailMatch ? emailMatch[0] : "",
+      telefono: telefonoMatch ? telefonoMatch[0] : "",
+      rut: rutMatch ? rutMatch[0] : "",
+      fecha_nacimiento: fechaNacimientoMatch ? fechaNacimientoMatch[0] : ""
+    };
   };
 
   const formatDate = (dateStr: string) => {
@@ -197,9 +270,38 @@ export function AgregarUsuarioModal({
     await crearUsuario(formData);
   };
 
+  const handleCVUpload = async (file: File) => {
+    setFormData((prev) => ({ ...prev, cv: file }));
+
+    const datosExtraidos = await procesarPDF(file);
+
+    if (datosExtraidos) {
+      setFormData((prev) => ({ ...prev, ...datosExtraidos }));
+      toast.success("Archivo subido de forma exitosa, verifique que los datos son correctos")
+    }
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Agregar usuario" size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label
+            htmlFor="cv-input"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Subir CV (PDF o DOCX)
+          </label>
+          <input
+            type="file"
+            accept=".pdf,.doc,.docx"
+            onChange={(e) => e.target.files && handleCVUpload(e.target.files[0])}
+          />
+          {formData.cv && (
+            <p className="text-xs text-gray-500 mt-1">
+              Archivo seleccionado: {formData.cv.name}
+            </p>
+          )}
+        </div>
         {/* Nombres */}
         <div>
           <label

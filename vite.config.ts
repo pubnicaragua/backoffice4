@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => {
     },
     optimizeDeps: {
       exclude: ["lucide-react"],
-      include: ["react", "react-dom", "react-router-dom"],
+      include: ["react", "react-dom", "react-router-dom", 'pdfjs-dist'],
     },
     define: {
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(
