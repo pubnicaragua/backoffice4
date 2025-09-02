@@ -48,12 +48,16 @@ function MetricsCard({ title, value, change, isPositive }: KpiCardProps) {
           className={`flex items-center space-x-1 text-sm font-medium ${isPositive ? "text-green-600" : "text-red-600"
             }`}
         >
-          {isPositive ? (
-            <TrendingUp className="w-4 h-4" />
+          {value !== "0" ? (
+            isPositive ? (
+              <TrendingUp className="w-4 h-4" />
+            ) : (
+              <TrendingDown className="w-4 h-4" />
+            )
           ) : (
-            <TrendingDown className="w-4 h-4" />
+            <span>-</span>
           )}
-          <span>{change}</span>
+          <span>{value !== "0" ? change : ""}</span>
         </div>
       </div>
     </div>
@@ -299,154 +303,154 @@ export function VentasDashboard() {
     });
   }, [ventas, ventaItems, filters]);
 
-    const calculateMetrics = () => {
-      if (loadingKpis || !ventas) {
-        return null;
+  const calculateMetrics = () => {
+    if (loadingKpis || !ventas) {
+      return null;
+    }
+
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+
+    // Ventas del mes actual
+    const ventasActuales = ventas.filter((v: any) => {
+      const ventaDate = new Date(v.fecha);
+      return (
+        ventaDate.getMonth() === currentMonth &&
+        ventaDate.getFullYear() === currentYear
+      );
+    });
+
+    // Ventas del mes anterior
+    const ventasAnteriores = ventas.filter((v: any) => {
+      const ventaDate = new Date(v.fecha);
+      return (
+        ventaDate.getMonth() === previousMonth &&
+        ventaDate.getFullYear() === previousYear
+      );
+    });
+
+    // Items por mes
+    const ventaItemsActuales =
+      ventaItems?.filter((item: any) =>
+        ventasActuales.some((v: any) => v.id === item.venta_id)
+      ) || [];
+
+    const ventaItemsAnteriores =
+      ventaItems?.filter((item: any) =>
+        ventasAnteriores.some((v: any) => v.id === item.venta_id)
+      ) || [];
+
+    // Totales
+    const totalVentasActual = ventasActuales.reduce(
+      (sum: number, v: any) => sum + (parseFloat(v.total) || 0),
+      0
+    );
+    const totalVentasAnterior = ventasAnteriores.reduce(
+      (sum: number, v: any) => sum + (parseFloat(v.total) || 0),
+      0
+    );
+
+    const totalUnidades = ventaItemsActuales.reduce(
+      (sum: number, i: any) => sum + (i.cantidad || 0),
+      0
+    );
+
+    const numeroVentas = ventasActuales.length;
+    const ticketPromedio =
+      numeroVentas > 0 ? totalVentasActual / numeroVentas : 0;
+
+    // Costo y margen
+    const totalCosto = ventaItemsActuales.reduce((sum: number, i: any) => {
+      const producto = productos?.find((p: any) => p.id === i.producto_id);
+      return sum + (producto?.costo || 0) * i.cantidad;
+    }, 0);
+
+    const costoAnterior = ventaItemsAnteriores.reduce((sum: number, i: any) => {
+      const producto = productos?.find((p: any) => p.id === i.producto_id);
+      return sum + (producto?.costo || 0) * i.cantidad;
+    }, 0);
+
+    const margen = totalVentasActual - totalCosto;
+    const margenAnterior = totalVentasAnterior - costoAnterior;
+
+    // Aux para cambios
+    const calcularCambio = (actual: number, anterior: number) => {
+      if (anterior === 0) {
+        if (actual > 0) return "+100%";
+        return "0%";
       }
-  
-      const currentDate = new Date();
-      const currentMonth = currentDate.getMonth();
-      const currentYear = currentDate.getFullYear();
-      const previousMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-      const previousYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-  
-      // Ventas del mes actual
-      const ventasActuales = ventas.filter((v: any) => {
-        const ventaDate = new Date(v.fecha);
-        return (
-          ventaDate.getMonth() === currentMonth &&
-          ventaDate.getFullYear() === currentYear
-        );
-      });
-  
-      // Ventas del mes anterior
-      const ventasAnteriores = ventas.filter((v: any) => {
-        const ventaDate = new Date(v.fecha);
-        return (
-          ventaDate.getMonth() === previousMonth &&
-          ventaDate.getFullYear() === previousYear
-        );
-      });
-  
-      // Items por mes
-      const ventaItemsActuales =
-        ventaItems?.filter((item: any) =>
-          ventasActuales.some((v: any) => v.id === item.venta_id)
-        ) || [];
-  
-      const ventaItemsAnteriores =
-        ventaItems?.filter((item: any) =>
-          ventasAnteriores.some((v: any) => v.id === item.venta_id)
-        ) || [];
-  
-      // Totales
-      const totalVentasActual = ventasActuales.reduce(
-        (sum: number, v: any) => sum + (parseFloat(v.total) || 0),
-        0
-      );
-      const totalVentasAnterior = ventasAnteriores.reduce(
-        (sum: number, v: any) => sum + (parseFloat(v.total) || 0),
-        0
-      );
-  
-      const totalUnidades = ventaItemsActuales.reduce(
-        (sum: number, i: any) => sum + (i.cantidad || 0),
-        0
-      );
-  
-      const numeroVentas = ventasActuales.length;
-      const ticketPromedio =
-        numeroVentas > 0 ? totalVentasActual / numeroVentas : 0;
-  
-      // Costo y margen
-      const totalCosto = ventaItemsActuales.reduce((sum: number, i: any) => {
-        const producto = productos?.find((p: any) => p.id === i.producto_id);
-        return sum + (producto?.costo || 0) * i.cantidad;
-      }, 0);
-  
-      const costoAnterior = ventaItemsAnteriores.reduce((sum: number, i: any) => {
-        const producto = productos?.find((p: any) => p.id === i.producto_id);
-        return sum + (producto?.costo || 0) * i.cantidad;
-      }, 0);
-  
-      const margen = totalVentasActual - totalCosto;
-      const margenAnterior = totalVentasAnterior - costoAnterior;
-  
-      // Aux para cambios
-      const calcularCambio = (actual: number, anterior: number) => {
-        if (anterior === 0) {
-          if (actual > 0) return "+100%";
-          return "0%";
-        }
-        const cambio = ((actual - anterior) / anterior) * 100;
-        return `${cambio >= 0 ? "+" : ""}${cambio.toFixed(1)}%`;
-      };
-  
-      return {
-        ventasTotales: totalVentasActual,
-        margen,
-        unidadesVendidas: totalUnidades,
-        numeroVentas,
-        ticketPromedio,
-        cambioVentas: calcularCambio(totalVentasActual, totalVentasAnterior),
-        cambioMargen: calcularCambio(margen, margenAnterior),
-        cambioUnidades: calcularCambio(totalUnidades, 0),
-        cambioNumeroVentas: calcularCambio(
-          numeroVentas,
-          ventasAnteriores.length
-        ),
-        cambioTicket: calcularCambio(
-          ticketPromedio,
-          ventasAnteriores.length > 0
-            ? totalVentasAnterior / ventasAnteriores.length
-            : 0
-        ),
-      };
+      const cambio = ((actual - anterior) / anterior) * 100;
+      return `${cambio >= 0 ? "+" : ""}${cambio.toFixed(1)}%`;
     };
-  
-    const metrics = calculateMetrics();
-  
-    const metricsData = metrics
-      ? [
-          {
-            title: "Ventas totales",
-            value: `$${metrics.ventasTotales.toLocaleString("es-CL")}`,
-            change: metrics.cambioVentas,
-            isPositive: !metrics.cambioVentas.startsWith("-"),
-          },
-          {
-            title: "Margen",
-            value: `$${metrics.margen.toLocaleString("es-CL")}`,
-            change: metrics.cambioMargen,
-            isPositive: !metrics.cambioMargen.startsWith("-"),
-          },
-          {
-            title: "Unidades vendidas",
-            value: metrics.unidadesVendidas.toLocaleString("es-CL"),
-            change: metrics.cambioUnidades,
-            isPositive: !metrics.cambioUnidades.startsWith("-"),
-          },
-          {
-            title: "N° de ventas",
-            value: metrics.numeroVentas.toLocaleString("es-CL"),
-            change: metrics.cambioNumeroVentas,
-            isPositive: !metrics.cambioNumeroVentas.startsWith("-"),
-          },
-          {
-            title: "Ticket promedio",
-            value: `$${Math.round(metrics.ticketPromedio).toLocaleString(
-              "es-CL"
-            )}`,
-            change: metrics.cambioTicket,
-            isPositive: !metrics.cambioTicket.startsWith("-"),
-          },
-        ]
-      : Array(5).fill({
-          title: "Cargando...",
-          value: "$0",
-          change: "+0%",
-          isPositive: true,
-        });
+
+    return {
+      ventasTotales: totalVentasActual,
+      margen,
+      unidadesVendidas: totalUnidades,
+      numeroVentas,
+      ticketPromedio,
+      cambioVentas: calcularCambio(totalVentasActual, totalVentasAnterior),
+      cambioMargen: calcularCambio(margen, margenAnterior),
+      cambioUnidades: calcularCambio(totalUnidades, 0),
+      cambioNumeroVentas: calcularCambio(
+        numeroVentas,
+        ventasAnteriores.length
+      ),
+      cambioTicket: calcularCambio(
+        ticketPromedio,
+        ventasAnteriores.length > 0
+          ? totalVentasAnterior / ventasAnteriores.length
+          : 0
+      ),
+    };
+  };
+
+  const metrics = calculateMetrics();
+
+  const metricsData = metrics
+    ? [
+      {
+        title: "Ventas totales",
+        value: `$${metrics.ventasTotales.toLocaleString("es-CL")}`,
+        change: metrics.cambioVentas,
+        isPositive: !metrics.cambioVentas.startsWith("-"),
+      },
+      {
+        title: "Margen",
+        value: `$${metrics.margen.toLocaleString("es-CL")}`,
+        change: metrics.cambioMargen,
+        isPositive: !metrics.cambioMargen.startsWith("-"),
+      },
+      {
+        title: "Unidades vendidas",
+        value: metrics.unidadesVendidas.toLocaleString("es-CL"),
+        change: metrics.cambioUnidades,
+        isPositive: !metrics.cambioUnidades.startsWith("-"),
+      },
+      {
+        title: "N° de ventas",
+        value: metrics.numeroVentas.toLocaleString("es-CL"),
+        change: metrics.cambioNumeroVentas,
+        isPositive: !metrics.cambioNumeroVentas.startsWith("-"),
+      },
+      {
+        title: "Ticket promedio",
+        value: `$${Math.round(metrics.ticketPromedio).toLocaleString(
+          "es-CL"
+        )}`,
+        change: metrics.cambioTicket,
+        isPositive: !metrics.cambioTicket.startsWith("-"),
+      },
+    ]
+    : Array(5).fill({
+      title: "Cargando...",
+      value: "$0",
+      change: "+0%",
+      isPositive: true,
+    });
 
   const calculateMonthlyChartData = useCallback(() => {
     try {

@@ -630,7 +630,7 @@ const GestionCaja: React.FC = () => {
                     Empleado:{" "}
                     {state.empleados.find(
                       (usuario) => usuario.id === sesion.usuario_id
-                    )?.nombres || "Desconocido"}
+                    )?.nombres || user?.nombres}
                   </p>
 
                   <p className="text-sm text-gray-600">

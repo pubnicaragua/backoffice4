@@ -143,16 +143,30 @@ export function AgregarPedidoModal({
                         Monto total *
                     </label>
                     <input
-                        type="number"
+                        type="text"
                         value={formData.monto_total}
-                        onChange={(e) =>
-                            setFormData((prev) => ({ ...prev, monto_total: e.target.value }))
-                        }
                         placeholder="0"
-                        min="0"
-                        step="0.01"
                         className="w-full px-3 py-2 border border-gray-300 rounded-md"
                         required
+                        onChange={(e) => {
+                            let value = e.target.value;
+
+                            // Reemplazar coma por punto
+                            value = value.replace(",", ".");
+
+                            // Solo números y punto decimal
+                            if (value === "" || /^[0-9]*\.?[0-9]*$/.test(value)) {
+                                // No permitir negativos
+                                if (parseFloat(value) < 0) value = "0";
+                                setFormData((prev) => ({ ...prev, monto_total: value }));
+                            }
+                        }}
+                        onKeyDown={(e) => {
+                            // Evitar subir o bajar con flechas
+                            if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                                e.preventDefault();
+                            }
+                        }}
                     />
                 </div>
 

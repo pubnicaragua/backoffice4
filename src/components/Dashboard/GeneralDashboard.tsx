@@ -30,12 +30,17 @@ function MetricsCard({ title, value, change, isPositive }: MetricsCardProps) {
           className={`flex items-center space-x-1 text-sm font-medium ${isPositive ? "text-green-600" : "text-red-600"
             }`}
         >
-          {isPositive ? (
-            <TrendingUp className="w-4 h-4" />
+          {value !== "0" ? (
+            isPositive ? (
+              <TrendingUp className="w-4 h-4" />
+            ) : (
+              <TrendingDown className="w-4 h-4" />
+            )
           ) : (
-            <TrendingDown className="w-4 h-4" />
+            <span>-</span>
           )}
-          <span>{change}</span>
+
+          <span>{value !== "0" ? change : ""}</span>
         </div>
       </div>
     </div>

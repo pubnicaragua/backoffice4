@@ -132,10 +132,9 @@ export function ProductosTotales() {
       if (filters.disponibilidad === "disponibles") {
         query = query.gt("stock_final", 0);
       } else if (filters.disponibilidad === "agotados") {
-        query = query.eq("stock_final", 0);
-      } else {
-        query = query.gte("stock_final", 0);
+        query = query.lte("stock_final", 0);
       }
+
 
       query = query.order("producto_id", { ascending: true });
 
@@ -200,6 +199,8 @@ export function ProductosTotales() {
     return { cantidad: totalVendido, tipo };
   };
 
+  console.log("inventarios", inventarios)
+  console.log("productos", productos)
   const getFilteredProducts = () => {
     return (
       inventarios
@@ -231,7 +232,7 @@ export function ProductosTotales() {
             return inv.stock_final > 0;
           }
           if (filters.disponibilidad === "agotados") {
-            return inv.stock_final === 0;
+            return inv.stock_final <= 0;
           }
           return true;
         })
@@ -280,8 +281,18 @@ export function ProductosTotales() {
               />
             ),
             producto: producto.nombre,
-            stock: inv.stock_final.toString(),
-            categoria:
+            stock: (
+              <span
+                className={`font-medium ${inv.stock_final > 0
+                  ? "text-green-600"
+                  : inv.stock_final === 0
+                    ? "text-yellow-600"
+                    : "text-red-600"
+                  }`}
+              >
+                {inv.stock_final}
+              </span>
+            ), categoria:
               categorias.find((c) => c.id === producto.categoria_id)?.nombre ||
               "Sin categoría",
             descripcion: producto.descripcion || "",
@@ -312,7 +323,11 @@ export function ProductosTotales() {
                 </span>
               </div>
             ),
-            disponible: inv.stock_final > 0 ? "Disponible" : "Agotado",
+            disponible: inv.stock_final > 0
+              ? "Disponible"
+              : inv.stock_final === 0
+                ? "Agotado"
+                : "Stock negativo",
             acciones: (
               <div className="flex items-center space-x-2">
                 <button
