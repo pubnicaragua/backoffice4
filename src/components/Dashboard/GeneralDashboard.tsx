@@ -271,8 +271,13 @@ export default function GeneralDashboard() {
   const { empresaId } = useAuth();
   const [sucursalId, setSucursalId] = React.useState<string>("");
   const [sucursales, setSucursales] = useState<Sucursal[]>([])
-  const [loadingKpis, setLoadingKpis] = useState(true);
+  const [ventas, setVentas] = useState<any[]>([]);
+  const [ventaItems, setVentaItems] = useState<any[]>([]);
+  const [asistencias, setAsistencias] = useState<any[]>([]);
+  const [mermas, setMermas] = useState<any[]>([]);
+  const [productos, setProductos] = useState<any[]>([]);
   const [kpiError, setKpiError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   // Hook para cargar sucursales de la empresa  
   const getSucursales = useCallback(async () => {
@@ -307,42 +312,127 @@ export default function GeneralDashboard() {
     return { empresa_id: empresaId };
   }, [empresaId, sucursalId]);
 
-  // Solo ejecutar estos hooks cuando empresaId existe
-  const { data: ventas, loading: ventasLoading } = useSupabaseData<any>(
-    "ventas",
-    "*",
-    empresaId ? commonFilter : undefined
-  );
+  const getVentas = useCallback(async () => {
+    if (!empresaId) return;
 
-  const { data: ventaItems } = useSupabaseData<any>(
-    "venta_items",
-    "*, ventas!inner(empresa_id)",
-    empresaId ? { "ventas.empresa_id": empresaId } : undefined
-  );
+    try {
+      const { data, error } = await supabase
+        .from("ventas")
+        .select("*")
+        .match(commonFilter!);
 
-  const { data: asistencias, loading: asistenciasLoading } =
-    useSupabaseData<any>("asistencias", "*", empresaId ? commonFilter : undefined);
+      if (error) {
+        toast.error("Error al obtener ventas");
+        return;
+      }
 
-  const { data: mermas, loading: mermasLoading } = useSupabaseData<any>(
-    "mermas",
-    "*",
-    empresaId ? commonFilter : undefined
-  );
+      setVentas(data || []);
+    } catch (err) {
+      console.error("Error al obtener ventas:", err);
+      toast.error("Error al obtener ventas");
+    }
+  }, [empresaId, sucursalId]);
 
-  const { data: productos } = useSupabaseData<any>(
-    "productos",
-    "*",
-    empresaId ? { empresa_id: empresaId } : undefined
-  );
+  // Venta items
+  const getVentaItems = useCallback(async () => {
+    if (!empresaId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("venta_items")
+        .select("*, ventas!inner(empresa_id)")
+        .eq("ventas.empresa_id", empresaId);
+
+      if (error) {
+        toast.error("Error al obtener items de ventas");
+        return;
+      }
+
+      setVentaItems(data || []);
+    } catch (err) {
+      console.error("Error al obtener items de ventas:", err);
+      toast.error("Error al obtener items de ventas");
+    }
+  }, [empresaId]);
+
+  // Asistencias
+  const getAsistencias = useCallback(async () => {
+    if (!empresaId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("asistencias")
+        .select("*")
+        .match(commonFilter!);
+
+      if (error) {
+        toast.error("Error al obtener asistencias");
+        return;
+      }
+
+      setAsistencias(data || []);
+    } catch (err) {
+      console.error("Error al obtener asistencias:", err);
+      toast.error("Error al obtener asistencias");
+    }
+  }, [empresaId, sucursalId]);
+
+  // Mermas
+  const getMermas = useCallback(async () => {
+    if (!empresaId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("mermas")
+        .select("*")
+        .match(commonFilter!);
+
+      if (error) {
+        toast.error("Error al obtener mermas");
+        return;
+      }
+
+      setMermas(data || []);
+    } catch (err) {
+      console.error("Error al obtener mermas:", err);
+      toast.error("Error al obtener mermas");
+    }
+  }, [empresaId, sucursalId]);
+
+  // Productos
+  const getProductos = useCallback(async () => {
+    if (!empresaId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("productos")
+        .select("*")
+        .eq("empresa_id", empresaId);
+
+      if (error) {
+        toast.error("Error al obtener productos");
+        return;
+      }
+
+      setProductos(data || []);
+    } catch (err) {
+      console.error("Error al obtener productos:", err);
+      toast.error("Error al obtener productos");
+    }
+  }, [empresaId]);
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      setLoadingKpis(false);
-    }, 1000);
+    if (!empresaId) return;
 
-    return () => clearTimeout(timeout);
-  }, [ventasLoading]);
-
+    setLoading(true);
+    Promise.all([
+      getVentas(),
+      getVentaItems(),
+      getAsistencias(),
+      getMermas(),
+      getProductos(),
+    ]).finally(() => setLoading(false));
+  }, [empresaId, sucursalId, getVentas, getVentaItems, getAsistencias, getMermas, getProductos]);
 
   if (!empresaId) {
     return (
@@ -353,7 +443,7 @@ export default function GeneralDashboard() {
   }
 
   const calculateMetrics = () => {
-    if (ventasLoading || !ventas) {
+    if (loading || !ventas) {
       return null;
     }
 
@@ -503,7 +593,7 @@ export default function GeneralDashboard() {
     });
 
   const processAttendanceData = () => {
-    if (!asistencias || asistenciasLoading) {
+    if (!asistencias || loading) {
       return [{ name: "Cargando...", value: 0, color: "#6B7280" }];
     }
 
@@ -523,7 +613,7 @@ export default function GeneralDashboard() {
   };
 
   const processLossData = () => {
-    if (!mermas || mermasLoading) {
+    if (!mermas || loading) {
       // Estado de carga
       return [{ name: "Cargando...", value: 1, color: "#E5E7EB" }];
     }
@@ -580,7 +670,7 @@ export default function GeneralDashboard() {
 
       {/* Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        {loadingKpis ? (
+        {loading ? (
           <div className="col-span-full text-center py-8">
             <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
             <p className="text-gray-600 mt-2">Cargando KPIs...</p>
