@@ -158,6 +158,12 @@ export function AgregarPromocionModal({
     }
   };
 
+  const filteredProductos = (productos || []).filter(
+    (producto) =>
+      producto.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      producto.codigo.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const canGuardar =
     !loading &&
     formData.nombre.trim() !== "" &&
