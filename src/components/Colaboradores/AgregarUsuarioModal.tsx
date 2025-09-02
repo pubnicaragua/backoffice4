@@ -281,19 +281,34 @@ export function AgregarUsuarioModal({
     }
   };
 
+  const handleClose = () => {
+    setFormData({
+      nombres: "",
+      apellidos: "",
+      rut: "",
+      email: "",
+      telefono: "", // Opcional
+      fecha_nacimiento: "", // Opcional
+      sucursal_id: "",
+      rol: "empleado",
+      cv: null, // Inicialmente sin archivo
+    })
+    onClose()
+  }
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Agregar usuario" size="md">
+    <Modal isOpen={isOpen} onClose={handleClose} title="Agregar usuario" size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label
             htmlFor="cv-input"
             className="block text-sm font-medium text-gray-700 mb-1"
           >
-            Subir CV (PDF o DOCX)
+            Subir CV (PDF)
           </label>
           <input
             type="file"
-            accept=".pdf,.doc,.docx"
+            accept=".pdf"
             onChange={(e) => e.target.files && handleCVUpload(e.target.files[0])}
           />
           {formData.cv && (
