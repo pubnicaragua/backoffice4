@@ -13,19 +13,36 @@ interface DocumentoDetalleModalProps {
 }
 
 export function DocumentoDetalleModal({ isOpen, onClose, documento }: DocumentoDetalleModalProps) {
-  const { data: ventaItems, loading } = useSupabaseData<any>(
-    'venta_items',
-    '*, productos(nombre)',
-    documento?.id ? { venta_id: documento.id } : null
-  );
-
   const { empresaId } = useAuth()
 
   const [userEmpresa, setUserEmpresa] = useState({})
+  const [ventaItems, setVentaItems] = useState([])
 
+  const loadVentaItems = useCallback(async () => {
+    if (!documento) return
+
+    console.log(documento)
+
+    const { data, error } = await supabase
+      .from("venta_items")
+      .select("*, productos(nombre)")
+      .eq("venta_id", documento.venta.id)
+
+    if (error) {
+      toast.error("Error al obtener los productos de la venta")
+      console.log(error)
+      return
+    }
+
+    setVentaItems(data)
+  }, [documento])
+
+  useEffect(() => {
+    loadVentaItems()
+  }, [documento])
 
   const loadEmpresa = useCallback(async () => {
-    if (!empresaId) return // si no hay empresaId no hace nada
+    if (!empresaId) return
 
     const { data: empresa, error } = await supabase
       .from("empresas")
@@ -44,7 +61,7 @@ export function DocumentoDetalleModal({ isOpen, onClose, documento }: DocumentoD
   useEffect(() => {
     loadEmpresa()
   }, [empresaId])
-  if (!documento) return null;
+  if (!documento) return null
 
   const productos = ventaItems || [];
 
