@@ -132,9 +132,10 @@ export function ProductosTotales() {
       if (filters.disponibilidad === "disponibles") {
         query = query.gt("stock_final", 0);
       } else if (filters.disponibilidad === "agotados") {
-        query = query.lte("stock_final", 0);
+        query = query.eq("stock_final", 0);
+      } else {
+        query = query.lte("stock_final", 9999999);
       }
-
 
       query = query.order("producto_id", { ascending: true });
 
