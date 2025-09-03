@@ -282,6 +282,7 @@ export function ProductosTotales() {
               />
             ),
             producto: producto.nombre,
+            stock_final: inv.stock_final,
             stock: (
               <span
                 className={`font-medium ${inv.stock_final > 0
@@ -464,7 +465,7 @@ export function ProductosTotales() {
           const movimiento = calcularMovimientoProducto(row.id);
           return [
             row.producto,
-            row.stock,
+            row.stock_final,
             row.categoria,
             row.sku,
             row.costo.replace(/[$.,]/g, ""),
@@ -489,17 +490,39 @@ export function ProductosTotales() {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = ["Producto", "Stock"];
-    const csvContent = headers.join(",") + "\n";
+    // 1. Encabezados de la plantilla
+    const headers = ["Nombre", "Cantidad", "Costo", "Precio", "Categoria"];
+
+    // 2. Datos de ejemplo
+    const sampleData = [
+      ["Coca Cola 500ml", 50, 1000, 1500, "Bebidas"],
+      ["Pan Hallulla", 25, 500, 800, "Alimentos"],
+      ["Leche 1L", 30, 800, 1200, "Bebidas"],
+    ];
+
+    // 3. Convertir a CSV
+    const csvRows = [
+      headers.join(","), // primera fila: encabezados
+      ...sampleData.map(row => row.join(",")) // filas de ejemplo
+    ];
+
+    const csvContent = csvRows.join("\n");
+
+    // 4. Crear el archivo CSV
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
+
+    // 5. Crear enlace de descarga
     const a = document.createElement("a");
     a.href = url;
-    a.download = `plantilla_productos_stock_${new Date().toISOString().split("T")[0]
-      }.csv`;
+    a.download = `plantilla_productos_${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
+
+    // 6. Liberar memoria
     URL.revokeObjectURL(url);
-    toast.success("Plantilla de productos y stock descargada.");
+
+    // 7. Mostrar notificación
+    toast.success("Plantilla de productos descargada.");
   };
 
   return (
